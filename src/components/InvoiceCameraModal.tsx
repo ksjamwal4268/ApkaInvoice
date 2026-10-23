@@ -4,20 +4,16 @@ import {
   Upload,
   X,
   Zap,
-  CheckCircle2,
   RefreshCw,
   FileText,
-  AlertCircle,
   Building2,
   Check,
   Sparkles,
   ArrowRight,
-  Maximize2,
 } from "lucide-react";
 import {
   ExtractedInvoiceData,
   processInvoiceImageWithN8n,
-  getN8nConfig,
   saveCustomer,
   getStoredCustomers,
 } from "../data/dataStore";
@@ -48,17 +44,13 @@ export function InvoiceCameraModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Initialize camera when modal opens in camera mode
-  useEffect(() => {
-    if (isOpen && mode === "camera" && !capturedImage) {
-      startCamera();
-    } else {
-      stopCamera();
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
-    return () => {
-      stopCamera();
-    };
-  }, [isOpen, mode, capturedImage]);
+    setCameraActive(false);
+  };
 
   const startCamera = async () => {
     setCameraError(null);
@@ -88,13 +80,17 @@ export function InvoiceCameraModal({
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+  // Initialize camera when modal opens in camera mode
+  useEffect(() => {
+    if (isOpen && mode === "camera" && !capturedImage) {
+      startCamera();
+    } else {
+      stopCamera();
     }
-    setCameraActive(false);
-  };
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, mode, capturedImage]);
 
   const captureSnapshot = () => {
     if (!videoRef.current) return;
@@ -197,8 +193,6 @@ export function InvoiceCameraModal({
   };
 
   if (!isOpen) return null;
-
-  const n8nConfig = getN8nConfig();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">

@@ -42,13 +42,18 @@ export function Payments({ lang: _lang }: { lang: Language }) {
     const row = result.rows.find((r) => r.rowIndex === rowIndex);
     if (!row) return;
 
-    row.matched = true;
-    row.matchType = "partial";
-    row.matchedInvoiceId = invId;
-    row.needsReview = false;
+    const updatedRow = {
+      ...row,
+      matched: true,
+      matchType: "partial" as const,
+      matchedInvoiceId: invId,
+      needsReview: false,
+    };
 
-    // Add or update match
-    let existing = result.matches.find((m) => m.invoiceId === invId);
+    const updatedMatches = [...result.matches];
+    const existingIndex = updatedMatches.findIndex((m) => m.invoiceId === invId);
+    let existing = existingIndex >= 0 ? { ...updatedMatches[existingIndex] } : null;
+
     if (!existing) {
       existing = {
         invoiceId: invId,
@@ -57,22 +62,30 @@ export function Payments({ lang: _lang }: { lang: Language }) {
         bankRows: [],
         status: "part-paid",
       };
-      result.matches.push(existing);
-    }
-    existing.matchedAmount += row.amount;
-    existing.bankRows.push(row);
-    if (existing.matchedAmount >= existing.invoiceAmount) {
-      existing.status = "fully-paid";
+      updatedMatches.push(existing);
     } else {
-      existing.status = "part-paid";
+      updatedMatches[existingIndex] = existing;
     }
 
-    result.unmatchedCredits = result.unmatchedCredits.filter((r) => r.rowIndex !== rowIndex);
-    result.needsReview = result.needsReview.filter((r) => r.rowIndex !== rowIndex);
-    result.summary.unmatchedCount = result.unmatchedCredits.length;
-    result.summary.totalMatched += row.amount;
+    const newMatchedAmount = existing.matchedAmount + row.amount;
+    existing.bankRows = [...existing.bankRows, updatedRow];
+    existing.matchedAmount = newMatchedAmount;
+    existing.status = newMatchedAmount >= existing.invoiceAmount ? "fully-paid" : "part-paid";
 
-    setResult({ ...result });
+    const updatedUnmatched = result.unmatchedCredits.filter((r) => r.rowIndex !== rowIndex);
+    const updatedReview = result.needsReview.filter((r) => r.rowIndex !== rowIndex);
+
+    setResult({
+      ...result,
+      matches: updatedMatches,
+      unmatchedCredits: updatedUnmatched,
+      needsReview: updatedReview,
+      summary: {
+        ...result.summary,
+        unmatchedCount: updatedUnmatched.length,
+        totalMatched: result.summary.totalMatched + row.amount,
+      },
+    });
   };
 
   const handleAcceptTds = (rowIndex: number) => {

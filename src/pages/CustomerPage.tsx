@@ -10,12 +10,9 @@ import {
   Mail,
   Phone,
   MessageSquare,
-  AlertTriangle,
   ArrowRight,
   Plus,
   Edit,
-  Clock,
-  CheckCircle,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { CustomerModal } from "../components/CustomerModal";

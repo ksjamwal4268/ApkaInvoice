@@ -12,6 +12,8 @@ import {
   Building2,
   FileWarning,
   Zap,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { t, Language } from "../data/i18n";
@@ -49,8 +51,10 @@ export function Shell({
     (i) => i.status === "overdue" && i.outstanding > 0 && !i.isDisputed
   ).length;
 
+  const isWelcome = location.pathname === "/" || location.pathname === "/welcome";
+
   const NAV_ITEMS = [
-    { path: "/", label: "navDashboard", icon: LayoutDashboard },
+    { path: "/dashboard", label: "navDashboard", icon: LayoutDashboard },
     { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${invoices.length}` },
     { path: "/payments", label: "navPayments", icon: Banknote },
     {
@@ -64,9 +68,60 @@ export function Shell({
     { path: "/customers", label: "navCustomers", icon: Users },
   ];
 
-  const isActive = (path: string) =>
-    location.pathname === path ||
-    (path !== "/" && location.pathname.startsWith(path));
+  const isActive = (path: string) => {
+    if (path === "/dashboard") {
+      return location.pathname === "/dashboard";
+    }
+    return location.pathname === path || (path !== "/" && path !== "/dashboard" && location.pathname.startsWith(path));
+  };
+
+  if (isWelcome) {
+    return (
+      <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased font-sans">
+        {/* Top Header for Welcome Page */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+          <div
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
+          >
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-extrabold text-sm shadow-sm group-hover:scale-105 transition-transform">
+              CC
+            </div>
+            <div>
+              <span className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight block tracking-tight">
+                Cash Copilot
+              </span>
+              <span className="text-[11px] text-teal-600 dark:text-teal-400 font-medium hidden sm:block">
+                MSME Cash Shortage Forecaster
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-all hover:scale-105 tap-target"
+            >
+              <span>Go to Dashboard</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            <LanguageSwitch
+              lang={lang}
+              onChange={onLangChange}
+              dark={dark}
+              onToggleDark={onToggleDark}
+            />
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased font-sans">
@@ -83,7 +138,7 @@ export function Shell({
 
           {/* Logo & Brand */}
           <div
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/dashboard")}
             className="flex items-center gap-2.5 cursor-pointer select-none group"
           >
             <div className="w-9 h-9 rounded-xl bg-linear-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-extrabold text-sm shadow-sm group-hover:scale-105 transition-transform">
@@ -252,6 +307,18 @@ export function Shell({
                 );
               })}
             </nav>
+          </div>
+
+          {/* Quick link to Welcome & Overview */}
+          <div className="px-3 pb-2">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Welcome & Overview</span>
+            </button>
           </div>
 
           {/* Business Profile Footnote in Sidebar (Clickable) */}

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatInr } from "../utils/money";
 import { Language } from "../data/i18n";
-import { Users, AlertTriangle, CheckCircle, Search, ArrowRight, Plus, Building2, Edit } from "lucide-react";
+import { Users, AlertTriangle, CheckCircle, Search, ArrowRight, Plus, Edit } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { CustomerModal } from "../components/CustomerModal";
 import { Customer } from "../data/sampleData";

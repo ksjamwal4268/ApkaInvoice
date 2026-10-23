@@ -10,14 +10,11 @@ import {
   ShieldCheck,
   AlertCircle,
   Zap,
-  Webhook,
   Check,
   Settings,
-  Send,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { sendReminderViaN8n, N8nReminderPayload } from "../data/dataStore";
-import { BUSINESS } from "../data/sampleData";
 import { N8nSettingsModal } from "../components/N8nSettingsModal";
 
 type StageKey = "friendly" | "due-date" | "firm" | "demand";
@@ -37,7 +34,7 @@ const STAGES: Stage[] = [
 ];
 
 export function Reminders({ lang: appLang }: { lang: Language }) {
-  const { invoices, customers, businessProfile, addInvoiceEvidence, n8nConfig } = useDataStore();
+  const { invoices, customers, businessProfile, addInvoiceEvidence } = useDataStore();
 
   const [selectedStage, setSelectedStage] = useState<StageKey | "all">("all");
   const [previewLang, setPreviewLang] = useState<Language>(appLang || "en");

@@ -192,7 +192,7 @@ export const CUSTOMERS: Customer[] = [
   },
 ];
 
-function computeLineGst(rate: Paise, qty: number, gstRate: number) {
+export function computeLineGst(rate: Paise, qty: number, gstRate: number) {
   const lineAmount = rate * qty;
   const gst = Math.round((lineAmount * gstRate) / 100);
   return { lineAmount, gst };

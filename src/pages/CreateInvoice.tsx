@@ -2,13 +2,12 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { validateGstin } from "../utils/gstin";
 import { toPaise, formatInr, amountInWords, roundGst, splitCgstSgst } from "../utils/money";
-import { computeDueDate, PaymentTerms, formatDate } from "../utils/date";
+import { computeDueDate, PaymentTerms } from "../utils/date";
 import { Language } from "../data/i18n";
 import {
   Eye,
   CheckCircle2,
   Upload,
-  AlertCircle,
   X,
   Camera,
   Building2,
@@ -84,7 +83,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   useEffect(() => {
     if (!senderPhone && businessProfile.phone) setSenderPhone(businessProfile.phone);
     if (!senderEmail && businessProfile.email) setSenderEmail(businessProfile.email);
-  }, [businessProfile]);
+  }, [businessProfile, senderEmail, senderPhone]);
 
   // Load existing invoice if in edit mode
   useEffect(() => {

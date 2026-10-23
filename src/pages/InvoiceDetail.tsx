@@ -15,11 +15,9 @@ import {
   Zap,
   MessageSquare,
   Check,
-  Send,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { sendReminderViaN8n } from "../data/dataStore";
-import { BUSINESS } from "../data/sampleData";
 
 export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Webhook, Check, Copy, ExternalLink, Zap, ShieldCheck } from "lucide-react";
+import { X, Webhook, Check, Copy, Zap, ShieldCheck } from "lucide-react";
 import { N8nConfig, getN8nConfig, saveN8nConfig } from "../data/dataStore";
 
 interface N8nSettingsModalProps {

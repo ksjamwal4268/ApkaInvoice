@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { ForecastChart } from "../components/ForecastChart";
 import { buildForecast } from "../utils/forecast";
 import { formatInr, add, toPaise } from "../utils/money";
-import { formatWeekLabel } from "../utils/date";
-import { INVOICES } from "../data/sampleData";
 import { Language } from "../data/i18n";
 import {
   TrendingUp,
@@ -15,7 +13,6 @@ import {
   Wallet,
   ArrowRight,
   ShieldCheck,
-  Percent,
 } from "lucide-react";
 
 import { useDataStore } from "../hooks/useDataStore";
@@ -29,7 +26,7 @@ export function Forecast({ lang: _lang }: { lang: Language }) {
       openingBalance,
       invoices,
     });
-  }, [invoices]);
+  }, [invoices, openingBalance]);
 
   const totalInflow = add(...forecast.weeks.map((w) => w.inflow));
   const totalOutflow = add(...forecast.weeks.map((w) => w.outflow));

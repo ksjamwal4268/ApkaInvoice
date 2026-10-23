@@ -3,10 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { ForecastChart } from "../components/ForecastChart";
 import { EmptyState } from "../components/EmptyState";
-import { formatInr, toPaise, fromPaise, add } from "../utils/money";
+import { formatInr, toPaise, add } from "../utils/money";
 import { buildForecast, DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { daysBetween } from "../utils/date";
-import { BUSINESS } from "../data/sampleData";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
 import {
@@ -19,7 +18,6 @@ import {
   MessageSquare,
   Plus,
   Sliders,
-  ShieldAlert,
   Percent,
   Banknote,
   Users,
@@ -33,8 +31,11 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const moneyOwed = useMemo(() => {
     return invoices.reduce((sum, inv) => {
@@ -53,8 +54,12 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     }, 0);
   }, [invoices, today]);
 
-  const fourWeeksFromNow = new Date(today);
-  fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
+  const fourWeeksFromNow = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 28);
+    return d;
+  }, [today]);
+
   const expected4Weeks = useMemo(() => {
     return invoices.reduce((sum, inv) => {
       if (inv.status === "disputed" || inv.status === "paid") return sum;
@@ -71,9 +76,11 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     0
   );
 
-  const whatIf = whatIfCustomer && daysLate > 0
-    ? { customerId: whatIfCustomer, daysLate }
-    : undefined;
+  const whatIf = useMemo(() => {
+    return whatIfCustomer && daysLate > 0
+      ? { customerId: whatIfCustomer, daysLate }
+      : undefined;
+  }, [whatIfCustomer, daysLate]);
 
   const forecast = useMemo(() => {
     return buildForecast({
@@ -81,7 +88,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
       invoices,
       whatIf,
     });
-  }, [invoices, whatIfCustomer, daysLate]);
+  }, [invoices, whatIf]);
 
   const chaseList = useMemo(() => {
     return invoices.filter(

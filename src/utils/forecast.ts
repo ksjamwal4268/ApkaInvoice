@@ -10,7 +10,7 @@
  */
 
 import { Paise, fromPaise, add, subtract } from "./money";
-import { generateWeeks, formatWeekLabel, startOfWeek, addDays } from "./date";
+import { generateWeeks, formatWeekLabel, addDays } from "./date";
 
 export type CustomerId = string;
 export type InvoiceId = string;

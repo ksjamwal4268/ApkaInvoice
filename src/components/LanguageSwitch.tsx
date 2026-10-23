@@ -1,6 +1,6 @@
 import React from "react";
 import { Globe, Sun, Moon } from "lucide-react";
-import { t, Language } from "../data/i18n";
+import { Language } from "../data/i18n";
 
 interface LanguageSwitchProps {
   lang: Language;

@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Mail,
-  Phone,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -57,7 +56,7 @@ export function Timeline({ entries }: TimelineProps): React.JSX.Element {
   return (
     <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
       <div className="space-y-5">
-        {sorted.map((entry, idx) => {
+        {sorted.map((entry) => {
           const Icon = TYPE_ICONS[entry.type] || Mail;
           return (
             <div key={entry.id} className="relative pl-8">

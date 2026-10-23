@@ -10,8 +10,6 @@ import {
   FileText,
   Check,
   Trash2,
-  RefreshCw,
-  AlertCircle,
 } from "lucide-react";
 import {
   BusinessProfile,

@@ -61,7 +61,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     { value: "disputed", label: "Disputed", count: counts.disputed },
   ];
 
-  const handleApplyExtractedData = (data: ExtractedInvoiceData) => {
+  const handleApplyExtractedData = (_data: ExtractedInvoiceData) => {
     // Navigate to create invoice
     navigate("/invoices/create");
   };

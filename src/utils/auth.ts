@@ -79,7 +79,7 @@ export function useGoogleAuth() {
     } catch (error) {
       console.error("Google sign-in error:", error);
     }
-  }, [GOOGLE_CLIENT_ID]);
+  }, []);
 
   const signOut = useCallback(() => {
     setUser(null);

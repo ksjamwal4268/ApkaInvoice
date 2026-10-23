@@ -20,6 +20,10 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
   const { invoices, saveInvoice } = useDataStore();
   const invoice = invoices.find((inv) => inv.id === invoiceId);
 
+  const [submitted, setSubmitted] = useState(false);
+  const [disputeType, setDisputeType] = useState<string>("wrong-invoice");
+  const [note, setNote] = useState("");
+
   if (!invoice) {
     return (
       <div className="py-20 text-center">
@@ -38,10 +42,6 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
       </div>
     );
   }
-
-  const [submitted, setSubmitted] = useState(false);
-  const [disputeType, setDisputeType] = useState<string>("wrong-invoice");
-  const [note, setNote] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
