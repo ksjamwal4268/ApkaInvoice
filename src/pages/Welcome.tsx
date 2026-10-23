@@ -7,6 +7,7 @@ import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { KpiCard } from "../components/KpiCard";
 import { OnboardingModal } from "../components/OnboardingModal";
+import { GlowingStarsBackgroundCardPreview } from "../components/GlowingStarsBackgroundCardPreview";
 import {
   ArrowRight,
   TrendingUp,
@@ -501,6 +502,11 @@ export function Welcome({ lang }: WelcomeProps) {
             <ArrowRight className="w-5 h-5" />
           </div>
         </div>
+      </div>
+
+      {/* Glowing Stars Card Showcase */}
+      <div className="my-6">
+        <GlowingStarsBackgroundCardPreview />
       </div>
 
       {/* Onboarding & Business Profile Setup Modal */}
