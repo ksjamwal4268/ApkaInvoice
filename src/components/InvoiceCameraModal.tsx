@@ -4,7 +4,6 @@ import {
   Camera,
   Upload,
   X,
-  Zap,
   RefreshCw,
   FileText,
   Building2,
@@ -53,6 +52,7 @@ export function InvoiceCameraModal({
   const [ocrSource, setOcrSource] = useState<"n8n_live" | "ocr_tesseract" | "n8n_simulated">("n8n_simulated");
   const [buyerSaved, setBuyerSaved] = useState(false);
   const [storedInvoice, setStoredInvoice] = useState<Invoice | null>(null);
+  const [ocrEngineMode, setOcrEngineMode] = useState<"auto" | "browser" | "n8n">("auto");
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -148,11 +148,12 @@ export function InvoiceCameraModal({
     setStoredInvoice(null);
 
     try {
-      setProcessingStep("Uploading to n8n Document AI Webhook...");
+      setProcessingStep(ocrEngineMode === "browser" ? "Initializing Neural OCR..." : "Scanning bill via Document AI...");
       const res = await processInvoiceImageWithN8n(imageData, true, {
         payerEmail: payerEmail.trim() || undefined,
         payerPhone: payerPhone.trim() || undefined,
         fileName: customFileName || fileName,
+        ocrEngine: ocrEngineMode,
         onProgress: (step: string) => setProcessingStep(step),
       });
 
@@ -299,9 +300,32 @@ export function InvoiceCameraModal({
                   </button>
                 </div>
 
-                <div className="text-[11px] text-teal-700 dark:text-teal-300 flex items-center gap-1 font-semibold">
-                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                  <span>n8n Webhook: ksjamwal.app.n8n.cloud</span>
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-750 rounded-xl text-[11px]">
+                  <span className="text-slate-500 dark:text-slate-400 pl-1.5 font-medium">Engine:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOcrEngineMode("browser")}
+                    className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                      ocrEngineMode === "browser"
+                        ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                    }`}
+                    title="Runs directly in browser using Neural OCR (Zero 500 network errors)"
+                  >
+                    Neural OCR (Local)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOcrEngineMode("auto")}
+                    className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                      ocrEngineMode === "auto"
+                        ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800"
+                    }`}
+                    title="Tries n8n cloud webhook with automatic local fallback"
+                  >
+                    Auto (n8n Cloud)
+                  </button>
                 </div>
               </div>
 

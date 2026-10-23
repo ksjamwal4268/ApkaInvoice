@@ -432,7 +432,11 @@ export function storeExtractedInvoice(
   return newInvoice;
 }
 
-import { recognizeInvoiceWithTesseract, parseInvoiceText } from "../utils/ocrParser";
+import {
+  recognizeInvoiceWithTesseract,
+  parseInvoiceText,
+  extractTextFromPdfDataUrl,
+} from "../utils/ocrParser";
 
 /**
  * Execute OCR extraction via n8n webhook or intelligent client-side OCR fallback
@@ -444,6 +448,7 @@ export async function processInvoiceImageWithN8n(
     payerEmail?: string;
     payerPhone?: string;
     fileName?: string;
+    ocrEngine?: "auto" | "browser" | "n8n";
     onProgress?: (step: string) => void;
   }
 ): Promise<{
@@ -452,9 +457,10 @@ export async function processInvoiceImageWithN8n(
   rawText?: string;
 }> {
   const config = getN8nConfig();
+  const engine = extraParams?.ocrEngine || "auto";
 
-  // Step 1: Try n8n cloud webhook
-  if (useRealWebhook && config.ocrWebhookUrl && config.ocrWebhookUrl.startsWith("http")) {
+  // Step 1: Try n8n cloud webhook (only if engine is not explicitly set to browser-only)
+  if (engine !== "browser" && useRealWebhook && config.ocrWebhookUrl && config.ocrWebhookUrl.startsWith("http")) {
     try {
       extraParams?.onProgress?.("Uploading to n8n Document AI Webhook...");
       const formData = new FormData();
@@ -489,7 +495,6 @@ export async function processInvoiceImageWithN8n(
 
       if (res.ok) {
         const json = await res.json();
-        // Handle single object or array response from n8n
         const payload = Array.isArray(json) ? json[0] : json;
         if (payload && (payload.invoiceNumber || payload.invoice_number || payload.amount || payload.grandTotal)) {
           const grandTotal = Number(payload.amount || payload.grandTotal || 0);
@@ -525,18 +530,30 @@ export async function processInvoiceImageWithN8n(
           };
           return { data: normalized, source: "n8n_live" };
         }
+      } else {
+        extraParams?.onProgress?.("n8n cloud returned error. Switched to in-browser Neural OCR...");
       }
     } catch (err) {
       console.warn("n8n live webhook unavailable or returned error, initiating neural OCR fallback:", err);
+      extraParams?.onProgress?.("n8n cloud unavailable. Switched to in-browser Neural OCR...");
     }
   }
 
   // Step 2: Client-side Neural OCR using Tesseract (reads actual photo text!)
   try {
-    extraParams?.onProgress?.("Neural Engine: Scanning bill text, GSTIN & amounts...");
-    const rawText = await recognizeInvoiceWithTesseract(imageData, (status) => {
-      extraParams?.onProgress?.(status);
-    });
+    extraParams?.onProgress?.("Neural Engine: Reading invoice text, GSTIN & totals...");
+    let rawText = "";
+
+    // If PDF, attempt to extract embedded text stream first
+    if (typeof imageData === "string" && imageData.startsWith("data:application/pdf")) {
+      rawText = extractTextFromPdfDataUrl(imageData);
+    }
+
+    if (!rawText || rawText.trim().length < 15) {
+      rawText = await recognizeInvoiceWithTesseract(imageData, (status) => {
+        extraParams?.onProgress?.(status);
+      });
+    }
 
     if (rawText && rawText.trim().length > 15) {
       const parsed = parseInvoiceText(rawText, extraParams);

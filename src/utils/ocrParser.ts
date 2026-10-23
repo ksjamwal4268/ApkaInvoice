@@ -231,6 +231,33 @@ export function parseInvoiceText(
 }
 
 /**
+ * Extract embedded text from digital PDF base64 string
+ */
+export function extractTextFromPdfDataUrl(dataUrl: string): string {
+  try {
+    const base64 = dataUrl.split(",")[1];
+    if (!base64) return "";
+    const binary = atob(base64);
+
+    const textMatches = binary.match(/\(([^()]{2,100})\)\s*(?:Tj|'|")/g);
+    if (textMatches && textMatches.length > 0) {
+      return textMatches
+        .map((m) => m.replace(/^\(/, "").replace(/\)\s*(?:Tj|'|")$/, "").trim())
+        .filter((t) => t.length > 1)
+        .join(" ");
+    }
+
+    const words = binary.match(/[A-Za-z0-9/_.:₹-]{3,}/g);
+    if (words && words.length > 10) {
+      return words.join(" ");
+    }
+  } catch {
+    // fallback
+  }
+  return "";
+}
+
+/**
  * Execute Client-Side Optical Character Recognition using Tesseract.js
  */
 export async function recognizeInvoiceWithTesseract(
