@@ -76,9 +76,9 @@ export function Shell({
 
   if (isWelcome) {
     return (
-      <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased font-sans">
+      <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 antialiased font-sans">
         {/* Top Header for Welcome Page */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 py-3 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 shadow-xs">
           <div
             onClick={() => navigate("/")}
             className="flex items-center gap-2.5 cursor-pointer select-none group"
@@ -87,10 +87,10 @@ export function Shell({
               CC
             </div>
             <div>
-              <span className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight block tracking-tight">
+              <span className="font-extrabold text-lg text-white leading-tight block tracking-tight">
                 ApkaInvoice
               </span>
-              <span className="text-[11px] text-teal-600 dark:text-teal-400 font-medium hidden sm:block">
+              <span className="text-[11px] text-teal-400 font-medium hidden sm:block">
                 MSME Cash Shortage Forecaster
               </span>
             </div>

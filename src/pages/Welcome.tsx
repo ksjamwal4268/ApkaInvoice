@@ -7,7 +7,7 @@ import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { KpiCard } from "../components/KpiCard";
 import { OnboardingModal } from "../components/OnboardingModal";
-import { GlowingStarsBackgroundCardPreview } from "../components/GlowingStarsBackgroundCardPreview";
+import { GlowingStarsBackground } from "../components/ui/glowing-stars-background";
 import {
   ArrowRight,
   TrendingUp,
@@ -112,7 +112,8 @@ export function Welcome({ lang }: WelcomeProps) {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+    <GlowingStarsBackground>
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
       {/* Top Banner / Hero */}
       <div className="space-y-8">
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-teal-900 via-slate-900 to-slate-950 text-white p-6 sm:p-10 lg:p-12 shadow-2xl border border-teal-800/40">
@@ -504,10 +505,7 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
       </div>
 
-      {/* Glowing Stars Card Showcase */}
-      <div className="my-6">
-        <GlowingStarsBackgroundCardPreview />
-      </div>
+
 
       {/* Onboarding & Business Profile Setup Modal */}
       <OnboardingModal
@@ -533,6 +531,7 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
         <p>© {new Date().getFullYear()} ApkaInvoice. Built for Indian Manufacturing & Trading Businesses.</p>
       </footer>
-    </div>
+      </div>
+    </GlowingStarsBackground>
   );
 }
