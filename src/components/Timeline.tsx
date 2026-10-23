@@ -31,18 +31,18 @@ const TYPE_ICONS: Record<string, typeof Mail> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  "invoice-sent": "text-teal-600 dark:text-teal-400",
-  reminder: "text-slate-500 dark:text-slate-400",
-  promise: "text-amber-500 dark:text-amber-400",
-  payment: "text-teal-600 dark:text-teal-400",
-  dispute: "text-red-500 dark:text-red-400",
+  "invoice-sent": "text-teal-600 text-teal-400",
+  reminder: "text-slate-500 text-slate-500",
+  promise: "text-amber-500 text-amber-400",
+  payment: "text-teal-600 text-teal-400",
+  dispute: "text-red-500 text-red-400",
 };
 
 export function Timeline({ entries }: TimelineProps): React.JSX.Element {
   if (!entries || entries.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-        <p className="text-slate-500 dark:text-slate-400 text-sm">
+      <div className="rounded-lg border border-slate-200 border-slate-200 bg-white bg-slate-50 p-6">
+        <p className="text-slate-500 text-slate-500 text-sm">
           No evidence recorded yet.
         </p>
       </div>
@@ -54,30 +54,30 @@ export function Timeline({ entries }: TimelineProps): React.JSX.Element {
   );
 
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+    <div className="rounded-lg border border-slate-200 border-slate-200 bg-white bg-slate-50 p-6">
       <div className="space-y-5">
         {sorted.map((entry) => {
           const Icon = TYPE_ICONS[entry.type] || Mail;
           return (
             <div key={entry.id} className="relative pl-8">
-              <div className="absolute -left-[3px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800" />
-              <div className="absolute -left-[1px] top-4 h-full w-0.5 border-l border-slate-200 dark:border-slate-700" />
+              <div className="absolute -left-[3px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-slate-200 border-slate-200 bg-white bg-slate-50" />
+              <div className="absolute -left-[1px] top-4 h-full w-0.5 border-l border-slate-200 border-slate-200" />
               <div className="flex items-center gap-3 mb-1">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center border ${TYPE_COLORS[entry.type] || "text-slate-500"}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-medium text-slate-500 text-slate-500">
                   {formatDate(entry.date)}
                 </span>
               </div>
-              <h4 className="text-sm font-medium text-slate-900 dark:text-white">
+              <h4 className="text-sm font-medium text-slate-900 text-slate-900">
                 {entry.title}
               </h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600 text-slate-500">
                 {entry.description}
               </p>
               {entry.amount && (
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs font-medium text-slate-500 text-slate-500 mt-0.5">
                   <Money paise={entry.amount} />
                 </p>
               )}

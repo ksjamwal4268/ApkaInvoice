@@ -10,7 +10,12 @@ export interface GstinValidationResult {
   stateName?: string;
 }
 
-const STATE_CODES: Record<string, string> = {
+export interface IndianState {
+  state: string;
+  code: string;
+}
+
+export const STATE_CODES: Record<string, string> = {
   "01": "Jammu and Kashmir",
   "02": "Himachal Pradesh",
   "03": "Punjab",
@@ -35,10 +40,24 @@ const STATE_CODES: Record<string, string> = {
   "22": "Chhattisgarh",
   "23": "Madhya Pradesh",
   "24": "Gujarat",
+  "26": "Dadra and Nagar Haveli and Daman and Diu",
   "27": "Maharashtra",
   "29": "Karnataka",
+  "30": "Goa",
+  "31": "Lakshadweep",
+  "32": "Kerala",
   "33": "Tamil Nadu",
+  "34": "Puducherry",
+  "35": "Andaman and Nicobar Islands",
+  "36": "Telangana",
+  "37": "Andhra Pradesh",
+  "38": "Ladakh",
+  "97": "Other Territory",
 };
+
+export const INDIAN_STATES: IndianState[] = Object.entries(STATE_CODES)
+  .map(([code, state]) => ({ state, code }))
+  .sort((a, b) => a.state.localeCompare(b.state));
 
 // GSTIN checksum based on the GST portal algorithm (Fibonacci weights)
 function computeGstinChecksum(gstin: string): string {

@@ -1,5 +1,5 @@
 /**
- * Money utilities for Cash Copilot.
+ * Money utilities for ApkaInvoice.
  * All money is stored as whole paise (integers) to avoid floating point errors.
  * GST is rounded per line, never via AI or approximate arithmetic.
  */

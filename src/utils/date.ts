@@ -1,5 +1,5 @@
 /**
- * Date utilities for Cash Copilot.
+ * Date utilities for ApkaInvoice.
  * Handles due dates from payment terms, week bucketing, and day differences.
  */
 

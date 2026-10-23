@@ -1,5 +1,5 @@
 /**
- * Cash forecast engine for Cash Copilot.
+ * Cash forecast engine for ApkaInvoice.
  *
  * Core invariant (must always hold): closing[i] = opening[i] + inflow[i] - outflow[i],
  * and opening[i+1] = closing[i]. The forecast ties out by construction.

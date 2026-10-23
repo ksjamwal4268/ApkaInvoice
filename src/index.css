@@ -1,9 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Schibsted Grotesk", system-ui, sans-serif;
 
+  --color-slate-850: #172033;
   --color-teal-900: #0f4c5c;
   --color-teal-800: #12606e;
   --color-teal-700: #147283;
@@ -24,6 +27,18 @@ body {
 .dark body,
 .dark {
   @apply bg-slate-900 text-slate-100;
+}
+
+input, select, textarea {
+  color: #0f172a;
+}
+
+.dark input, .dark select, .dark textarea {
+  color: #f8fafc;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8;
 }
 
 :focus-visible {

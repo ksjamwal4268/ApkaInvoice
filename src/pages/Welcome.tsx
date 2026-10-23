@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Language, t } from "../data/i18n";
-import { useGoogleAuth, GoogleUser, GOOGLE_CLIENT_ID } from "../utils/auth";
+import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { KpiCard } from "../components/KpiCard";
+import { OnboardingModal } from "../components/OnboardingModal";
+import { GlowingStarsBackgroundCardPreview } from "../components/GlowingStarsBackgroundCardPreview";
 import {
   ArrowRight,
   TrendingUp,
@@ -21,6 +23,11 @@ import {
   Clock,
   Banknote,
   Users,
+  Settings,
+  CheckCircle2,
+  Phone,
+  Mail,
+  QrCode,
 } from "lucide-react";
 
 interface WelcomeProps {
@@ -29,12 +36,18 @@ interface WelcomeProps {
 
 export function Welcome({ lang }: WelcomeProps) {
   const navigate = useNavigate();
-  const { user, isLoading, signIn, signOut } = useGoogleAuth();
+  const { user, loading, signInWithGoogle, signOutUser } = useAuth();
   const { invoices, businessProfile } = useDataStore();
+
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [demoNotice, setDemoNotice] = useState(false);
 
-  const isPlaceholderOauth =
-    !GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.startsWith("placeholder");
+  // Automatically trigger onboarding wizard if user logs in and profile is not yet completed
+  useEffect(() => {
+    if (user && !businessProfile.isOnboarded) {
+      setIsOnboardingOpen(true);
+    }
+  }, [user, businessProfile.isOnboarded]);
 
   // Calculate live financial KPIs from the data store
   const moneyOwed = invoices
@@ -62,17 +75,17 @@ export function Welcome({ lang }: WelcomeProps) {
     0
   );
 
-  // Handle Google Sign-in with friendly fallback if placeholder client ID is configured
-  const handleGoogleSignIn = () => {
-    if (isPlaceholderOauth) {
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (err: unknown) {
+      console.warn("Google sign in notice:", err);
       setDemoNotice(true);
-    } else {
-      signIn();
     }
   };
 
   const handleDemoSignIn = () => {
-    const demoUser: GoogleUser = {
+    const demoUser = {
       id: "demo-user-1",
       name: businessProfile.name || "Rohit Sharma",
       email: businessProfile.email || "accounts@sharmapackaging.com",
@@ -82,7 +95,15 @@ export function Welcome({ lang }: WelcomeProps) {
     window.location.reload();
   };
 
-  if (isLoading) {
+  const handleEnterDashboard = () => {
+    if (user && !businessProfile.isOnboarded) {
+      setIsOnboardingOpen(true);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin" />
@@ -92,9 +113,8 @@ export function Welcome({ lang }: WelcomeProps) {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col justify-between py-6 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-      {/* Top Banner / Greeting */}
+      {/* Top Banner / Hero */}
       <div className="space-y-8">
-        {/* Hero Section */}
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-teal-900 via-slate-900 to-slate-950 text-white p-6 sm:p-10 lg:p-12 shadow-2xl border border-teal-800/40">
           <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -110,9 +130,9 @@ export function Welcome({ lang }: WelcomeProps) {
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-4">
               {user ? (
                 <>
-                  Welcome back,{" "}
+                  Welcome,{" "}
                   <span className="text-transparent bg-clip-text bg-linear-to-r from-teal-300 to-emerald-400">
-                    {user.name}
+                    {businessProfile.contactPerson || user.name}
                   </span>
                 </>
               ) : (
@@ -135,10 +155,16 @@ export function Welcome({ lang }: WelcomeProps) {
               {/* Primary Next Page Action */}
               <button
                 type="button"
-                onClick={() => navigate("/dashboard")}
+                onClick={handleEnterDashboard}
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-linear-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-slate-950 font-extrabold text-sm shadow-lg shadow-teal-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all tap-target"
               >
-                <span>{user ? "Enter Dashboard" : "Get Started (Open Dashboard)"}</span>
+                <span>
+                  {user
+                    ? businessProfile.isOnboarded
+                      ? "Enter Dashboard"
+                      : "Complete Setup & Enter Dashboard"
+                    : "Get Started (Open Dashboard)"}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -149,7 +175,6 @@ export function Welcome({ lang }: WelcomeProps) {
                   onClick={handleGoogleSignIn}
                   className="inline-flex items-center gap-2.5 px-5 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-sm shadow-md transition-all hover:scale-[1.02] tap-target"
                 >
-                  {/* Google SVG Icon */}
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
@@ -168,7 +193,7 @@ export function Welcome({ lang }: WelcomeProps) {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                     />
                   </svg>
-                  <span>Continue with Google</span>
+                  <span>Sign in with Google</span>
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
@@ -188,7 +213,7 @@ export function Welcome({ lang }: WelcomeProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={signOut}
+                    onClick={signOutUser}
                     title="Sign Out"
                     className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                   >
@@ -208,15 +233,86 @@ export function Welcome({ lang }: WelcomeProps) {
               </button>
             </div>
 
-            {/* Demo OAuth Information Modal / Pill */}
+            {/* Post-Login Automation & Business Setup Status Strip */}
+            {user && (
+              <div className="mt-6 pt-5 border-t border-white/10">
+                {businessProfile.isOnboarded ? (
+                  <div className="p-4 rounded-2xl bg-teal-950/60 border border-teal-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-bold text-teal-300">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Automation Configured for: {businessProfile.name}</span>
+                        {businessProfile.gstin && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-900/80 text-teal-200">
+                            GST: {businessProfile.gstin}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-slate-300 text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-teal-400" />
+                          <span>WhatsApp: {businessProfile.phone}</span>
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-teal-400" />
+                          <span>Gmail: {businessProfile.email}</span>
+                        </span>
+                        {businessProfile.upi && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <QrCode className="w-3 h-3 text-teal-400" />
+                              <span>UPI: {businessProfile.upi}</span>
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsOnboardingOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 font-bold text-xs border border-teal-500/30 transition-colors shrink-0"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Edit Setup</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-amber-300 block">
+                          Step 2 of 2: Set Up Business & Automation Contact Details
+                        </span>
+                        <p className="text-amber-200/90 text-[11px] mt-0.5">
+                          Add your business name, mobile number, and email to enable automatic WhatsApp payment reminders.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOnboardingOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-300 shadow-sm shrink-0 tap-target"
+                    >
+                      Complete Setup Now
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Fallback Notice for Firebase Popup restriction */}
             {demoNotice && !user && (
               <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-amber-300 block">Google OAuth in Demo Mode:</span>
+                    <span className="font-bold text-amber-300 block">Google Sign-In Notice:</span>
                     <span>
-                      Add your real Google Client ID in <code className="bg-black/30 px-1 py-0.5 rounded text-amber-300">.env</code> or continue with one click below:
+                      Firebase popup was closed or restricted. You can continue with Demo Account below:
                     </span>
                   </div>
                 </div>
@@ -235,13 +331,13 @@ export function Welcome({ lang }: WelcomeProps) {
         {/* Live Financial Snapshot (KPI Grid) */}
         <div>
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 text-slate-500">
               Live MSME Portfolio Snapshot
             </h2>
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
-              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+              onClick={handleEnterDashboard}
+              className="text-xs font-semibold text-teal-600 text-teal-600 hover:underline flex items-center gap-1"
             >
               <span>View full dashboard</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -281,12 +377,12 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
 
         {/* 3 Step Interactive Walkthrough */}
-        <div className="rounded-2xl bg-white dark:bg-slate-800 p-6 sm:p-8 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+        <div className="rounded-2xl bg-white bg-slate-50 p-6 sm:p-8 border border-slate-200/80 border-slate-200/80 shadow-xs">
           <div className="max-w-2xl mb-6">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">
-              How Cash Copilot Protects Your MSME
+            <h2 className="text-xl font-bold text-slate-900 text-slate-900 mb-1">
+              How ApkaInvoice Protects Your MSME
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 text-slate-500">
               Three streamlined steps to prevent working capital crunches:
             </p>
           </div>
@@ -295,19 +391,19 @@ export function Welcome({ lang }: WelcomeProps) {
             {/* Step 1 */}
             <div
               onClick={() => navigate("/invoices/create")}
-              className="group p-5 rounded-xl border border-slate-200/70 dark:border-slate-700/70 hover:border-teal-500/50 bg-slate-50/50 dark:bg-slate-850/50 hover:bg-teal-50/20 dark:hover:bg-teal-950/20 transition-all cursor-pointer"
+              className="group p-5 rounded-xl border border-slate-200/70 border-slate-200/70 hover:border-teal-500/50 bg-slate-50/50 bg-slate-850/50 hover:bg-teal-50/20 hover:bg-teal-950/20 transition-all cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 text-teal-600/50 text-teal-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
                 1
               </div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-slate-900 text-sm mb-1.5 flex items-center justify-between">
                 <span>Scan or Upload Bills</span>
-                <Camera className="w-4 h-4 text-teal-600 dark:text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Camera className="w-4 h-4 text-teal-600 text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 text-slate-500 leading-relaxed mb-3">
                 Snap photos with your phone camera or upload bill PDFs. Automatic line items, CGST/SGST and paise math.
               </p>
-              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1 group-hover:underline">
+              <span className="text-[11px] font-bold text-teal-600 text-teal-600 flex items-center gap-1 group-hover:underline">
                 Create invoice <ChevronRight className="w-3 h-3" />
               </span>
             </div>
@@ -315,19 +411,19 @@ export function Welcome({ lang }: WelcomeProps) {
             {/* Step 2 */}
             <div
               onClick={() => navigate("/forecast")}
-              className="group p-5 rounded-xl border border-slate-200/70 dark:border-slate-700/70 hover:border-teal-500/50 bg-slate-50/50 dark:bg-slate-850/50 hover:bg-teal-50/20 dark:hover:bg-teal-950/20 transition-all cursor-pointer"
+              className="group p-5 rounded-xl border border-slate-200/70 border-slate-200/70 hover:border-teal-500/50 bg-slate-50/50 bg-slate-850/50 hover:bg-teal-50/20 hover:bg-teal-950/20 transition-all cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 bg-emerald-50 text-emerald-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
                 2
               </div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-slate-900 text-sm mb-1.5 flex items-center justify-between">
                 <span>Predict Cash Shortages</span>
-                <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <TrendingUp className="w-4 h-4 text-emerald-600 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 text-slate-500 leading-relaxed mb-3">
                 See your 8-week cash balance forecast. Simulate "what if they pay late" and catch red shortfall weeks early.
               </p>
-              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1 group-hover:underline">
+              <span className="text-[11px] font-bold text-teal-600 text-teal-600 flex items-center gap-1 group-hover:underline">
                 View forecast <ChevronRight className="w-3 h-3" />
               </span>
             </div>
@@ -335,19 +431,19 @@ export function Welcome({ lang }: WelcomeProps) {
             {/* Step 3 */}
             <div
               onClick={() => navigate("/reminders")}
-              className="group p-5 rounded-xl border border-slate-200/70 dark:border-slate-700/70 hover:border-teal-500/50 bg-slate-50/50 dark:bg-slate-850/50 hover:bg-teal-50/20 dark:hover:bg-teal-950/20 transition-all cursor-pointer"
+              className="group p-5 rounded-xl border border-slate-200/70 border-slate-200/70 hover:border-teal-500/50 bg-slate-50/50 bg-slate-850/50 hover:bg-teal-50/20 hover:bg-teal-950/20 transition-all cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 bg-amber-50 text-amber-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
                 3
               </div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-slate-900 text-sm mb-1.5 flex items-center justify-between">
                 <span>Automated Reminders</span>
-                <MessageCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <MessageCircle className="w-4 h-4 text-amber-600 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 text-slate-500 leading-relaxed mb-3">
                 4-stage reminder ladder in English, Hindi & Marathi. Safe approve-before-send WhatsApp & Email dispatch.
               </p>
-              <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1 group-hover:underline">
+              <span className="text-[11px] font-bold text-teal-600 text-teal-600 flex items-center gap-1 group-hover:underline">
                 Send reminders <ChevronRight className="w-3 h-3" />
               </span>
             </div>
@@ -358,45 +454,45 @@ export function Welcome({ lang }: WelcomeProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
             onClick={() => navigate("/payments")}
-            className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-teal-500/40 hover:shadow-sm cursor-pointer transition-all flex items-center gap-3.5"
+            className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-teal-200 cursor-pointer transition-all flex items-center gap-3.5"
           >
-            <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400">
+            <div className="p-2 rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
               <Banknote className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-xs text-slate-900 dark:text-white">Bank Reconciliation</p>
+              <p className="font-bold text-xs text-slate-900">Bank Reconciliation</p>
               <p className="text-[11px] text-slate-500">Auto TDS 194C/J detection</p>
             </div>
           </div>
 
           <div
             onClick={() => navigate("/customers")}
-            className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-teal-500/40 hover:shadow-sm cursor-pointer transition-all flex items-center gap-3.5"
+            className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-teal-200 cursor-pointer transition-all flex items-center gap-3.5"
           >
-            <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400">
+            <div className="p-2 rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-xs text-slate-900 dark:text-white">Customer Discipline</p>
+              <p className="font-bold text-xs text-slate-900">Customer Discipline</p>
               <p className="text-[11px] text-slate-500">Payment Grades A/B/C</p>
             </div>
           </div>
 
           <div
             onClick={() => navigate("/demand-letter")}
-            className="p-4 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-teal-500/40 hover:shadow-sm cursor-pointer transition-all flex items-center gap-3.5"
+            className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-teal-200 cursor-pointer transition-all flex items-center gap-3.5"
           >
-            <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400">
+            <div className="p-2 rounded-xl bg-teal-50 border border-teal-100 text-teal-600">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-xs text-slate-900 dark:text-white">Formal Demand Notices</p>
+              <p className="font-bold text-xs text-slate-900">Formal Demand Notices</p>
               <p className="text-[11px] text-slate-500">Printable MSME recovery</p>
             </div>
           </div>
 
           <div
-            onClick={() => navigate("/dashboard")}
+            onClick={handleEnterDashboard}
             className="p-4 rounded-xl bg-teal-600 text-white hover:bg-teal-700 hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
           >
             <div>
@@ -408,18 +504,31 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
       </div>
 
+      {/* Onboarding & Business Profile Setup Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        currentUser={user}
+        existingProfile={businessProfile}
+        onComplete={() => {
+          setIsOnboardingOpen(false);
+          navigate("/dashboard");
+        }}
+      />
+
       {/* Footer Info */}
-      <footer className="mt-10 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
+      <footer className="mt-10 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+          <span className="flex items-center gap-1.5 font-semibold text-slate-700">
             <ShieldCheck className="w-4 h-4 text-teal-600" />
             100% Indian MSME Compliant
           </span>
           <span>•</span>
           <span>CGST, SGST & IGST Whole Paise Math</span>
         </div>
-        <p>© {new Date().getFullYear()} Cash Copilot. Built for Indian Manufacturing & Trading Businesses.</p>
+        <p>© {new Date().getFullYear()} ApkaInvoice. Built for Indian Manufacturing & Trading Businesses.</p>
       </footer>
     </div>
+      <GlowingStarsBackgroundCardPreview className="fixed inset-0 top-0 left-0 right-0 w-full h-full bg-black/30 backdrop-blur-sm z-10" />
   );
 }

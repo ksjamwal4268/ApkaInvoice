@@ -5,6 +5,7 @@ export type { Customer, Invoice, EvidenceEntry, CustomerId, InvoiceId };
 
 export interface BusinessProfile {
   name: string;
+  contactPerson?: string;
   city: string;
   state: string;
   stateCode: string;
@@ -16,6 +17,7 @@ export interface BusinessProfile {
   bankAccount: string;
   ifsc: string;
   upi: string;
+  isOnboarded?: boolean;
 }
 
 export interface N8nConfig {
@@ -90,6 +92,7 @@ const BUSINESS_KEY = "cc_business_profile_v2";
 
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   name: "Sharma Packaging",
+  contactPerson: "Rohit Sharma",
   city: "Pune",
   state: "Maharashtra",
   stateCode: "27",
@@ -101,12 +104,13 @@ export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   bankAccount: "50200045678901",
   ifsc: "HDFC0001234",
   upi: "sharmapackaging@hdfc",
+  isOnboarded: false,
 };
 
 const DEFAULT_N8N_CONFIG: N8nConfig = {
-  ocrWebhookUrl: "https://automation.sharmapackaging.in/webhook/invoice-ocr",
-  reminderWebhookUrl: "https://automation.sharmapackaging.in/webhook/payment-reminder",
-  apiKey: "cc-demo-key-2025",
+  ocrWebhookUrl: "https://ksjamwal.app.n8n.cloud/webhook/invoice-upload",
+  reminderWebhookUrl: "https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder",
+  apiKey: "n8n-invoice-secret-2024",
   autoSync: true,
 };
 
@@ -265,7 +269,11 @@ export function getN8nConfig(): N8nConfig {
   try {
     const raw = localStorage.getItem(N8N_CONFIG_KEY);
     if (!raw) return DEFAULT_N8N_CONFIG;
-    return { ...DEFAULT_N8N_CONFIG, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    if (parsed.ocrWebhookUrl && parsed.ocrWebhookUrl.includes("sharmapackaging.in")) {
+      return DEFAULT_N8N_CONFIG;
+    }
+    return { ...DEFAULT_N8N_CONFIG, ...parsed };
   } catch {
     return DEFAULT_N8N_CONFIG;
   }
@@ -303,12 +311,134 @@ const SAMPLE_OCR_PRESETS: ExtractedInvoiceData[] = [
 
 let presetCycle = 0;
 
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const arr = dataUrl.split(",");
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "application/pdf";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+/**
+ * Store an extracted invoice directly into the database / state
+ */
+export function storeExtractedInvoice(
+  extracted: ExtractedInvoiceData,
+  imagePreviewUrl?: string
+): Invoice {
+  const profile = getStoredBusinessProfile();
+  const customers = getStoredCustomers();
+
+  // Match or create customer
+  let customer = customers.find(
+    (c) =>
+      c.name.toLowerCase() === extracted.buyerName.toLowerCase() ||
+      (extracted.buyerGstin && c.gstin && c.gstin.toLowerCase() === extracted.buyerGstin.toLowerCase())
+  );
+
+  if (!customer) {
+    customer = {
+      id: `cust-${Date.now().toString(36)}`,
+      name: extracted.buyerName,
+      city: extracted.buyerCity || "Pune",
+      state: extracted.buyerState || "Maharashtra",
+      gstin: extracted.buyerGstin || null,
+      pan: extracted.buyerGstin && extracted.buyerGstin.length >= 12 ? extracted.buyerGstin.substring(2, 12) : null,
+      email: extracted.buyerEmail || `accounts@${extracted.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "")}.in`,
+      phone: extracted.buyerPhone || "+91 98000 00000",
+      isChronicallyLate: false,
+      grade: "A",
+      gradeReasons: ["Extracted via n8n OCR Workflow"],
+    };
+    saveCustomer(customer);
+  }
+
+  const isIntraState = (extracted.buyerState || "Maharashtra") === (profile.state || "Maharashtra");
+  const grandTotalPaise = Math.round((extracted.grandTotal || 0) * 100);
+  const subtotalPaise = Math.round((extracted.subtotal || (extracted.grandTotal ? extracted.grandTotal * 0.82 : 0)) * 100);
+  const totalGstPaise = grandTotalPaise - subtotalPaise;
+
+  const cgstPaise = isIntraState ? Math.round(totalGstPaise / 2) : 0;
+  const sgstPaise = isIntraState ? totalGstPaise - cgstPaise : 0;
+  const igstPaise = isIntraState ? 0 : totalGstPaise;
+
+  const invDate = extracted.invoiceDate ? new Date(extracted.invoiceDate) : new Date();
+  const dueDate = extracted.dueDate ? new Date(extracted.dueDate) : new Date(Date.now() + 30 * 86400000);
+  const isOverdue = dueDate.getTime() < Date.now();
+
+  const newInvoice: Invoice = {
+    id: `inv-${Date.now().toString(36)}`,
+    invoiceNumber: extracted.invoiceNumber || `INV-${Date.now().toString().slice(-4)}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    customerCity: customer.city,
+    customerState: customer.state,
+    customerGstin: customer.gstin,
+    placeOfSupply: extracted.buyerState || customer.state,
+    invoiceDate: isNaN(invDate.getTime()) ? new Date() : invDate,
+    dueDate: isNaN(dueDate.getTime()) ? new Date(Date.now() + 30 * 86400000) : dueDate,
+    terms: "Net 30",
+    lineItems: (extracted.lineItems && extracted.lineItems.length > 0)
+      ? extracted.lineItems.map((li, idx) => ({
+          id: String(idx + 1),
+          description: li.description || "General Goods/Services",
+          hsn: li.hsn || "9983",
+          quantity: li.quantity || 1,
+          rate: Math.round((li.rate || 0) * 100),
+          gstRate: li.gstRate || 18,
+        }))
+      : [
+          {
+            id: "1",
+            description: "Goods / Services (Scanned)",
+            hsn: "9983",
+            quantity: 1,
+            rate: subtotalPaise,
+            gstRate: 18,
+          },
+        ],
+    subtotal: subtotalPaise,
+    cgst: cgstPaise,
+    sgst: sgstPaise,
+    igst: igstPaise,
+    roundOff: 0,
+    total: grandTotalPaise,
+    amountPaid: 0,
+    outstanding: grandTotalPaise,
+    status: isOverdue ? "overdue" : "due",
+    isDisputed: false,
+    disputeReason: null,
+    billOfSupply: false,
+    pdfUrl: imagePreviewUrl || null,
+    evidence: [
+      {
+        id: `ev-${Date.now()}`,
+        date: new Date(),
+        type: "invoice-sent",
+        title: "Invoice Scanned & Stored via n8n Workflow",
+        description: `Imported via n8n OCR Vision model (${extracted.confidenceScore || 98}% confidence).`,
+        amount: grandTotalPaise,
+        channel: "email",
+      },
+    ],
+  };
+
+  saveInvoice(newInvoice);
+  return newInvoice;
+}
+
 /**
  * Execute OCR extraction via n8n webhook or intelligent fallback
  */
 export async function processInvoiceImageWithN8n(
   imageData: string | File,
-  useRealWebhook: boolean = false
+  useRealWebhook: boolean = false,
+  extraParams?: { payerEmail?: string; payerPhone?: string; fileName?: string }
 ): Promise<{ data: ExtractedInvoiceData; source: "n8n_live" | "n8n_simulated" }> {
   const config = getN8nConfig();
 
@@ -316,9 +446,25 @@ export async function processInvoiceImageWithN8n(
     try {
       const formData = new FormData();
       if (typeof imageData === "string") {
-        formData.append("imageBase64", imageData);
+        if (imageData.startsWith("data:")) {
+          const blob = dataUrlToBlob(imageData);
+          const ext = blob.type.includes("pdf") ? "pdf" : "jpg";
+          formData.append("data", blob, extraParams?.fileName || `invoice.${ext}`);
+          formData.append("file", blob, extraParams?.fileName || `invoice.${ext}`);
+        } else {
+          formData.append("data", imageData);
+          formData.append("imageBase64", imageData);
+        }
       } else {
-        formData.append("file", imageData);
+        const name = (imageData as File).name || (imageData.type.includes("pdf") ? "invoice.pdf" : "invoice.jpg");
+        formData.append("data", imageData, name);
+        formData.append("file", imageData, name);
+      }
+      if (extraParams?.payerEmail) {
+        formData.append("payer_email", extraParams.payerEmail);
+      }
+      if (extraParams?.payerPhone) {
+        formData.append("payer_phone", extraParams.payerPhone);
       }
       formData.append("timestamp", new Date().toISOString());
 
@@ -330,8 +476,39 @@ export async function processInvoiceImageWithN8n(
 
       if (res.ok) {
         const json = await res.json();
-        if (json && json.invoiceNumber) {
-          return { data: json, source: "n8n_live" };
+        if (json && (json.invoiceNumber || json.invoice_number)) {
+          const grandTotal = Number(json.amount || json.grandTotal || 0);
+          const subtotal = Number(json.subtotal || (grandTotal > 0 ? grandTotal * 0.82 : 0));
+          const totalGst = Number(json.totalGst || json.total_gst || (grandTotal > 0 ? grandTotal * 0.18 : 0));
+
+          const normalized: ExtractedInvoiceData = {
+            invoiceNumber: json.invoice_number || json.invoiceNumber || "INV-001",
+            buyerName: json.payer_name || json.buyerName || "Customer",
+            buyerGstin: json.payer_gstin || json.buyerGstin || "",
+            buyerCity: json.payer_city || json.buyerCity || "",
+            buyerState: json.payer_state || json.buyerState || "Maharashtra",
+            buyerPhone: json.payer_phone || json.buyerPhone || extraParams?.payerPhone || "",
+            buyerEmail: json.payer_email || json.buyerEmail || extraParams?.payerEmail || "",
+            invoiceDate: json.invoice_date || json.invoiceDate || new Date().toISOString().split("T")[0],
+            dueDate: json.due_date || json.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+            terms: json.terms || "Net 30",
+            lineItems: json.lineItems || json.line_items || [
+              {
+                id: "1",
+                description: json.description || "General Goods / Services",
+                hsn: json.hsn || "9983",
+                quantity: 1,
+                rate: grandTotal,
+                gstRate: 18,
+              },
+            ],
+            subtotal,
+            totalGst,
+            grandTotal,
+            isNewBuyer: true,
+            confidenceScore: json.confidenceScore || 98.0,
+          };
+          return { data: normalized, source: "n8n_live" };
         }
       }
     } catch (err) {
@@ -363,13 +540,23 @@ export async function sendReminderViaN8n(
 
   if (config.reminderWebhookUrl && config.reminderWebhookUrl.startsWith("http")) {
     try {
+      const requestBody = {
+        ...payload,
+        invoice_number: payload.invoiceNumber,
+        payer_name: payload.buyer?.name,
+        payer_email: payload.buyer?.email,
+        payer_phone: payload.buyer?.phone,
+        amount: payload.amountDueFormatted,
+        due_date: payload.dueDate,
+      };
+
       const res = await fetch(config.reminderWebhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestBody),
       });
 
       if (res.ok) {

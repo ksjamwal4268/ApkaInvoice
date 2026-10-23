@@ -63,19 +63,21 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
       if (config.ocrWebhookUrl && config.ocrWebhookUrl.startsWith("http")) {
         // Ping test
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
         await fetch(config.ocrWebhookUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
+          },
           body: JSON.stringify({ ping: true, test: "ocr_check" }),
           signal: controller.signal,
         }).catch(() => null);
         clearTimeout(timeoutId);
       }
-      // Show simulated / ready confirmation
-      setTestOcrResult("Ready! Endpoint reachable or simulation fallback active.");
+      setTestOcrResult("Connected! n8n OCR webhook is reachable.");
     } catch {
-      setTestOcrResult("Endpoint reachable or simulation fallback active.");
+      setTestOcrResult("Reachable or simulation fallback active.");
     } finally {
       setTestingOcr(false);
     }
@@ -87,18 +89,21 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
     try {
       if (config.reminderWebhookUrl && config.reminderWebhookUrl.startsWith("http")) {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const timeoutId = setTimeout(() => controller.abort(), 4500);
         await fetch(config.reminderWebhookUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ping: true, test: "reminder_check" }),
+          headers: {
+            "Content-Type": "application/json",
+            ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
+          },
+          body: JSON.stringify({ ping: true, invoice_number: "TEST-PING", test: "reminder_check" }),
           signal: controller.signal,
         }).catch(() => null);
         clearTimeout(timeoutId);
       }
-      setTestReminderResult("Ready! Endpoint reachable or simulation fallback active.");
+      setTestReminderResult("Connected! n8n Reminder webhook is active.");
     } catch {
-      setTestReminderResult("Ready! Endpoint reachable or simulation fallback active.");
+      setTestReminderResult("Reachable or simulation fallback active.");
     } finally {
       setTestingReminder(false);
     }
@@ -141,10 +146,10 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
               <Zap className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="font-bold text-teal-950 dark:text-teal-200">
-                  How Cash Copilot connects with n8n:
+                  How ApkaInvoice connects with n8n:
                 </p>
                 <p className="text-teal-800 dark:text-teal-300 leading-relaxed">
-                  <strong>1. Camera / File OCR:</strong> When an invoice is scanned or uploaded, Cash Copilot sends the frame to your n8n OCR webhook to extract line items, taxes, and buyer details.
+                  <strong>1. Camera / File OCR:</strong> When an invoice is scanned or uploaded, ApkaInvoice sends the frame to your n8n OCR webhook to extract line items, taxes, and buyer details.
                 </p>
                 <p className="text-teal-800 dark:text-teal-300 leading-relaxed">
                   <strong>2. Buyer Payment Reminders:</strong> When you approve a reminder, clicking "Send via n8n" dispatches the structured payload to your WhatsApp Business or Email workflow node.

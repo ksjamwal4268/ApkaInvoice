@@ -1,5 +1,5 @@
 /**
- * Bank statement CSV parsing and invoice matching for Cash Copilot.
+ * Bank statement CSV parsing and invoice matching for ApkaInvoice.
  * Sample-data only.
  */
 

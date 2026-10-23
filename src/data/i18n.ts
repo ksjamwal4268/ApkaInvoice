@@ -1,5 +1,7 @@
+import { useState, useCallback } from "react";
+
 /**
- * Simple i18n for Cash Copilot - English, Hindi, Marathi labels.
+ * Simple i18n for ApkaInvoice - English, Hindi, Marathi labels.
  * Content (customer names, addresses, etc.) stays in English.
  */
 
@@ -7,13 +9,13 @@ export type Language = "en" | "hi" | "mr";
 
 export const translations: Record<Language, Record<string, string>> = {
   en: {
-    appName: "Cash Copilot",
+    appName: "ApkaInvoice",
     tagline: "Chase unpaid invoices. See cash shortages coming.",
     demoLabel: "Demo data — Sharma Packaging, Pune",
     navDashboard: "Dashboard",
     navInvoices: "Invoices",
     navPayments: "Payments",
-    navReminders: "Reminders",
+    navReminders: "Workflow Messaging",
     navForecast: "Forecast",
     navCustomers: "Customers",
     kpiMoneyOwed: "Money owed",
@@ -371,7 +373,33 @@ export const translations: Record<Language, Record<string, string>> = {
   },
 };
 
-export function t(lang: Language = "en", key: string): string {
-  const dict = translations[lang] || translations["en"];
-  return dict?.[key] || translations["en"]?.[key] || key;
+export function t(langOrKey: Language | string = "en", key?: string): string {
+  if (key !== undefined) {
+    const lang = langOrKey as Language;
+    const dict = translations[lang] || translations["en"];
+    return dict?.[key] || translations["en"]?.[key] || key;
+  }
+  const fallbackKey = langOrKey;
+  return translations["en"]?.[fallbackKey] || fallbackKey;
+}
+
+export function useLanguage(): [Language, (newLang: Language) => void] {
+  const [lang, setLangState] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("cc-lang") as Language | null;
+      if (stored && (stored === "en" || stored === "hi" || stored === "mr")) {
+        return stored;
+      }
+    }
+    return "en";
+  });
+
+  const setLanguage = useCallback((newLang: Language) => {
+    setLangState(newLang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cc-lang", newLang);
+    }
+  }, []);
+
+  return [lang, setLanguage];
 }

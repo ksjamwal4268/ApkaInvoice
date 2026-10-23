@@ -1,5 +1,5 @@
 /**
- * Sample data for Cash Copilot - Sharma Packaging, Pune.
+ * Sample data for ApkaInvoice - Sharma Packaging, Pune.
  * All data is demo data for hackathon purposes only.
  * Money stored as whole paise integers.
  */

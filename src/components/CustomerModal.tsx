@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Building2, User, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check } from "lucide-react";
 import { Customer } from "../data/sampleData";
-import { validateGstin } from "../utils/gstin";
+import { validateGstin, INDIAN_STATES } from "../utils/gstin";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -105,27 +105,14 @@ export function CustomerModal({
       phone: phone.trim() || "+91 98000 00000",
       isChronicallyLate,
       grade,
-      gradeReasons: [reason || "Registered via Cash Copilot Buyer Master"],
+      gradeReasons: [reason || "Registered via ApkaInvoice Buyer Master"],
     };
 
     onSave(newCustomer);
     onClose();
   };
 
-  const STATES = [
-    "Maharashtra",
-    "Delhi",
-    "Karnataka",
-    "Gujarat",
-    "Tamil Nadu",
-    "West Bengal",
-    "Telangana",
-    "Uttar Pradesh",
-    "Haryana",
-    "Rajasthan",
-    "Madhya Pradesh",
-    "Punjab",
-  ];
+  const STATES = INDIAN_STATES.map((s) => s.state);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">

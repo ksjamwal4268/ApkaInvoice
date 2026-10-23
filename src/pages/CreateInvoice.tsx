@@ -25,6 +25,7 @@ import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CustomerModal } from "../components/CustomerModal";
 import { ExtractedInvoiceData, processInvoiceImageWithN8n } from "../data/dataStore";
 import { Customer } from "../data/sampleData";
+import { INDIAN_STATES } from "../utils/gstin";
 
 interface LineItem {
   id: string;
@@ -353,16 +354,16 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             {isEditing && (
               <Link
                 to={`/invoices/${routeInvoiceId}`}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1 mr-2"
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 hover:text-white inline-flex items-center gap-1 mr-2"
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back
               </Link>
             )}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-slate-900 text-slate-900">
               {isEditing ? `Edit Invoice ${invoiceNumber}` : "New Invoice"}
             </h1>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 text-slate-500">
             {isEditing
               ? "Modify invoice items, buyer terms, or tax classification."
               : "Create a tax invoice manually, or upload / scan a bill to auto-fill."}
@@ -386,7 +387,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingDirect}
-                className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs"
+                className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 border-slate-600 bg-white bg-slate-50 text-slate-700 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 hover:bg-slate-50 transition-all shadow-xs"
               >
                 {isUploadingDirect ? (
                   <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
@@ -401,7 +402,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           <button
             type="button"
             onClick={() => setShowPdfPreview(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors tap-target"
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 border-slate-200 rounded-xl text-xs font-semibold text-slate-700 text-slate-200 hover:bg-slate-50 hover:bg-slate-800 transition-colors tap-target"
           >
             <Eye className="w-4 h-4 text-teal-600" />
             <span>Preview</span>
@@ -420,12 +421,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
       {/* OCR Extraction Alert Banner */}
       {ocrBadge && (
-        <div className="p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl bg-teal-50 bg-teal-50 border border-teal-200 border-teal-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Sparkles className="w-4 h-4 text-teal-600 shrink-0" />
             <div className="text-xs">
-              <span className="font-bold text-teal-950 dark:text-teal-200">{ocrBadge}</span>
-              <p className="text-teal-700 dark:text-teal-400 text-[11px]">
+              <span className="font-bold text-teal-950 text-teal-200">{ocrBadge}</span>
+              <p className="text-teal-700 text-teal-400 text-[11px]">
                 Fields and line items have been auto-populated into the form below. Review or adjust any value as needed.
               </p>
             </div>
@@ -434,7 +435,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             <button
               type="button"
               onClick={() => window.open(scannedImagePreview, "_blank")}
-              className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 hover:underline shrink-0"
+              className="text-[11px] font-semibold text-teal-700 text-teal-300 hover:underline shrink-0"
             >
               View Uploaded File
             </button>
@@ -444,14 +445,14 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
       {/* Success Notification */}
       {saveSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-emerald-50 bg-emerald-950/40 border border-emerald-200 border-emerald-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 text-emerald-400 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+              <p className="text-sm font-bold text-emerald-900 text-emerald-200">
                 Invoice {saveSuccess} saved successfully!
               </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              <p className="text-xs text-emerald-700 text-emerald-400">
                 Opening invoice record and payment timeline...
               </p>
             </div>
@@ -460,15 +461,15 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       )}
 
       {/* Main Invoice Form Card */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 sm:p-7 shadow-xs space-y-6">
+      <div className="rounded-2xl border border-slate-200 border-slate-200 bg-white bg-slate-50 p-5 sm:p-7 shadow-xs space-y-6">
         {/* Section 1: Logged-in Sender Details (Your Details) */}
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700 space-y-3">
+        <div className="p-4 rounded-xl bg-slate-50 bg-slate-50 border border-slate-200 border-slate-200 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 text-slate-500 flex items-center gap-1.5">
               <User className="w-4 h-4 text-teal-600" />
               Your Sender Details (Logged-in User Account)
             </h2>
-            <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-1">
+            <span className="text-[11px] text-teal-700 text-teal-400 font-semibold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               Messages & emails will dispatch from this contact
             </span>
@@ -476,16 +477,16 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-500 text-slate-500 mb-1">
                 Your Business / Sender Name
               </label>
-              <p className="text-sm font-bold text-slate-900 dark:text-white px-3 py-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-bold text-slate-900 text-slate-900 px-3 py-2 bg-white bg-slate-900 rounded-lg border border-slate-200 border-slate-200">
                 {businessProfile.name}
               </p>
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[11px] font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
                 <Phone className="w-3 h-3 text-teal-600" />
                 Your WhatsApp / Phone Number *
               </label>
@@ -494,12 +495,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={senderPhone}
                 onChange={(e) => setSenderPhone(e.target.value)}
                 placeholder="+91 98200 12345"
-                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-[11px] font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-teal-600" />
                 Your Billing / From Email *
               </label>
@@ -508,7 +509,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
                 placeholder="billing@yourbusiness.in"
-                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
@@ -516,7 +517,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
         {/* Section 2: Buyer (Recipient) Details */}
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 text-slate-500 mb-3 flex items-center gap-1.5">
             <Building2 className="w-3.5 h-3.5 text-teal-600" />
             Buyer / Recipient Information
           </h2>
@@ -525,13 +526,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             {/* Buyer Selector with + New Buyer Button */}
             <div className="col-span-1 sm:col-span-2">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-semibold text-slate-700 text-slate-500">
                   Buyer Company Name *
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsCustomerModalOpen(true)}
-                  className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 font-bold inline-flex items-center gap-1"
+                  className="text-xs text-teal-600 text-teal-400 hover:text-teal-700 font-bold inline-flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Add New Buyer</span>
@@ -540,7 +541,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               <select
                 value={customerId}
                 onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 <option value="">-- Select or Add a Buyer --</option>
                 {customers.map((c) => (
@@ -553,7 +554,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
             {/* Buyer Phone */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
                 <Phone className="w-3 h-3 text-teal-600" />
                 Buyer WhatsApp / Phone *
               </label>
@@ -562,13 +563,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={buyerPhone}
                 onChange={(e) => setBuyerPhone(e.target.value)}
                 placeholder="+91 98234 56780"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
             </div>
 
             {/* Buyer Email */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-teal-600" />
                 Buyer Billing Email *
               </label>
@@ -577,13 +578,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={buyerEmail}
                 onChange={(e) => setBuyerEmail(e.target.value)}
                 placeholder="accounts@buyer.in"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
             </div>
 
             {/* Invoice Number */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1">
                 Invoice Number *
               </label>
               <input
@@ -591,13 +592,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
                 placeholder="INV-24-25/001"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-mono font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-sm font-mono font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
             </div>
 
             {/* Buyer GSTIN */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1">
                 Buyer GSTIN (15 Digits)
               </label>
               <input
@@ -609,13 +610,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase focus:outline-none focus:ring-2 ${
                   gstinError
                     ? "border-rose-500 bg-rose-50/20 focus:ring-rose-500"
-                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-teal-500"
+                    : "border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 focus:ring-teal-500"
                 }`}
               />
               {gstinError ? (
                 <p className="mt-1 text-[11px] text-rose-500">{gstinError}</p>
               ) : gstin.length === 15 ? (
-                <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <p className="mt-1 text-[11px] text-emerald-600 text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Valid GSTIN
                 </p>
               ) : null}
@@ -623,7 +624,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
             {/* Place of Supply */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1">
                 Place of Supply
               </label>
               <select
@@ -631,38 +632,36 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 onChange={(e) => setPlaceOfSupply(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
-                <option value="Maharashtra">Maharashtra (Intra-state: CGST+SGST)</option>
-                <option value="Karnataka">Karnataka (Inter-state: IGST)</option>
-                <option value="Delhi">Delhi (Inter-state: IGST)</option>
-                <option value="Tamil Nadu">Tamil Nadu (Inter-state: IGST)</option>
-                <option value="West Bengal">West Bengal (Inter-state: IGST)</option>
-                <option value="Gujarat">Gujarat (Inter-state: IGST)</option>
-                <option value="Telangana">Telangana (Inter-state: IGST)</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s.state} value={s.state}>
+                    {s.state} ({s.code}) {s.state === customerState ? "• Intra-state (CGST+SGST)" : "• Inter-state (IGST)"}
+                  </option>
+                ))}
               </select>
             </div>
 
             {/* Invoice Date */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1">
                 Invoice Date
               </label>
               <input
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
               />
             </div>
 
             {/* Payment Terms */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1">
                 Payment Terms (Credit Window)
               </label>
               <select
                 value={terms}
                 onChange={(e) => setTerms(e.target.value as PaymentTerms)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 <option value="Net 7">Net 7 (7 Days)</option>
                 <option value="Net 15">Net 15 (15 Days)</option>
@@ -674,7 +673,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
             {/* Bill of Supply Option */}
             <div className="flex items-center sm:pt-6">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 text-slate-500">
                 <input
                   type="checkbox"
                   checked={billOfSupply}
@@ -688,9 +687,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         </div>
 
         {/* Section 3: Line Items */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="pt-4 border-t border-slate-200 border-slate-200">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 text-slate-500 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-teal-600" />
               Line Items & Products
             </h2>
@@ -703,17 +702,17 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                   { id: nextId, description: "", hsn: "4819", quantity: 100, rate: 25, gstRate: 18 },
                 ]);
               }}
-              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 inline-flex items-center gap-1"
+              className="text-xs font-bold text-teal-600 text-teal-400 hover:text-teal-700 inline-flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Item</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 border-slate-200">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-750 text-xs font-bold text-slate-600 dark:text-slate-300">
+                <tr className="border-b border-slate-200 border-slate-200 bg-slate-50 bg-slate-50 text-xs font-bold text-slate-600 text-slate-500">
                   <th className="px-4 py-3">Description</th>
                   <th className="px-3 py-3 w-28 font-mono">HSN</th>
                   <th className="px-3 py-3 w-24 text-right">Qty</th>
@@ -725,9 +724,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                   <th className="px-3 py-3 w-12 text-center"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+              <tbody className="divide-y divide-slate-200 divide-slate-700">
                 {lineItems.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">
+                  <tr key={item.id} className="hover:bg-slate-50/50 hover:bg-slate-750/30">
                     <td className="px-4 py-2.5">
                       <input
                         type="text"
@@ -738,7 +737,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                           setLineItems(next);
                         }}
                         placeholder="Item description (e.g. Master Cartons)"
-                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm font-medium"
+                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 px-0 text-sm font-medium"
                       />
                     </td>
                     <td className="px-3 py-2.5">
@@ -751,7 +750,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                           setLineItems(next);
                         }}
                         placeholder="4819"
-                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-xs font-mono"
+                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 px-0 text-xs font-mono"
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right">
@@ -764,7 +763,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                           next[idx].quantity = Math.max(1, parseInt(e.target.value) || 1);
                           setLineItems(next);
                         }}
-                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums"
+                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 px-0 text-sm tabular-nums"
                       />
                     </td>
                     <td className="px-3 py-2.5 text-right">
@@ -778,7 +777,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                           next[idx].rate = Math.max(0, parseFloat(e.target.value) || 0);
                           setLineItems(next);
                         }}
-                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums font-medium"
+                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 px-0 text-sm tabular-nums font-medium"
                       />
                     </td>
                     {!billOfSupply && (
@@ -790,7 +789,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                             next[idx].gstRate = parseInt(e.target.value);
                             setLineItems(next);
                           }}
-                          className="bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white text-right text-xs font-semibold"
+                          className="bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 text-right text-xs font-semibold"
                         >
                           <option value={0}>0%</option>
                           <option value={5}>5%</option>
@@ -800,7 +799,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                         </select>
                       </td>
                     )}
-                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-slate-900 dark:text-white">
+                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-slate-900 text-slate-900">
                       {formatInr(toPaise(item.rate * item.quantity))}
                     </td>
                     <td className="px-3 py-2.5 text-center">
@@ -822,25 +821,25 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         </div>
 
         {/* Section 4: Tax Summary & Grand Total */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-750/40 p-5 rounded-2xl">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="pt-4 border-t border-slate-200 border-slate-200 bg-slate-50/70 bg-slate-50/40 p-5 rounded-2xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-200 border-slate-200">
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Taxable Subtotal</p>
-              <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+              <p className="text-xs font-medium text-slate-500 text-slate-500">Taxable Subtotal</p>
+              <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
                 {formatInr(subtotal)}
               </p>
             </div>
             {!billOfSupply && isSameState && (
               <>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">CGST (9%)</p>
-                  <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                  <p className="text-xs font-medium text-slate-500 text-slate-500">CGST (9%)</p>
+                  <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
                     {formatInr(cgst)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">SGST (9%)</p>
-                  <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                  <p className="text-xs font-medium text-slate-500 text-slate-500">SGST (9%)</p>
+                  <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
                     {formatInr(sgst)}
                   </p>
                 </div>
@@ -848,14 +847,14 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             )}
             {!billOfSupply && !isSameState && (
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">IGST (18%)</p>
-                <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                <p className="text-xs font-medium text-slate-500 text-slate-500">IGST (18%)</p>
+                <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
                   {formatInr(igst)}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Round Off</p>
+              <p className="text-xs font-medium text-slate-500 text-slate-500">Round Off</p>
               <p className="text-lg font-bold tabular-nums text-slate-500 mt-0.5">
                 {roundOff === 0 ? "₹0.00" : `${roundOff > 0 ? "+" : ""}${formatInr(roundOff)}`}
               </p>
@@ -864,18 +863,18 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
           <div className="pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-medium text-slate-500 text-slate-500">
                 Amount in Words:
               </span>
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 italic mt-0.5">
+              <p className="text-xs font-semibold text-slate-700 text-slate-500 italic mt-0.5">
                 {amountInWords(grandTotal)}
               </p>
             </div>
             <div className="text-right">
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-slate-500 text-slate-500 uppercase tracking-wider">
                 Grand Total Payable
               </span>
-              <p className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400 tabular-nums">
+              <p className="text-2xl sm:text-3xl font-extrabold text-teal-600 text-teal-400 tabular-nums">
                 {formatInr(grandTotal)}
               </p>
             </div>
@@ -887,14 +886,14 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           <button
             type="button"
             onClick={() => navigate("/invoices")}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="px-5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium text-slate-600 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-8 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all tap-target"
+            className="px-8 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium text-sm shadow-sm hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
           >
             {isEditing ? "Update & Save Invoice" : "Create & Record Invoice"}
           </button>
@@ -906,6 +905,10 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
         onApplyExtractedData={handleApplyExtractedData}
+        onInvoiceStored={() => {
+          setIsCameraModalOpen(false);
+          navigate("/invoices");
+        }}
       />
 
       {/* Customer / Buyer Modal */}
@@ -918,18 +921,18 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       {/* Invoice PDF Preview Modal */}
       {showPdfPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-base text-slate-900 dark:text-white">Tax Invoice Preview</span>
+          <div className="relative w-full max-w-2xl bg-white bg-slate-50 rounded-2xl p-6 shadow-2xl border border-slate-200 border-slate-200 max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 border-slate-200">
+              <span className="font-bold text-base text-slate-900 text-slate-900">Tax Invoice Preview</span>
               <button
                 type="button"
                 onClick={() => setShowPdfPreview(false)}
-                className="p-1 rounded text-slate-400 hover:text-slate-600"
+                className="p-1.5 rounded-lg text-sm text-slate-500 hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 border rounded-xl bg-slate-50 dark:bg-slate-850 text-xs space-y-3 font-mono">
+            <div className="p-4 border rounded-xl bg-slate-50 bg-slate-850 text-xs space-y-3 font-mono">
               <div className="flex justify-between border-b pb-2">
                 <div>
                   <p className="font-bold text-sm">{businessProfile.name}</p>
@@ -975,7 +978,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               <button
                 type="button"
                 onClick={() => setShowPdfPreview(false)}
-                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-xs font-semibold"
+                className="px-4 py-2 bg-slate-200 bg-slate-700 rounded-lg text-xs font-semibold"
               >
                 Close
               </button>

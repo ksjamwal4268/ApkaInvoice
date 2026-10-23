@@ -1,6 +1,6 @@
-# Cash Copilot
+# ApkaInvoice
 
-**Cash Copilot** is a responsive React web app designed for small Indian manufacturing and trading businesses (MSMEs) to chase unpaid invoices and forecast cash shortages well before they happen.
+**ApkaInvoice** is a responsive React web app designed for small Indian manufacturing and trading businesses (MSMEs) to chase unpaid invoices and forecast cash shortages well before they happen.
 
 Live Dev Server: `http://localhost:5173`
 

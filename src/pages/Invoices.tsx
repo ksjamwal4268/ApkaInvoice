@@ -86,8 +86,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 transition-colors shadow-xs"
           >
             <Camera className="w-4 h-4 text-teal-600" />
-            <span>Scan with Camera</span>
-            <Zap className="w-3 h-3 text-amber-500" />
+            <span>Upload Invoice (Camera / PDF)</span>
+            <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
           </button>
 
           <Link
@@ -265,6 +265,9 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
         onApplyExtractedData={handleApplyExtractedData}
+        onInvoiceStored={() => {
+          setIsCameraModalOpen(false);
+        }}
       />
     </div>
   );
