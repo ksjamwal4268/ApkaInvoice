@@ -7,7 +7,6 @@ import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { KpiCard } from "../components/KpiCard";
 import { OnboardingModal } from "../components/OnboardingModal";
-import { GlowingStarsBackgroundCardPreview } from "../components/GlowingStarsBackgroundCardPreview";
 import {
   ArrowRight,
   TrendingUp,
@@ -528,7 +527,6 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
         <p>© {new Date().getFullYear()} ApkaInvoice. Built for Indian Manufacturing & Trading Businesses.</p>
       </footer>
-      <GlowingStarsBackgroundCardPreview />
     </div>
   );
 }
