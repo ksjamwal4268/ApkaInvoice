@@ -11,11 +11,13 @@ import {
   Plus,
   Building2,
   FileWarning,
+  Zap,
 } from "lucide-react";
 import { LanguageSwitch } from "./LanguageSwitch";
-import { DemoBanner } from "./DemoBanner";
 import { t, Language } from "../data/i18n";
-import { INVOICES, BUSINESS } from "../data/sampleData";
+import { useDataStore } from "../hooks/useDataStore";
+import { N8nSettingsModal } from "./N8nSettingsModal";
+import { BusinessSettingsModal } from "./BusinessSettingsModal";
 
 interface ShellProps {
   children: React.ReactNode;
@@ -33,6 +35,9 @@ export function Shell({
   onToggleDark,
 }: ShellProps): React.JSX.Element {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [n8nModalOpen, setN8nModalOpen] = useState(false);
+  const [businessModalOpen, setBusinessModalOpen] = useState(false);
+  const { invoices, businessProfile } = useDataStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,13 +45,13 @@ export function Shell({
     setSidebarOpen(false);
   }, [location]);
 
-  const overdueCount = INVOICES.filter(
+  const overdueCount = invoices.filter(
     (i) => i.status === "overdue" && i.outstanding > 0 && !i.isDisputed
   ).length;
 
   const NAV_ITEMS = [
     { path: "/", label: "navDashboard", icon: LayoutDashboard },
-    { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${INVOICES.length}` },
+    { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${invoices.length}` },
     { path: "/payments", label: "navPayments", icon: Banknote },
     {
       path: "/reminders",
@@ -94,16 +99,33 @@ export function Shell({
             </div>
           </div>
 
-          {/* Active Business Chip */}
-          <div className="hidden lg:flex items-center gap-1.5 ml-4 pl-4 border-l border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+          {/* Active Business Chip (Clickable to edit profile) */}
+          <button
+            type="button"
+            onClick={() => setBusinessModalOpen(true)}
+            className="hidden lg:flex items-center gap-1.5 ml-4 pl-4 border-l border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+            title="Click to view & edit real business profile and UPI details"
+          >
             <Building2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span className="font-semibold text-slate-800 dark:text-slate-200">{BUSINESS.name}</span>
-            <span className="text-[11px] text-slate-400">({BUSINESS.city})</span>
-          </div>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{businessProfile.name}</span>
+            <span className="text-[11px] text-slate-400">({businessProfile.city})</span>
+          </button>
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* n8n Automation Status Pill */}
+          <button
+            type="button"
+            onClick={() => setN8nModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors shadow-2xs"
+            title="n8n Workflow Automation Hub (Camera OCR & Buyer Reminders)"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+            <span className="hidden sm:inline">n8n Workflow</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          </button>
+
           <Link
             to="/invoices/create"
             className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition-colors tap-target"
@@ -120,6 +142,12 @@ export function Shell({
           />
         </div>
       </header>
+
+      {/* n8n Settings Modal */}
+      <N8nSettingsModal
+        isOpen={n8nModalOpen}
+        onClose={() => setN8nModalOpen(false)}
+      />
 
       {/* Mobile Drawer */}
       {sidebarOpen && (
@@ -226,32 +254,42 @@ export function Shell({
             </nav>
           </div>
 
-          {/* Business Profile Footnote in Sidebar */}
-          <div className="mt-auto p-4 border-t border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-850">
+          {/* Business Profile Footnote in Sidebar (Clickable) */}
+          <button
+            type="button"
+            onClick={() => setBusinessModalOpen(true)}
+            className="mt-auto p-4 border-t border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left w-full"
+            title="Click to view & edit real business profile and UPI details"
+          >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 font-bold text-xs flex items-center justify-center shrink-0">
-                SP
+                {businessProfile.name.substring(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                  {BUSINESS.name}
+                  {businessProfile.name}
                 </p>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
-                  GST: {BUSINESS.gstin}
+                  GST: {businessProfile.gstin || "Unregistered"}
                 </p>
               </div>
             </div>
-          </div>
+          </button>
         </aside>
 
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-10">
           <div className="max-w-7xl mx-auto space-y-6">
-            <DemoBanner />
             {children}
           </div>
         </main>
       </div>
+
+      {/* Business Settings Modal */}
+      <BusinessSettingsModal
+        isOpen={businessModalOpen}
+        onClose={() => setBusinessModalOpen(false)}
+      />
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 shadow-xl">

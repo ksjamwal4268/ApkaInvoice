@@ -1,11 +1,31 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { validateGstin } from "../utils/gstin";
 import { toPaise, formatInr, amountInWords, roundGst, splitCgstSgst } from "../utils/money";
 import { computeDueDate, PaymentTerms, formatDate } from "../utils/date";
-import { CUSTOMERS, getCustomer, BUSINESS, INVOICES } from "../data/sampleData";
 import { Language } from "../data/i18n";
-import { Eye, FileCheck, CheckCircle2, Upload, AlertCircle, X, Printer } from "lucide-react";
+import {
+  Eye,
+  CheckCircle2,
+  Upload,
+  AlertCircle,
+  X,
+  Camera,
+  Building2,
+  Plus,
+  ArrowLeft,
+  Sparkles,
+  FileText,
+  Phone,
+  Mail,
+  User,
+  ShieldCheck,
+} from "lucide-react";
+import { useDataStore } from "../hooks/useDataStore";
+import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
+import { CustomerModal } from "../components/CustomerModal";
+import { ExtractedInvoiceData, processInvoiceImageWithN8n } from "../data/dataStore";
+import { Customer } from "../data/sampleData";
 
 interface LineItem {
   id: string;
@@ -16,25 +36,94 @@ interface LineItem {
   gstRate: number;
 }
 
-export function CreateInvoice({ lang: _lang }: { lang: Language }) {
+interface CreateInvoiceProps {
+  lang?: Language;
+  isEditMode?: boolean;
+}
+
+export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateInvoiceProps) {
   const navigate = useNavigate();
+  const { id: routeInvoiceId } = useParams<{ id?: string }>();
+  const isEditing = Boolean(propEditMode || routeInvoiceId);
+
+  const { invoices, customers, businessProfile, saveInvoice, saveCustomer } = useDataStore();
+
   const [customerId, setCustomerId] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [gstin, setGstin] = useState("");
-  const [placeOfSupply, setPlaceOfSupply] = useState("Maharashtra");
+  const [placeOfSupply, setPlaceOfSupply] = useState(businessProfile.state || "Maharashtra");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [terms, setTerms] = useState<PaymentTerms>("Net 30");
+
+  // User / Sender contact details
+  const [senderPhone, setSenderPhone] = useState(businessProfile.phone || "");
+  const [senderEmail, setSenderEmail] = useState(businessProfile.email || "");
+
+  // Buyer contact details
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [buyerEmail, setBuyerEmail] = useState("");
+
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: "1", description: "Corrugated shipping cartons 5-ply", hsn: "4819", quantity: 200, rate: 45, gstRate: 18 },
+    { id: "1", description: "Standard commercial goods / packaging cartons", hsn: "4819", quantity: 100, rate: 45, gstRate: 18 },
   ]);
   const [billOfSupply, setBillOfSupply] = useState(false);
   const [gstinError, setGstinError] = useState<string | null>(null);
-  const [showReview, setShowReview] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [uploadContent, setUploadContent] = useState("");
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [scannedImagePreview, setScannedImagePreview] = useState<string | null>(null);
+  const [ocrBadge, setOcrBadge] = useState<string | null>(null);
+  const [isUploadingDirect, setIsUploadingDirect] = useState(false);
 
-  const customer = getCustomer(customerId);
-  const customerState = customer?.state || "Maharashtra";
+  // Modals state
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync sender info from business profile
+  useEffect(() => {
+    if (!senderPhone && businessProfile.phone) setSenderPhone(businessProfile.phone);
+    if (!senderEmail && businessProfile.email) setSenderEmail(businessProfile.email);
+  }, [businessProfile]);
+
+  // Load existing invoice if in edit mode
+  useEffect(() => {
+    if (isEditing && routeInvoiceId) {
+      const existing = invoices.find((i) => i.id === routeInvoiceId);
+      if (existing) {
+        setInvoiceNumber(existing.invoiceNumber);
+        setCustomerId(existing.customerId);
+        setGstin(existing.customerGstin || "");
+        setPlaceOfSupply(existing.placeOfSupply);
+        setInvoiceDate(new Date(existing.invoiceDate).toISOString().split("T")[0]);
+        setTerms(existing.terms);
+        setBillOfSupply(existing.billOfSupply);
+
+        const cust = customers.find((c) => c.id === existing.customerId);
+        if (cust) {
+          setBuyerPhone(cust.phone || "");
+          setBuyerEmail(cust.email || "");
+        }
+
+        setLineItems(
+          existing.lineItems.map((li: any, idx: number) => ({
+            id: String(idx + 1),
+            description: li.description,
+            hsn: li.hsn,
+            quantity: li.quantity,
+            rate: li.rate / 100,
+            gstRate: li.gstRate,
+          }))
+        );
+      }
+    } else {
+      const nextNum = `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`;
+      setInvoiceNumber(nextNum);
+    }
+  }, [isEditing, routeInvoiceId, invoices, customers]);
+
+  const customer = customers.find((c) => c.id === customerId);
+  const customerState = customer?.state || businessProfile.state || "Maharashtra";
   const isSameState = placeOfSupply === customerState;
 
   // Calculate line totals in whole paise
@@ -46,28 +135,35 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
     });
   }, [lineItems, billOfSupply]);
 
-  const subtotal = lineTotals.reduce((sum, t) => sum + t.lineAmount, 0); // Paise
-  const totalGst = billOfSupply ? 0 : lineTotals.reduce((sum, t) => sum + t.gst, 0); // Paise
+  const subtotal = lineTotals.reduce((sum, t) => sum + t.lineAmount, 0);
+  const totalGst = billOfSupply ? 0 : lineTotals.reduce((sum, t) => sum + t.gst, 0);
   const { cgst, sgst } = splitCgstSgst(totalGst);
   const igst = isSameState ? 0 : totalGst;
-  const rawTotal = subtotal + (isSameState ? (cgst + sgst) : igst);
+  const rawTotal = subtotal + (isSameState ? cgst + sgst : igst);
   const roundedTotal = Math.round(rawTotal / 100) * 100;
   const roundOff = roundedTotal - rawTotal;
   const grandTotal = roundedTotal;
 
   const handleCustomerChange = (id: string) => {
     setCustomerId(id);
-    const selected = getCustomer(id);
+    const selected = customers.find((c) => c.id === id);
     if (selected) {
       setGstin(selected.gstin || "");
       setPlaceOfSupply(selected.state || "Maharashtra");
-      setTerms("Net 30");
-      setGstinError(selected.gstin && validateGstin(selected.gstin) ? null : (selected.gstin ? "Invalid GSTIN format" : null));
+      setBuyerPhone(selected.phone || "");
+      setBuyerEmail(selected.email || "");
+      setGstinError(
+        selected.gstin && validateGstin(selected.gstin)
+          ? null
+          : selected.gstin
+          ? "Invalid GSTIN format"
+          : null
+      );
     }
   };
 
   const handleGstinChange = (val: string) => {
-    const upper = val.toUpperCase();
+    const upper = val.toUpperCase().trim();
     setGstin(upper);
     if (upper.length === 15) {
       setGstinError(validateGstin(upper) ? null : "Invalid GSTIN format (15 characters required)");
@@ -76,46 +172,127 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
     }
   };
 
-  const applyExtractedData = () => {
-    setCustomerId("cust-1");
-    const cust = getCustomer("cust-1");
-    if (cust) {
-      setGstin(cust.gstin || "");
-      setPlaceOfSupply(cust.state);
-      setTerms("Net 30");
+  // Callback from Camera / OCR modal
+  const handleApplyExtractedData = (data: ExtractedInvoiceData, imagePreviewUrl?: string) => {
+    if (imagePreviewUrl) {
+      setScannedImagePreview(imagePreviewUrl);
     }
-    setLineItems([
-      { id: "1", description: "Corrugated master cartons (heavy duty)", hsn: "4819", quantity: 500, rate: 42, gstRate: 18 },
-      { id: "2", description: "Poly bubble wrap roll 100m", hsn: "3923", quantity: 10, rate: 650, gstRate: 18 },
-    ]);
-    setShowReview(false);
+    setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
+
+    let matchedCustomer = customers.find(
+      (c) =>
+        c.name.toLowerCase() === data.buyerName.toLowerCase() ||
+        (data.buyerGstin && c.gstin && c.gstin.toUpperCase() === data.buyerGstin.toUpperCase())
+    );
+
+    if (!matchedCustomer && data.buyerName) {
+      const newCust: Customer = {
+        id: `cust-${Date.now().toString(36)}`,
+        name: data.buyerName,
+        city: data.buyerCity || "Pune",
+        state: data.buyerState || "Maharashtra",
+        gstin: data.buyerGstin || null,
+        pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
+        email: data.buyerEmail || `accounts@${data.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+        phone: data.buyerPhone || "+91 98000 00000",
+        isChronicallyLate: false,
+        grade: "A",
+        gradeReasons: ["Registered via Invoice Document Scanner"],
+      };
+      saveCustomer(newCust);
+      matchedCustomer = newCust;
+    }
+
+    if (matchedCustomer) {
+      setCustomerId(matchedCustomer.id);
+      setGstin(data.buyerGstin || matchedCustomer.gstin || "");
+      setPlaceOfSupply(data.buyerState || matchedCustomer.state || "Maharashtra");
+      setBuyerPhone(data.buyerPhone || matchedCustomer.phone || "");
+      setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
+    }
+
+    if (data.invoiceNumber) {
+      setInvoiceNumber(data.invoiceNumber);
+    }
+    if (data.terms) {
+      setTerms(data.terms as PaymentTerms);
+    }
+    if (data.invoiceDate) {
+      setInvoiceDate(data.invoiceDate);
+    }
+
+    if (data.lineItems && data.lineItems.length > 0) {
+      setLineItems(
+        data.lineItems.map((item, idx) => ({
+          id: String(idx + 1),
+          description: item.description,
+          hsn: item.hsn,
+          quantity: item.quantity,
+          rate: item.rate,
+          gstRate: item.gstRate,
+        }))
+      );
+    }
+  };
+
+  // Direct file upload from the page
+  const handleDirectFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingDirect(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setScannedImagePreview(base64);
+      try {
+        const res = await processInvoiceImageWithN8n(base64, true);
+        handleApplyExtractedData(res.data, base64);
+      } catch (err) {
+        console.error("Direct file extraction error:", err);
+      } finally {
+        setIsUploadingDirect(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBuyerModal = (newBuyer: Customer) => {
+    saveCustomer(newBuyer);
+    setCustomerId(newBuyer.id);
+    setGstin(newBuyer.gstin || "");
+    setPlaceOfSupply(newBuyer.state || "Maharashtra");
+    setBuyerPhone(newBuyer.phone || "");
+    setBuyerEmail(newBuyer.email || "");
   };
 
   const handleSave = () => {
     if (!customerId) {
-      alert("Please select a customer before saving.");
+      alert("Please select or add a buyer before saving.");
       return;
     }
-    const newInvId = `inv-${INVOICES.length + 1}`;
-    const newInvNum = `SP/24-25/0${INVOICES.length + 1}`;
-    const cust = getCustomer(customerId);
-    
-    // Add to demo session invoices list
-    INVOICES.push({
-      id: newInvId,
-      invoiceNumber: newInvNum,
+
+    const selectedCust = customers.find((c) => c.id === customerId);
+    const invId = isEditing && routeInvoiceId ? routeInvoiceId : `inv-${Date.now().toString(36)}`;
+    const finalNumber = invoiceNumber.trim() || `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`;
+
+    const existingInv = isEditing && routeInvoiceId ? invoices.find((i) => i.id === routeInvoiceId) : null;
+
+    const newInvoice = {
+      id: invId,
+      invoiceNumber: finalNumber,
       customerId,
-      customerName: cust?.name || "Customer",
-      customerCity: cust?.city || "",
-      customerState: cust?.state || "",
-      customerGstin: gstin || cust?.gstin || "",
+      customerName: selectedCust?.name || "Customer",
+      customerCity: selectedCust?.city || "",
+      customerState: selectedCust?.state || "",
+      customerGstin: gstin || selectedCust?.gstin || "",
       placeOfSupply,
       invoiceDate: new Date(invoiceDate),
       dueDate: computeDueDate(new Date(invoiceDate), terms),
       terms,
       lineItems: lineItems.map((li) => ({
         id: `li-${Date.now()}-${li.id}`,
-        description: li.description || "Packaging Material",
+        description: li.description || "Goods / Service",
         hsn: li.hsn || "4819",
         quantity: li.quantity,
         rate: toPaise(li.rate),
@@ -127,211 +304,432 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
       igst: !isSameState ? igst : 0,
       roundOff,
       total: grandTotal,
-      amountPaid: 0,
-      outstanding: grandTotal,
-      status: "due",
-      isDisputed: false,
-      disputeReason: null,
-      evidence: [
-        {
-          id: `ev-${Date.now()}`,
-          date: new Date(),
-          type: "invoice-sent",
-          title: "Invoice created & ready",
-          description: `Created for ${cust?.name}`,
-          amount: grandTotal,
-          channel: "email",
-        },
-      ],
+      amountPaid: existingInv ? existingInv.amountPaid : 0,
+      outstanding: existingInv ? Math.max(0, grandTotal - existingInv.amountPaid) : grandTotal,
+      status: existingInv ? existingInv.status : ("due" as const),
+      isDisputed: existingInv ? existingInv.isDisputed : false,
+      disputeReason: existingInv ? existingInv.disputeReason : null,
+      evidence: existingInv
+        ? [
+            {
+              id: `ev-${Date.now()}`,
+              date: new Date(),
+              type: "invoice-sent" as const,
+              title: "Invoice updated",
+              description: `Modified by ${senderEmail || "user"}. Total: ${formatInr(grandTotal)}`,
+              amount: grandTotal,
+              channel: "email" as const,
+            },
+            ...existingInv.evidence,
+          ]
+        : [
+            {
+              id: `ev-${Date.now()}`,
+              date: new Date(),
+              type: "invoice-sent" as const,
+              title: scannedImagePreview ? "Extracted from physical bill" : "Invoice created",
+              description: `Generated for ${selectedCust?.name} by ${senderEmail || businessProfile.name}`,
+              amount: grandTotal,
+              channel: "whatsapp" as const,
+            },
+          ],
       billOfSupply,
       pdfUrl: null,
-    });
+    };
 
-    setSaveSuccess(newInvNum);
+    saveInvoice(newInvoice);
+    setSaveSuccess(finalNumber);
+
+    setTimeout(() => {
+      navigate(`/invoices/${invId}`);
+    }, 1200);
   };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-            Create invoice
-          </h1>
+          <div className="flex items-center gap-2 mb-1">
+            {isEditing && (
+              <Link
+                to={`/invoices/${routeInvoiceId}`}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1 mr-2"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
+              </Link>
+            )}
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {isEditing ? `Edit Invoice ${invoiceNumber}` : "New Invoice"}
+            </h1>
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Create a GST invoice or Bill of Supply for your customer. All figures are in Indian rupees.
+            {isEditing
+              ? "Modify invoice items, buyer terms, or tax classification."
+              : "Create a tax invoice manually, or upload / scan a bill to auto-fill."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {!isEditing && (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsCameraModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all tap-target"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Scan Camera</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingDirect}
+                className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs"
+              >
+                {isUploadingDirect ? (
+                  <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 text-teal-600" />
+                )}
+                <span>{isUploadingDirect ? "Extracting..." : "Upload Bill"}</span>
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             onClick={() => setShowPdfPreview(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors tap-target"
+            className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors tap-target"
           >
             <Eye className="w-4 h-4 text-teal-600" />
-            <span>Preview invoice</span>
+            <span>Preview</span>
           </button>
         </div>
       </div>
 
-      {saveSuccess && (
-        <div className="p-4 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex items-center justify-between">
+      {/* Hidden file input for direct bill upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        className="hidden"
+        onChange={handleDirectFileUpload}
+      />
+
+      {/* OCR Extraction Alert Banner */}
+      {ocrBadge && (
+        <div className="p-3.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-teal-900 dark:text-teal-200">
-                Invoice {saveSuccess} created successfully!
-              </p>
-              <p className="text-xs text-teal-700 dark:text-teal-400">
-                The record has been saved and is now visible in your Invoices list.
+            <Sparkles className="w-4 h-4 text-teal-600 shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold text-teal-950 dark:text-teal-200">{ocrBadge}</span>
+              <p className="text-teal-700 dark:text-teal-400 text-[11px]">
+                Fields and line items have been auto-populated into the form below. Review or adjust any value as needed.
               </p>
             </div>
           </div>
-          <button
-            onClick={() => navigate("/invoices")}
-            className="px-3 py-1.5 text-xs font-semibold bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors"
-          >
-            View all invoices
-          </button>
+          {scannedImagePreview && (
+            <button
+              type="button"
+              onClick={() => window.open(scannedImagePreview, "_blank")}
+              className="text-[11px] font-semibold text-teal-700 dark:text-teal-300 hover:underline shrink-0"
+            >
+              View Uploaded File
+            </button>
+          )}
         </div>
       )}
 
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="col-span-1 sm:col-span-2 lg:col-span-3">
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Customer
-            </label>
-            <select
-              value={customerId}
-              onChange={(e) => handleCustomerChange(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
-            >
-              <option value="">Select a customer</option>
-              {CUSTOMERS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.city}, {c.state}) — {c.gstin}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Customer GSTIN
-            </label>
-            <input
-              type="text"
-              value={gstin}
-              onChange={(e) => handleGstinChange(e.target.value)}
-              placeholder="27AABCS1234Q1ZM"
-              className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent uppercase font-mono text-sm tap-target"
-            />
-            {gstinError && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">{gstinError}</p>
-            )}
-            {gstin && !gstinError && (
-              <p className="mt-1 text-xs text-teal-600 dark:text-teal-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Valid GSTIN
+      {/* Success Notification */}
+      {saveSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                Invoice {saveSuccess} saved successfully!
               </p>
-            )}
+              <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                Opening invoice record and payment timeline...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Invoice Form Card */}
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 sm:p-7 shadow-xs space-y-6">
+        {/* Section 1: Logged-in Sender Details (Your Details) */}
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750/70 border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <User className="w-4 h-4 text-teal-600" />
+              Your Sender Details (Logged-in User Account)
+            </h2>
+            <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Messages & emails will dispatch from this contact
+            </span>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Place of supply
-            </label>
-            <select
-              value={placeOfSupply}
-              onChange={(e) => setPlaceOfSupply(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
-            >
-              <option value="Maharashtra">Maharashtra (Intra-state: CGST + SGST)</option>
-              <option value="Karnataka">Karnataka (Inter-state: IGST)</option>
-              <option value="Delhi">Delhi (Inter-state: IGST)</option>
-              <option value="Tamil Nadu">Tamil Nadu (Inter-state: IGST)</option>
-              <option value="West Bengal">West Bengal (Inter-state: IGST)</option>
-            </select>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                Your Business / Sender Name
+              </label>
+              <p className="text-sm font-bold text-slate-900 dark:text-white px-3 py-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                {businessProfile.name}
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Invoice date
-            </label>
-            <input
-              type="date"
-              value={invoiceDate}
-              onChange={(e) => setInvoiceDate(e.target.value)}
-              className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-              Payment terms
-            </label>
-            <select
-              value={terms}
-              onChange={(e) => setTerms(e.target.value as PaymentTerms)}
-              className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
-            >
-              <option value="Net 7">Net 7 (7 days)</option>
-              <option value="Net 15">Net 15 (15 days)</option>
-              <option value="Net 30">Net 30 (30 days)</option>
-              <option value="Net 45">Net 45 (45 days)</option>
-              <option value="Net 60">Net 60 (60 days)</option>
-            </select>
-          </div>
-
-          <div className="flex items-center pt-5">
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <Phone className="w-3 h-3 text-teal-600" />
+                Your WhatsApp / Phone Number *
+              </label>
               <input
-                type="checkbox"
-                checked={billOfSupply}
-                onChange={(e) => setBillOfSupply(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-600"
+                type="tel"
+                value={senderPhone}
+                onChange={(e) => setSenderPhone(e.target.value)}
+                placeholder="+91 98200 12345"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
-              <span>Bill of Supply (Composition dealer / exempt goods)</span>
-            </label>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <Mail className="w-3 h-3 text-teal-600" />
+                Your Billing / From Email *
+              </label>
+              <input
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="billing@yourbusiness.in"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Line Items */}
-        <div className="mt-8">
+        {/* Section 2: Buyer (Recipient) Details */}
+        <div>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+            <Building2 className="w-3.5 h-3.5 text-teal-600" />
+            Buyer / Recipient Information
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Buyer Selector with + New Buyer Button */}
+            <div className="col-span-1 sm:col-span-2">
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Buyer Company Name *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerModalOpen(true)}
+                  className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 font-bold inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add New Buyer</span>
+                </button>
+              </div>
+              <select
+                value={customerId}
+                onChange={(e) => handleCustomerChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                <option value="">-- Select or Add a Buyer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.city}, {c.state}) — {c.phone}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Buyer Phone */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <Phone className="w-3 h-3 text-teal-600" />
+                Buyer WhatsApp / Phone *
+              </label>
+              <input
+                type="tel"
+                value={buyerPhone}
+                onChange={(e) => setBuyerPhone(e.target.value)}
+                placeholder="+91 98234 56780"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Buyer Email */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                <Mail className="w-3 h-3 text-teal-600" />
+                Buyer Billing Email *
+              </label>
+              <input
+                type="email"
+                value={buyerEmail}
+                onChange={(e) => setBuyerEmail(e.target.value)}
+                placeholder="accounts@buyer.in"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Invoice Number */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Invoice Number *
+              </label>
+              <input
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="INV-24-25/001"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-mono font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Buyer GSTIN */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Buyer GSTIN (15 Digits)
+              </label>
+              <input
+                type="text"
+                value={gstin}
+                maxLength={15}
+                onChange={(e) => handleGstinChange(e.target.value)}
+                placeholder="27AABCS1234Q1ZM"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase focus:outline-none focus:ring-2 ${
+                  gstinError
+                    ? "border-rose-500 bg-rose-50/20 focus:ring-rose-500"
+                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-teal-500"
+                }`}
+              />
+              {gstinError ? (
+                <p className="mt-1 text-[11px] text-rose-500">{gstinError}</p>
+              ) : gstin.length === 15 ? (
+                <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Valid GSTIN
+                </p>
+              ) : null}
+            </div>
+
+            {/* Place of Supply */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Place of Supply
+              </label>
+              <select
+                value={placeOfSupply}
+                onChange={(e) => setPlaceOfSupply(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                <option value="Maharashtra">Maharashtra (Intra-state: CGST+SGST)</option>
+                <option value="Karnataka">Karnataka (Inter-state: IGST)</option>
+                <option value="Delhi">Delhi (Inter-state: IGST)</option>
+                <option value="Tamil Nadu">Tamil Nadu (Inter-state: IGST)</option>
+                <option value="West Bengal">West Bengal (Inter-state: IGST)</option>
+                <option value="Gujarat">Gujarat (Inter-state: IGST)</option>
+                <option value="Telangana">Telangana (Inter-state: IGST)</option>
+              </select>
+            </div>
+
+            {/* Invoice Date */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Invoice Date
+              </label>
+              <input
+                type="date"
+                value={invoiceDate}
+                onChange={(e) => setInvoiceDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Payment Terms */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Payment Terms (Credit Window)
+              </label>
+              <select
+                value={terms}
+                onChange={(e) => setTerms(e.target.value as PaymentTerms)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                <option value="Net 7">Net 7 (7 Days)</option>
+                <option value="Net 15">Net 15 (15 Days)</option>
+                <option value="Net 30">Net 30 (30 Days)</option>
+                <option value="Net 45">Net 45 (45 Days)</option>
+                <option value="Net 60">Net 60 (60 Days)</option>
+              </select>
+            </div>
+
+            {/* Bill of Supply Option */}
+            <div className="flex items-center sm:pt-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={billOfSupply}
+                  onChange={(e) => setBillOfSupply(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span>Bill of Supply (Zero Tax / Exempt)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Line Items */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Line items</h3>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-teal-600" />
+              Line Items & Products
+            </h2>
             <button
               type="button"
               onClick={() => {
                 const nextId = String(lineItems.length + 1);
                 setLineItems([
                   ...lineItems,
-                  { id: nextId, description: "", hsn: "4819", quantity: 1, rate: 0, gstRate: 18 },
+                  { id: nextId, description: "", hsn: "4819", quantity: 100, rate: 25, gstRate: 18 },
                 ]);
               }}
-              className="text-xs font-medium text-teal-600 dark:text-teal-400 hover:underline tap-target"
+              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 inline-flex items-center gap-1"
             >
-              + Add line item
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Item</span>
             </button>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
-                  <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300">Description</th>
-                  <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300 w-24">HSN</th>
-                  <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300 w-24 text-right">Qty</th>
-                  <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300 w-32 text-right">Rate (₹)</th>
+                <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-750 text-xs font-bold text-slate-600 dark:text-slate-300">
+                  <th className="px-4 py-3">Description</th>
+                  <th className="px-3 py-3 w-28 font-mono">HSN</th>
+                  <th className="px-3 py-3 w-24 text-right">Qty</th>
+                  <th className="px-3 py-3 w-28 text-right">Rate (₹)</th>
                   {!billOfSupply && (
-                    <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300 w-28 text-right">GST %</th>
+                    <th className="px-3 py-3 w-24 text-right">GST %</th>
                   )}
-                  <th className="px-4 py-3 font-medium text-slate-600 dark:text-slate-300 w-32 text-right">Amount</th>
-                  <th className="px-4 py-3 w-16"></th>
+                  <th className="px-4 py-3 w-32 text-right">Amount (₹)</th>
+                  <th className="px-3 py-3 w-12 text-center"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {lineItems.map((item, idx) => (
-                  <tr key={item.id}>
-                    <td className="px-4 py-2">
+                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">
+                    <td className="px-4 py-2.5">
                       <input
                         type="text"
                         value={item.description}
@@ -340,11 +738,11 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                           next[idx].description = e.target.value;
                           setLineItems(next);
                         }}
-                        placeholder="Item description"
-                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-600 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm"
+                        placeholder="Item description (e.g. Master Cartons)"
+                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm font-medium"
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-2.5">
                       <input
                         type="text"
                         value={item.hsn}
@@ -353,11 +751,11 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                           next[idx].hsn = e.target.value;
                           setLineItems(next);
                         }}
-                        placeholder="HSN"
-                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-600 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm"
+                        placeholder="4819"
+                        className="w-full bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-xs font-mono"
                       />
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-3 py-2.5 text-right">
                       <input
                         type="number"
                         min="1"
@@ -367,10 +765,10 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                           next[idx].quantity = Math.max(1, parseInt(e.target.value) || 1);
                           setLineItems(next);
                         }}
-                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-600 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums"
+                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums"
                       />
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-3 py-2.5 text-right">
                       <input
                         type="number"
                         min="0"
@@ -381,11 +779,11 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                           next[idx].rate = Math.max(0, parseFloat(e.target.value) || 0);
                           setLineItems(next);
                         }}
-                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-600 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums"
+                        className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white px-0 text-sm tabular-nums font-medium"
                       />
                     </td>
                     {!billOfSupply && (
-                      <td className="px-4 py-2 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         <select
                           value={item.gstRate}
                           onChange={(e) => {
@@ -393,7 +791,7 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                             next[idx].gstRate = parseInt(e.target.value);
                             setLineItems(next);
                           }}
-                          className="bg-transparent border-0 border-b border-transparent focus:border-teal-600 focus:ring-0 text-slate-900 dark:text-white text-right text-sm"
+                          className="bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 dark:text-white text-right text-xs font-semibold"
                         >
                           <option value={0}>0%</option>
                           <option value={5}>5%</option>
@@ -403,17 +801,17 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
                         </select>
                       </td>
                     )}
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-900 dark:text-white font-medium">
+                    <td className="px-4 py-2.5 text-right tabular-nums font-bold text-slate-900 dark:text-white">
                       {formatInr(toPaise(item.rate * item.quantity))}
                     </td>
-                    <td className="px-4 py-2 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       {lineItems.length > 1 && (
                         <button
                           type="button"
                           onClick={() => setLineItems(lineItems.filter((_, i) => i !== idx))}
-                          className="text-red-500 hover:text-red-700 text-xs font-semibold"
+                          className="text-slate-400 hover:text-rose-500 transition-colors p-1"
                         >
-                          ✕
+                          <X className="w-4 h-4" />
                         </button>
                       )}
                     </td>
@@ -424,12 +822,12 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
           </div>
         </div>
 
-        {/* GST & Totals Summary */}
-        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+        {/* Section 4: Tax Summary & Grand Total */}
+        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-750/40 p-5 rounded-2xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Subtotal</p>
-              <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Taxable Subtotal</p>
+              <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
                 {formatInr(subtotal)}
               </p>
             </div>
@@ -437,13 +835,13 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
               <>
                 <div>
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">CGST (9%)</p>
-                  <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">
+                  <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
                     {formatInr(cgst)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400">SGST (9%)</p>
-                  <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">
+                  <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
                     {formatInr(sgst)}
                   </p>
                 </div>
@@ -452,291 +850,136 @@ export function CreateInvoice({ lang: _lang }: { lang: Language }) {
             {!billOfSupply && !isSameState && (
               <div>
                 <p className="text-xs font-medium text-slate-500 dark:text-slate-400">IGST (18%)</p>
-                <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">
+                <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
                   {formatInr(igst)}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Round off</p>
-              <p className="text-base font-semibold tabular-nums text-slate-900 dark:text-white">
-                {formatInr(roundOff)}
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Round Off</p>
+              <p className="text-lg font-bold tabular-nums text-slate-500 mt-0.5">
+                {roundOff === 0 ? "₹0.00" : `${roundOff > 0 ? "+" : ""}${formatInr(roundOff)}`}
               </p>
             </div>
           </div>
 
-          <div className="flex items-end justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+          <div className="pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Payment due: {computeDueDate(new Date(invoiceDate), terms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 capitalize mt-1 italic">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Amount in Words:
+              </span>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 italic mt-0.5">
                 {amountInWords(grandTotal)}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Grand Total</p>
-              <p className="text-2xl font-bold tabular-nums text-teal-600 dark:text-teal-400">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Grand Total Payable
+              </span>
+              <p className="text-2xl sm:text-3xl font-extrabold text-teal-600 dark:text-teal-400 tabular-nums">
                 {formatInr(grandTotal)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Upload a photo or CSV */}
-        <div className="mt-6 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <Upload className="w-4 h-4 text-teal-600" />
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Upload an invoice photo or CSV
-            </h3>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-            Upload an existing physical invoice or supplier CSV to automatically extract line items and tax figures. You will review extracted values before anything is applied.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex-1 w-full">
-              <input
-                type="file"
-                accept=".csv,.jpg,.jpeg,.png,.pdf"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) setUploadContent(file.name);
-                }}
-                className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-slate-700 dark:file:text-teal-400"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowReview(true)}
-              disabled={!uploadContent}
-              className="w-full sm:w-auto px-5 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors tap-target shrink-0"
-            >
-              Review extracted fields
-            </button>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-2">
           <button
             type="button"
             onClick={() => navigate("/invoices")}
-            className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 tap-target"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-6 py-2.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 shadow transition-colors tap-target"
+            className="px-8 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all tap-target"
           >
-            Save invoice
+            {isEditing ? "Update & Save Invoice" : "Create & Record Invoice"}
           </button>
         </div>
       </div>
 
-      {/* Review Extracted Fields Modal */}
-      {showReview && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+      {/* Camera & OCR Modal */}
+      <InvoiceCameraModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onApplyExtractedData={handleApplyExtractedData}
+      />
+
+      {/* Customer / Buyer Modal */}
+      <CustomerModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onSave={handleSaveBuyerModal}
+      />
+
+      {/* Invoice PDF Preview Modal */}
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-teal-600" />
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-                  Review extracted fields
-                </h3>
-              </div>
+              <span className="font-bold text-base text-slate-900 dark:text-white">Tax Invoice Preview</span>
               <button
-                onClick={() => setShowReview(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                type="button"
+                onClick={() => setShowPdfPreview(false)}
+                className="p-1 rounded text-slate-400 hover:text-slate-600"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Fields detected from <strong>{uploadContent || "invoice-scan.jpg"}</strong>. Review and confirm before applying to form.
-            </p>
-
-            <div className="space-y-3 text-sm">
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex items-center justify-between">
+            <div className="p-4 border rounded-xl bg-slate-50 dark:bg-slate-850 text-xs space-y-3 font-mono">
+              <div className="flex justify-between border-b pb-2">
                 <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Customer</p>
-                  <p className="font-medium text-slate-900 dark:text-white">Gupta Traders (Mumbai)</p>
-                </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
-                  98% confidence
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">GSTIN</p>
-                  <p className="font-mono text-xs font-medium text-slate-900 dark:text-white">27AAAPG1234M1Z5</p>
-                </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
-                  100% confidence
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Detected items</p>
-                <ul className="text-xs space-y-1 text-slate-700 dark:text-slate-300">
-                  <li>• Corrugated master cartons (500 pcs @ ₹42)</li>
-                  <li>• Poly bubble wrap roll (10 pcs @ ₹650)</li>
-                </ul>
-              </div>
-
-              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800 dark:text-amber-300">
-                  Payment terms were not stated on upload. Defaulted to Net 30.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setShowReview(false)}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-              >
-                Dismiss
-              </button>
-              <button
-                type="button"
-                onClick={applyExtractedData}
-                className="px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 transition-colors"
-              >
-                Apply to invoice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PDF / Print Preview Modal */}
-      {showPdfPreview && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-xl max-w-2xl w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-700 mb-6">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-teal-600" />
-                <h3 className="text-base font-semibold">Tax Invoice Preview</h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded hover:bg-teal-700"
-                >
-                  Print / PDF
-                </button>
-                <button
-                  onClick={() => setShowPdfPreview(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-2"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Invoice Sheet */}
-            <div className="border border-slate-300 dark:border-slate-700 p-6 rounded bg-white dark:bg-slate-800 text-xs space-y-4">
-              <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-700 pb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{BUSINESS.name}</h2>
-                  <p className="text-slate-600 dark:text-slate-400">{BUSINESS.city}, {BUSINESS.state}</p>
-                  <p className="font-mono mt-1">GSTIN: {BUSINESS.gstin}</p>
+                  <p className="font-bold text-sm">{businessProfile.name}</p>
+                  <p>{businessProfile.city}, {businessProfile.state}</p>
+                  <p>GSTIN: {businessProfile.gstin}</p>
+                  <p>Phone: {senderPhone || businessProfile.phone} • Email: {senderEmail || businessProfile.email}</p>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 text-sm">
-                    {billOfSupply ? "Bill of Supply" : "Tax Invoice"}
-                  </span>
-                  <p className="text-slate-600 dark:text-slate-400 mt-1">Date: {formatDate(new Date(invoiceDate))}</p>
-                  <p className="text-slate-600 dark:text-slate-400">Terms: {terms}</p>
+                  <p className="font-bold">INVOICE #{invoiceNumber}</p>
+                  <p>Date: {invoiceDate}</p>
+                  <p>Terms: {terms}</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                <div>
-                  <p className="font-bold text-slate-700 dark:text-slate-300">Bill To:</p>
-                  <p className="font-semibold text-slate-900 dark:text-white">{customer?.name || "Customer"}</p>
-                  <p className="text-slate-600 dark:text-slate-400">{customer?.city}, {customer?.state}</p>
-                  <p className="font-mono mt-1">GSTIN: {gstin || customer?.gstin || "N/A"}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-slate-700 dark:text-slate-300">Place of Supply:</p>
-                  <p>{placeOfSupply}</p>
-                  <p className="font-bold text-slate-700 dark:text-slate-300 mt-2">Due Date:</p>
-                  <p>{formatDate(computeDueDate(new Date(invoiceDate), terms))}</p>
-                </div>
+              <div>
+                <p className="font-bold text-slate-600">BILLED TO:</p>
+                <p className="font-bold text-sm">{customer?.name || "Customer"}</p>
+                <p>Phone: {buyerPhone || customer?.phone || "—"} • Email: {buyerEmail || customer?.email || "—"}</p>
+                <p>GSTIN: {gstin || "Unregistered"}</p>
+                <p>Place of Supply: {placeOfSupply}</p>
               </div>
-
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold">
-                    <th className="py-2">Description</th>
-                    <th className="py-2">HSN</th>
-                    <th className="py-2 text-right">Qty</th>
-                    <th className="py-2 text-right">Rate</th>
-                    <th className="py-2 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {lineItems.map((li) => (
-                    <tr key={li.id}>
-                      <td className="py-2">{li.description || "Packaging item"}</td>
-                      <td className="py-2 font-mono">{li.hsn}</td>
-                      <td className="py-2 text-right tabular-nums">{li.quantity}</td>
-                      <td className="py-2 text-right tabular-nums">{formatInr(toPaise(li.rate))}</td>
-                      <td className="py-2 text-right tabular-nums">{formatInr(toPaise(li.rate * li.quantity))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="border-t border-slate-300 dark:border-slate-700 pt-3 flex justify-end">
-                <div className="w-56 space-y-1.5 text-right">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Subtotal:</span>
-                    <span className="tabular-nums font-medium">{formatInr(subtotal)}</span>
+              <div className="border-t border-b py-2 space-y-1">
+                {lineItems.map((li, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span>{li.description} ({li.quantity} x ₹{li.rate})</span>
+                    <span>{formatInr(toPaise(li.quantity * li.rate))}</span>
                   </div>
-                  {!billOfSupply && isSameState && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">CGST (9%):</span>
-                        <span className="tabular-nums font-medium">{formatInr(cgst)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">SGST (9%):</span>
-                        <span className="tabular-nums font-medium">{formatInr(sgst)}</span>
-                      </div>
-                    </>
-                  )}
-                  {!billOfSupply && !isSameState && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">IGST (18%):</span>
-                      <span className="tabular-nums font-medium">{formatInr(igst)}</span>
-                    </div>
-                  )}
-                  {roundOff !== 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Round off:</span>
-                      <span className="tabular-nums font-medium">{formatInr(roundOff)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-slate-300 dark:border-slate-700 pt-1 text-sm font-bold">
-                    <span>Total:</span>
-                    <span className="text-teal-600 dark:text-teal-400">{formatInr(grandTotal)}</span>
-                  </div>
-                </div>
+                ))}
               </div>
-
-              <div className="pt-2 text-slate-500 dark:text-slate-400 italic">
-                Amount in words: {amountInWords(grandTotal)}
+              <div className="space-y-0.5 text-right font-bold">
+                <p>Subtotal: {formatInr(subtotal)}</p>
+                {isSameState ? (
+                  <>
+                    <p>CGST (9%): {formatInr(cgst)}</p>
+                    <p>SGST (9%): {formatInr(sgst)}</p>
+                  </>
+                ) : (
+                  <p>IGST (18%): {formatInr(igst)}</p>
+                )}
+                <p className="text-base text-teal-600">Total: {formatInr(grandTotal)}</p>
               </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPdfPreview(false)}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-lg text-xs font-semibold"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

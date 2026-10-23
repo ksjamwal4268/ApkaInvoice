@@ -8,6 +8,7 @@ import {
 import { Shell } from "./components/Shell";
 import { Language } from "./data/i18n";
 import { Dashboard } from "./pages/Dashboard";
+import { Welcome } from "./pages/Welcome";
 import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
 import { CreateInvoice } from "./pages/CreateInvoice";
@@ -60,10 +61,13 @@ export default function App() {
     <Router>
       <Shell lang={lang} onLangChange={onLangChange} dark={dark} onToggleDark={onToggleDark}>
         <Routes>
-          <Route path="/" element={<Dashboard lang={lang} />} />
+          <Route path="/" element={<Welcome lang={lang} />} />
+          <Route path="/welcome" element={<Welcome lang={lang} />} />
+          <Route path="/dashboard" element={<Dashboard lang={lang} />} />
           <Route path="/invoices" element={<Invoices lang={lang} />} />
           <Route path="/invoices/:id" element={<InvoiceDetail lang={lang} />} />
           <Route path="/invoices/create" element={<CreateInvoice lang={lang} />} />
+          <Route path="/invoices/:id/edit" element={<CreateInvoice lang={lang} isEditMode />} />
           <Route path="/payments" element={<Payments lang={lang} />} />
           <Route path="/reminders" element={<Reminders lang={lang} />} />
           <Route path="/demand-letter" element={<DemandLetter lang={lang} />} />

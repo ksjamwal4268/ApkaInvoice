@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { formatInr } from "../utils/money";
-import { getInvoice } from "../data/sampleData";
 import { Language } from "../data/i18n";
+import { useDataStore } from "../hooks/useDataStore";
 import {
   AlertOctagon,
   ArrowLeft,
@@ -17,7 +17,8 @@ import {
 export function Dispute({ lang: _lang }: { lang: Language }) {
   const { invoiceId } = useParams();
   const navigate = useNavigate();
-  const invoice = getInvoice(invoiceId || "");
+  const { invoices, saveInvoice } = useDataStore();
+  const invoice = invoices.find((inv) => inv.id === invoiceId);
 
   if (!invoice) {
     return (
@@ -46,10 +47,7 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
     e.preventDefault();
     if (!disputeType) return;
 
-    // Apply dispute to sample data model
-    invoice.isDisputed = true;
-    invoice.status = "disputed";
-    invoice.disputeReason =
+    const reason =
       disputeType === "already-paid"
         ? "Payment already made via bank"
         : disputeType === "wrong-invoice"
@@ -58,15 +56,25 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
         ? "Credit period extension requested"
         : note || "Customer dispute raised";
 
-    invoice.evidence.push({
-      id: `ev-${Date.now()}`,
-      date: new Date(),
-      type: "dispute",
-      title: "Dispute opened by customer",
-      description: invoice.disputeReason,
-      channel: "phone",
-    });
+    const updated = {
+      ...invoice,
+      isDisputed: true,
+      status: "disputed" as const,
+      disputeReason: reason,
+      evidence: [
+        {
+          id: `ev-${Date.now()}`,
+          date: new Date(),
+          type: "dispute" as const,
+          title: "Dispute opened by customer",
+          description: reason,
+          channel: "phone" as const,
+        },
+        ...invoice.evidence,
+      ],
+    };
 
+    saveInvoice(updated);
     setSubmitted(true);
   };
 

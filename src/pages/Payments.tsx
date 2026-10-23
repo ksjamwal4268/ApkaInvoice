@@ -5,14 +5,16 @@ import { INVOICES, getInvoice } from "../data/sampleData";
 import { Language } from "../data/i18n";
 import { CheckCircle2, AlertTriangle, FileSpreadsheet, Link2, Check } from "lucide-react";
 
+import { useDataStore } from "../hooks/useDataStore";
+
 const SAMPLE_CSV = `date,description,amount
-2024-10-02,UPI payment from Kolkata Traders,14160
-2024-10-05,NEFT credit from Chennai Suppliers,10000
-2024-10-22,NEFT credit from Delhi Distributors,23010
-2024-10-25,RTGS from Rao & Sons (TDS deducted 2%),46728
-2024-10-28,Unknown credit - please review,50000`;
+2024-10-02,UPI payment from buyer,14160
+2024-10-05,NEFT credit from corporate client,10000
+2024-10-22,NEFT credit settlement,23010
+2024-10-25,RTGS credit (TDS deducted 2%),46728`;
 
 export function Payments({ lang: _lang }: { lang: Language }) {
+  const { invoices } = useDataStore();
   const [csvText, setCsvText] = useState(SAMPLE_CSV);
   const [result, setResult] = useState<CsvParseResult | null>(null);
   const [manualLinks, setManualLinks] = useState<Record<number, string>>({});
@@ -21,7 +23,7 @@ export function Payments({ lang: _lang }: { lang: Language }) {
   const handleUpload = () => {
     const res = matchBankStatement({
       csvText,
-      invoices: INVOICES.map((i) => ({
+      invoices: invoices.map((i) => ({
         id: i.id,
         amount: i.total,
         dueDate: i.dueDate,

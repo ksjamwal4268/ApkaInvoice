@@ -6,8 +6,9 @@ import { EmptyState } from "../components/EmptyState";
 import { formatInr, toPaise, fromPaise, add } from "../utils/money";
 import { buildForecast, DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { daysBetween } from "../utils/date";
-import { INVOICES, CUSTOMERS, getCustomer, totalOutstanding, totalOverdue, BUSINESS } from "../data/sampleData";
+import { BUSINESS } from "../data/sampleData";
 import { Language } from "../data/i18n";
+import { useDataStore } from "../hooks/useDataStore";
 import {
   Wallet,
   Clock,
@@ -22,28 +23,48 @@ import {
   Percent,
   Banknote,
   Users,
+  Camera,
+  Sparkles,
 } from "lucide-react";
 
 export function Dashboard({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
+  const { invoices, customers, businessProfile } = useDataStore();
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const moneyOwed = totalOutstanding();
-  const overdueAmount = totalOverdue(today);
+  const moneyOwed = useMemo(() => {
+    return invoices.reduce((sum, inv) => {
+      if (inv.status === "disputed") return sum;
+      return sum + inv.outstanding;
+    }, 0);
+  }, [invoices]);
+
+  const overdueAmount = useMemo(() => {
+    return invoices.reduce((sum, inv) => {
+      if (inv.status === "disputed" || inv.status === "paid") return sum;
+      if (new Date(inv.dueDate) < today && inv.outstanding > 0) {
+        return sum + inv.outstanding;
+      }
+      return sum;
+    }, 0);
+  }, [invoices, today]);
 
   const fourWeeksFromNow = new Date(today);
   fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
-  const expected4Weeks = INVOICES.reduce((sum, inv) => {
-    if (inv.status === "disputed" || inv.status === "paid") return sum;
-    if (inv.dueDate <= fourWeeksFromNow && inv.dueDate >= today && inv.outstanding > 0) {
-      return add(sum, inv.outstanding);
-    }
-    return sum;
-  }, 0);
+  const expected4Weeks = useMemo(() => {
+    return invoices.reduce((sum, inv) => {
+      if (inv.status === "disputed" || inv.status === "paid") return sum;
+      const d = new Date(inv.dueDate);
+      if (d <= fourWeeksFromNow && d >= today && inv.outstanding > 0) {
+        return add(sum, inv.outstanding);
+      }
+      return sum;
+    }, 0);
+  }, [invoices, today, fourWeeksFromNow]);
 
   const bills4Weeks = Object.values(DEFAULT_OUTFLOWS).reduce(
     (sum, o) => add(sum, o.amount),
@@ -57,48 +78,48 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
   const forecast = useMemo(() => {
     return buildForecast({
       openingBalance: toPaise(2500000), // ₹25,00,000 opening liquidity
-      invoices: INVOICES,
+      invoices,
       whatIf,
     });
-  }, [whatIfCustomer, daysLate]);
+  }, [invoices, whatIfCustomer, daysLate]);
 
   const chaseList = useMemo(() => {
-    return INVOICES.filter(
+    return invoices.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).map((inv) => {
-      const customer = getCustomer(inv.customerId);
-      const dLate = daysBetween(inv.dueDate, today);
+      const customer = customers.find((c) => c.id === inv.customerId);
+      const dLate = daysBetween(new Date(inv.dueDate), today);
       const isChronic = customer?.isChronicallyLate || false;
       const score = inv.outstanding * dLate * (isChronic ? 2 : 1);
       return { inv, customer, daysLate: dLate, isChronic, score };
     }).sort((a, b) => b.score - a.score);
-  }, []);
+  }, [invoices, customers, today]);
 
   const ageingBuckets = useMemo(() => {
-    const current = INVOICES.filter(
+    const current = invoices.filter(
       (inv) => inv.status === "due" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => add(sum, inv.outstanding), 0);
 
-    const overdue1_30 = INVOICES.filter(
+    const overdue1_30 = invoices.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(inv.dueDate, today);
+      const d = daysBetween(new Date(inv.dueDate), today);
       if (d <= 30) return add(sum, inv.outstanding);
       return sum;
     }, 0);
 
-    const overdue31_60 = INVOICES.filter(
+    const overdue31_60 = invoices.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(inv.dueDate, today);
+      const d = daysBetween(new Date(inv.dueDate), today);
       if (d > 30 && d <= 60) return add(sum, inv.outstanding);
       return sum;
     }, 0);
 
-    const overdue60plus = INVOICES.filter(
+    const overdue60plus = invoices.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(inv.dueDate, today);
+      const d = daysBetween(new Date(inv.dueDate), today);
       if (d > 60) return add(sum, inv.outstanding);
       return sum;
     }, 0);
@@ -109,7 +130,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
       { label: "31–60 days overdue", amount: overdue31_60, bg: "bg-orange-500", color: "text-orange-500 dark:text-orange-400" },
       { label: "60+ days overdue", amount: overdue60plus, bg: "bg-rose-600", color: "text-rose-600 dark:text-rose-400" },
     ];
-  }, []);
+  }, [invoices, today]);
 
   const totalAgeing = useMemo(
     () => add(...ageingBuckets.map((b) => b.amount)),
@@ -129,7 +150,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
-                {BUSINESS.city}, {BUSINESS.state}
+                {businessProfile.city}, {businessProfile.state}
               </span>
               {shortfallWeek ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
@@ -145,11 +166,17 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {BUSINESS.name}
+              {businessProfile.name}
             </h1>
             <p className="text-sm text-teal-100/90 max-w-xl leading-relaxed">
-              You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{chaseList.length} overdue invoices</strong> totaling{" "}
-              <strong className="text-white font-bold">{formatInr(overdueAmount)}</strong>. Chase high-priority accounts today to secure your cash flow.
+              {invoices.length === 0 ? (
+                <span>Welcome to your live operational workspace. Scan physical bills via camera or add your real invoices to start forecasting.</span>
+              ) : (
+                <>
+                  You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{chaseList.length} overdue invoices</strong> totaling{" "}
+                  <strong className="text-white font-bold">{formatInr(overdueAmount)}</strong>. Chase high-priority accounts today to secure your cash flow.
+                </>
+              )}
             </p>
           </div>
 
@@ -206,6 +233,41 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           subtitle="Fixed obligations"
         />
       </div>
+
+      {/* Real Data Onboarding Card (Shown when user has 0 invoices) */}
+      {invoices.length === 0 && (
+        <div className="p-6 rounded-2xl border border-teal-200 dark:border-teal-800 bg-linear-to-r from-teal-50/80 via-emerald-50/50 to-white dark:from-teal-950/40 dark:via-slate-850 dark:to-slate-800 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Real Operational Ledger Active
+              </span>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Start Tracking Your Real Invoices & Cash Runway
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-300 max-w-2xl leading-relaxed">
+                Demo data has been cleared. Point your phone/webcam camera at any physical paper bill to auto-extract line items via n8n OCR, or manually record your real customer invoices.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Link
+                to="/invoices/create"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Scan with Camera</span>
+              </Link>
+              <Link
+                to="/customers"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
+              >
+                <Users className="w-4 h-4 text-teal-600" />
+                <span>Add Real Buyers</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Middle Grid: Cash Forecast Chart + What-If Simulation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -283,7 +345,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
               >
                 <option value="">Select customer to test...</option>
-                {CUSTOMERS.map((c) => (
+                {customers.map((c: any) => (
                   <option key={c.id} value={c.id}>
                     {c.name} ({c.city}) — Grade {c.grade}
                   </option>
@@ -387,7 +449,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
             <div className="space-y-3">
               {chaseList.slice(0, 5).map(({ inv, customer, daysLate: dLate, isChronic }, index) => {
                 const phoneClean = customer?.phone?.replace(/\D/g, "") || "919876543210";
-                const waMessage = `Hello ${customer?.name}, gentle reminder that payment of ${formatInr(inv.outstanding)} for invoice ${inv.invoiceNumber} is overdue by ${dLate} days. Please clear today. - Sharma Packaging`;
+                const waMessage = `Hello ${customer?.name || "Customer"}, gentle reminder that payment of ${formatInr(inv.outstanding)} for invoice ${inv.invoiceNumber} is overdue by ${dLate} days. Please clear today. - ${businessProfile.name}`;
                 const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(waMessage)}`;
 
                 return (

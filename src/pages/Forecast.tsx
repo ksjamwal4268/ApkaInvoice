@@ -18,15 +18,18 @@ import {
   Percent,
 } from "lucide-react";
 
+import { useDataStore } from "../hooks/useDataStore";
+
 export function Forecast({ lang: _lang }: { lang: Language }) {
+  const { invoices } = useDataStore();
   const openingBalance = toPaise(2500000); // ₹25,00,000 opening cash
 
   const forecast = useMemo(() => {
     return buildForecast({
       openingBalance,
-      invoices: INVOICES,
+      invoices,
     });
-  }, []);
+  }, [invoices]);
 
   const totalInflow = add(...forecast.weeks.map((w) => w.inflow));
   const totalOutflow = add(...forecast.weeks.map((w) => w.outflow));
