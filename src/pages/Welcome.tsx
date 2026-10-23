@@ -528,7 +528,7 @@ export function Welcome({ lang }: WelcomeProps) {
         </div>
         <p>© {new Date().getFullYear()} ApkaInvoice. Built for Indian Manufacturing & Trading Businesses.</p>
       </footer>
+      <GlowingStarsBackgroundCardPreview />
     </div>
-      <GlowingStarsBackgroundCardPreview className="fixed inset-0 top-0 left-0 right-0 w-full h-full bg-black/30 backdrop-blur-sm z-10" />
   );
 }

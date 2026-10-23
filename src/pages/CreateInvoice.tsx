@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { validateGstin } from "../utils/gstin";
 import { toPaise, formatInr, amountInWords, roundGst, splitCgstSgst } from "../utils/money";
 import { computeDueDate, PaymentTerms } from "../utils/date";
@@ -43,6 +43,7 @@ interface CreateInvoiceProps {
 
 export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateInvoiceProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id: routeInvoiceId } = useParams<{ id?: string }>();
   const isEditing = Boolean(propEditMode || routeInvoiceId);
 
@@ -117,10 +118,83 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         );
       }
     } else {
-      const nextNum = `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`;
-      setInvoiceNumber(nextNum);
+      setInvoiceNumber((prev) => (prev ? prev : `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`));
     }
   }, [isEditing, routeInvoiceId, invoices, customers]);
+
+  // Callback from Camera / OCR modal
+  const handleApplyExtractedData = useCallback(
+    (data: ExtractedInvoiceData, imagePreviewUrl?: string) => {
+      if (imagePreviewUrl) {
+        setScannedImagePreview(imagePreviewUrl);
+      }
+      setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
+
+      let matchedCustomer = customers.find(
+        (c) =>
+          c.name.toLowerCase() === data.buyerName.toLowerCase() ||
+          (data.buyerGstin && c.gstin && c.gstin.toUpperCase() === data.buyerGstin.toUpperCase())
+      );
+
+      if (!matchedCustomer && data.buyerName) {
+        const newCust: Customer = {
+          id: `cust-${Date.now().toString(36)}`,
+          name: data.buyerName,
+          city: data.buyerCity || "Pune",
+          state: data.buyerState || "Maharashtra",
+          gstin: data.buyerGstin || null,
+          pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
+          email: data.buyerEmail || `accounts@${data.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+          phone: data.buyerPhone || "+91 98000 00000",
+          isChronicallyLate: false,
+          grade: "A",
+          gradeReasons: ["Registered via Invoice Document Scanner"],
+        };
+        saveCustomer(newCust);
+        matchedCustomer = newCust;
+      }
+
+      if (matchedCustomer) {
+        setCustomerId(matchedCustomer.id);
+        setGstin(data.buyerGstin || matchedCustomer.gstin || "");
+        setPlaceOfSupply(data.buyerState || matchedCustomer.state || "Maharashtra");
+        setBuyerPhone(data.buyerPhone || matchedCustomer.phone || "");
+        setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
+      }
+
+      if (data.invoiceNumber) {
+        setInvoiceNumber(data.invoiceNumber);
+      }
+      if (data.terms) {
+        setTerms(data.terms as PaymentTerms);
+      }
+      if (data.invoiceDate) {
+        setInvoiceDate(data.invoiceDate);
+      }
+
+      if (data.lineItems && data.lineItems.length > 0) {
+        setLineItems(
+          data.lineItems.map((item, idx) => ({
+            id: String(idx + 1),
+            description: item.description,
+            hsn: item.hsn,
+            quantity: item.quantity,
+            rate: item.rate,
+            gstRate: item.gstRate,
+          }))
+        );
+      }
+    },
+    [customers, saveCustomer]
+  );
+
+  // Listen for prefilled invoice data from navigation
+  useEffect(() => {
+    const locState = location.state as { prefill?: ExtractedInvoiceData; imagePreview?: string } | undefined;
+    if (locState?.prefill) {
+      handleApplyExtractedData(locState.prefill, locState.imagePreview);
+    }
+  }, [location.state, handleApplyExtractedData]);
 
   const customer = customers.find((c) => c.id === customerId);
   const customerState = customer?.state || businessProfile.state || "Maharashtra";
@@ -169,69 +243,6 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       setGstinError(validateGstin(upper) ? null : "Invalid GSTIN format (15 characters required)");
     } else {
       setGstinError(null);
-    }
-  };
-
-  // Callback from Camera / OCR modal
-  const handleApplyExtractedData = (data: ExtractedInvoiceData, imagePreviewUrl?: string) => {
-    if (imagePreviewUrl) {
-      setScannedImagePreview(imagePreviewUrl);
-    }
-    setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
-
-    let matchedCustomer = customers.find(
-      (c) =>
-        c.name.toLowerCase() === data.buyerName.toLowerCase() ||
-        (data.buyerGstin && c.gstin && c.gstin.toUpperCase() === data.buyerGstin.toUpperCase())
-    );
-
-    if (!matchedCustomer && data.buyerName) {
-      const newCust: Customer = {
-        id: `cust-${Date.now().toString(36)}`,
-        name: data.buyerName,
-        city: data.buyerCity || "Pune",
-        state: data.buyerState || "Maharashtra",
-        gstin: data.buyerGstin || null,
-        pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
-        email: data.buyerEmail || `accounts@${data.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
-        phone: data.buyerPhone || "+91 98000 00000",
-        isChronicallyLate: false,
-        grade: "A",
-        gradeReasons: ["Registered via Invoice Document Scanner"],
-      };
-      saveCustomer(newCust);
-      matchedCustomer = newCust;
-    }
-
-    if (matchedCustomer) {
-      setCustomerId(matchedCustomer.id);
-      setGstin(data.buyerGstin || matchedCustomer.gstin || "");
-      setPlaceOfSupply(data.buyerState || matchedCustomer.state || "Maharashtra");
-      setBuyerPhone(data.buyerPhone || matchedCustomer.phone || "");
-      setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
-    }
-
-    if (data.invoiceNumber) {
-      setInvoiceNumber(data.invoiceNumber);
-    }
-    if (data.terms) {
-      setTerms(data.terms as PaymentTerms);
-    }
-    if (data.invoiceDate) {
-      setInvoiceDate(data.invoiceDate);
-    }
-
-    if (data.lineItems && data.lineItems.length > 0) {
-      setLineItems(
-        data.lineItems.map((item, idx) => ({
-          id: String(idx + 1),
-          description: item.description,
-          hsn: item.hsn,
-          quantity: item.quantity,
-          rate: item.rate,
-          gstRate: item.gstRate,
-        }))
-      );
     }
   };
 

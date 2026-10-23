@@ -13,7 +13,7 @@ type Filter = "all" | "due" | "overdue" | "part-paid" | "paid" | "disputed";
 
 export function Invoices({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
-  const { invoices } = useDataStore();
+  const { invoices, refresh } = useDataStore();
 
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -61,9 +61,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     { value: "disputed", label: "Disputed", count: counts.disputed },
   ];
 
-  const handleApplyExtractedData = (_data: ExtractedInvoiceData) => {
-    // Navigate to create invoice
-    navigate("/invoices/create");
+  const handleApplyExtractedData = (data: ExtractedInvoiceData, imagePreviewUrl?: string) => {
+    navigate("/invoices/create", { state: { prefill: data, imagePreview: imagePreviewUrl } });
   };
 
   return (
@@ -266,6 +265,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         onClose={() => setIsCameraModalOpen(false)}
         onApplyExtractedData={handleApplyExtractedData}
         onInvoiceStored={() => {
+          refresh();
           setIsCameraModalOpen(false);
         }}
       />

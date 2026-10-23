@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Language } from "../data/i18n";
 import { formatInr } from "../utils/money";
 import {
@@ -59,7 +59,8 @@ interface DispatchLog {
 const DISPATCH_LOGS_KEY = "cc_n8n_dispatch_logs";
 
 export function Reminders({ lang: _appLang }: { lang: Language }) {
-  const { invoices, customers, businessProfile, addInvoiceEvidence } = useDataStore();
+  const navigate = useNavigate();
+  const { invoices, customers, businessProfile, addInvoiceEvidence, refresh } = useDataStore();
 
   const [activeTab, setActiveTab] = useState<"quick-send" | "ladder" | "history">("quick-send");
   const [selectedStage, setSelectedStage] = useState<StageKey | "all">("all");
@@ -1004,7 +1005,11 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       <InvoiceCameraModal
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
+        onApplyExtractedData={(data, imagePreview) => {
+          navigate("/invoices/create", { state: { prefill: data, imagePreview } });
+        }}
         onInvoiceStored={() => {
+          refresh();
           setIsCameraModalOpen(false);
         }}
       />

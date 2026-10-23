@@ -28,10 +28,11 @@ import {
 
 export function Dashboard({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
-  const { invoices, customers, businessProfile } = useDataStore();
+  const { invoices, customers, businessProfile, refresh } = useDataStore();
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [scanSuccessBanner, setScanSuccessBanner] = useState<string | null>(null);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -207,6 +208,28 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           </div>
         </div>
       </div>
+
+      {/* Invoice Uploaded Live Success Banner */}
+      {scanSuccessBanner && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500 text-white">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">New Invoice Recorded Successfully!</p>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">{scanSuccessBanner}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScanSuccessBanner(null)}
+            className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline font-semibold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* 4 Premium Metric KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -683,6 +706,16 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
       <InvoiceCameraModal
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
+        onInvoiceStored={(stored) => {
+          refresh();
+          setScanSuccessBanner(
+            `Invoice ${stored.invoiceNumber} for ${stored.customerName} (${formatInr(stored.total)}) has been saved and added to the dashboard!`
+          );
+          setTimeout(() => setScanSuccessBanner(null), 8000);
+        }}
+        onApplyExtractedData={(data, imagePreview) => {
+          navigate("/invoices/create", { state: { prefill: data, imagePreview } });
+        }}
       />
     </div>
   );

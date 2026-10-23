@@ -432,18 +432,31 @@ export function storeExtractedInvoice(
   return newInvoice;
 }
 
+import { recognizeInvoiceWithTesseract, parseInvoiceText } from "../utils/ocrParser";
+
 /**
- * Execute OCR extraction via n8n webhook or intelligent fallback
+ * Execute OCR extraction via n8n webhook or intelligent client-side OCR fallback
  */
 export async function processInvoiceImageWithN8n(
   imageData: string | File,
   useRealWebhook: boolean = false,
-  extraParams?: { payerEmail?: string; payerPhone?: string; fileName?: string }
-): Promise<{ data: ExtractedInvoiceData; source: "n8n_live" | "n8n_simulated" }> {
+  extraParams?: {
+    payerEmail?: string;
+    payerPhone?: string;
+    fileName?: string;
+    onProgress?: (step: string) => void;
+  }
+): Promise<{
+  data: ExtractedInvoiceData;
+  source: "n8n_live" | "ocr_tesseract" | "n8n_simulated";
+  rawText?: string;
+}> {
   const config = getN8nConfig();
 
+  // Step 1: Try n8n cloud webhook
   if (useRealWebhook && config.ocrWebhookUrl && config.ocrWebhookUrl.startsWith("http")) {
     try {
+      extraParams?.onProgress?.("Uploading to n8n Document AI Webhook...");
       const formData = new FormData();
       if (typeof imageData === "string") {
         if (imageData.startsWith("data:")) {
@@ -476,27 +489,29 @@ export async function processInvoiceImageWithN8n(
 
       if (res.ok) {
         const json = await res.json();
-        if (json && (json.invoiceNumber || json.invoice_number)) {
-          const grandTotal = Number(json.amount || json.grandTotal || 0);
-          const subtotal = Number(json.subtotal || (grandTotal > 0 ? grandTotal * 0.82 : 0));
-          const totalGst = Number(json.totalGst || json.total_gst || (grandTotal > 0 ? grandTotal * 0.18 : 0));
+        // Handle single object or array response from n8n
+        const payload = Array.isArray(json) ? json[0] : json;
+        if (payload && (payload.invoiceNumber || payload.invoice_number || payload.amount || payload.grandTotal)) {
+          const grandTotal = Number(payload.amount || payload.grandTotal || 0);
+          const subtotal = Number(payload.subtotal || (grandTotal > 0 ? grandTotal * 0.82 : 0));
+          const totalGst = Number(payload.totalGst || payload.total_gst || (grandTotal > 0 ? grandTotal * 0.18 : 0));
 
           const normalized: ExtractedInvoiceData = {
-            invoiceNumber: json.invoice_number || json.invoiceNumber || "INV-001",
-            buyerName: json.payer_name || json.buyerName || "Customer",
-            buyerGstin: json.payer_gstin || json.buyerGstin || "",
-            buyerCity: json.payer_city || json.buyerCity || "",
-            buyerState: json.payer_state || json.buyerState || "Maharashtra",
-            buyerPhone: json.payer_phone || json.buyerPhone || extraParams?.payerPhone || "",
-            buyerEmail: json.payer_email || json.buyerEmail || extraParams?.payerEmail || "",
-            invoiceDate: json.invoice_date || json.invoiceDate || new Date().toISOString().split("T")[0],
-            dueDate: json.due_date || json.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-            terms: json.terms || "Net 30",
-            lineItems: json.lineItems || json.line_items || [
+            invoiceNumber: payload.invoice_number || payload.invoiceNumber || `INV-${Date.now().toString().slice(-4)}`,
+            buyerName: payload.payer_name || payload.buyerName || "Customer",
+            buyerGstin: payload.payer_gstin || payload.buyerGstin || "",
+            buyerCity: payload.payer_city || payload.buyerCity || "Mumbai",
+            buyerState: payload.payer_state || payload.buyerState || "Maharashtra",
+            buyerPhone: payload.payer_phone || payload.buyerPhone || extraParams?.payerPhone || "",
+            buyerEmail: payload.payer_email || payload.buyerEmail || extraParams?.payerEmail || "",
+            invoiceDate: payload.invoice_date || payload.invoiceDate || new Date().toISOString().split("T")[0],
+            dueDate: payload.due_date || payload.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+            terms: payload.terms || "Net 30",
+            lineItems: payload.lineItems || payload.line_items || [
               {
                 id: "1",
-                description: json.description || "General Goods / Services",
-                hsn: json.hsn || "9983",
+                description: payload.description || "General Goods / Services",
+                hsn: payload.hsn || "9983",
                 quantity: 1,
                 rate: grandTotal,
                 gstRate: 18,
@@ -506,18 +521,37 @@ export async function processInvoiceImageWithN8n(
             totalGst,
             grandTotal,
             isNewBuyer: true,
-            confidenceScore: json.confidenceScore || 98.0,
+            confidenceScore: payload.confidenceScore || 98.0,
           };
           return { data: normalized, source: "n8n_live" };
         }
       }
     } catch (err) {
-      console.warn("n8n live webhook unavailable or failed, falling back to simulated parser:", err);
+      console.warn("n8n live webhook unavailable or returned error, initiating neural OCR fallback:", err);
     }
   }
 
-  // Processing delay
-  await new Promise((r) => setTimeout(r, 1200));
+  // Step 2: Client-side Neural OCR using Tesseract (reads actual photo text!)
+  try {
+    extraParams?.onProgress?.("Neural Engine: Scanning bill text, GSTIN & amounts...");
+    const rawText = await recognizeInvoiceWithTesseract(imageData, (status) => {
+      extraParams?.onProgress?.(status);
+    });
+
+    if (rawText && rawText.trim().length > 15) {
+      const parsed = parseInvoiceText(rawText, extraParams);
+      return {
+        data: parsed,
+        source: "ocr_tesseract",
+        rawText,
+      };
+    }
+  } catch (ocrErr) {
+    console.warn("Neural OCR failed, falling back to simulated parser:", ocrErr);
+  }
+
+  // Step 3: Intelligent preset fallback if image is completely unreadable
+  await new Promise((r) => setTimeout(r, 600));
   const preset = SAMPLE_OCR_PRESETS[presetCycle % SAMPLE_OCR_PRESETS.length];
   presetCycle++;
   return {

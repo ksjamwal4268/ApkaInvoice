@@ -50,7 +50,7 @@ export function InvoiceCameraModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>("");
   const [extractedData, setExtractedData] = useState<ExtractedInvoiceData | null>(null);
-  const [ocrSource, setOcrSource] = useState<"n8n_live" | "n8n_simulated">("n8n_simulated");
+  const [ocrSource, setOcrSource] = useState<"n8n_live" | "ocr_tesseract" | "n8n_simulated">("n8n_simulated");
   const [buyerSaved, setBuyerSaved] = useState(false);
   const [storedInvoice, setStoredInvoice] = useState<Invoice | null>(null);
 
@@ -149,16 +149,11 @@ export function InvoiceCameraModal({
 
     try {
       setProcessingStep("Uploading to n8n Document AI Webhook...");
-      await new Promise((r) => setTimeout(r, 600));
-
-      setProcessingStep("Vision Model: Analyzing invoice layout & HSN items...");
-      await new Promise((r) => setTimeout(r, 600));
-
-      setProcessingStep("Verifying Indian GSTIN & calculating taxes...");
       const res = await processInvoiceImageWithN8n(imageData, true, {
         payerEmail: payerEmail.trim() || undefined,
         payerPhone: payerPhone.trim() || undefined,
         fileName: customFileName || fileName,
+        onProgress: (step: string) => setProcessingStep(step),
       });
 
       setExtractedData(res.data);
@@ -551,7 +546,7 @@ export function InvoiceCameraModal({
                         <div className="p-8 text-center text-slate-400">No preview</div>
                       )}
                       <div className="absolute top-2.5 right-2.5 bg-slate-900/80 backdrop-blur-md px-2 py-1 rounded text-[10px] text-teal-300 font-mono border border-teal-500/30">
-                        {ocrSource === "n8n_live" ? "Live n8n Webhook" : "Document AI Parser"}
+                        {ocrSource === "n8n_live" ? "Live n8n Webhook" : ocrSource === "ocr_tesseract" ? "Neural Vision OCR" : "Document AI Parser"}
                       </div>
                     </div>
 
