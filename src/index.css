@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Schibsted Grotesk", system-ui, sans-serif;
+
+  --color-teal-900: #0f4c5c;
+  --color-teal-800: #12606e;
+  --color-teal-700: #147283;
+  --color-teal-600: #0f766b;
+  --color-teal-500: #118ab2;
+  --color-slate-900: #0f172a;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
+  --color-slate-50: #f8fafc;
+  --color-red-500: #dc2626;
+  --color-red-600: #b91c1c;
+  --color-amber-500: #d97706;
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap");
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+  min-height: 100vh;
+  margin: 0;
+}
+
+.dark {
+  @apply bg-slate-900 text-slate-100;
+}
+
+:focus-visible {
+  @apply outline-none ring-2 ring-teal-600 ring-offset-2 ring-offset-slate-50;
+}
+
+.dark :focus-visible {
+  ring-offset-color: #0f172a;
+}
+
+.reduce-motion {
+  transition: none !important;
+  animation: none !important;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.sentence-case {
+  text-transform: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.demo-banner {
+  @apply bg-amber-100 border border-amber-200 text-amber-900 text-xs px-3 py-1.5 flex items-center gap-2 justify-center;
+}
+
+.dark .demo-banner {
+  @apply bg-amber-900/20 border-amber-800 text-amber-100;
+}
