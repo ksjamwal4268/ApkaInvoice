@@ -40,7 +40,8 @@ export function KpiCard({
           </p>
         </div>
         {change && (
-          <span className={changeColor} className="text-xs font-medium">
+          <span className={`text-xs font-medium ${changeColor}`}>
+
             {change}
           </span>
         )}

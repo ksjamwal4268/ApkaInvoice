@@ -10,21 +10,13 @@
  */
 
 import { Paise, fromPaise, add, subtract } from "./money";
-import { generateWeeks, formatWeekLabel, startOfWeek } from "./date";
+import { generateWeeks, formatWeekLabel, startOfWeek, addDays } from "./date";
 
 export type CustomerId = string;
 export type InvoiceId = string;
 
-export interface Invoice {
-  id: InvoiceId;
-  customerId: CustomerId;
-  customerName: string;
-  amount: Paise; // total including GST
-  outstanding: Paise;
-  dueDate: Date;
-  status: "paid" | "overdue" | "part-paid" | "due" | "disputed";
-  paidAmount: Paise;
-}
+export type { Invoice } from "../data/sampleData";
+import type { Invoice } from "../data/sampleData";
 
 export interface Customer {
   id: CustomerId;
@@ -159,8 +151,8 @@ export function buildForecast({
     runningOpening = closing;
   }
 
-  const totalInflow = weeklyInflow.reduce(add, 0);
-  const totalOutflow = weeklyOutflow.reduce(add, 0);
+  const totalInflow = weeklyInflow.reduce((sum, v) => sum + v, 0);
+  const totalOutflow = weeklyOutflow.reduce((sum, v) => sum + v, 0);
 
   return {
     weeks: weeklyFlows,
@@ -171,7 +163,7 @@ export function buildForecast({
 }
 
 /** Get a human-readable label for the shortfall week */
-export function shortfallLabel(forecast: ForecastResult): string {
+export function shortfallLabel(forecast: ForecastResult): string | null {
   if (forecast.shortfallWeekIndex === null) return null;
   const week = forecast.weeks[forecast.shortfallWeekIndex];
   return `Cash runs short in the week of ${week.weekLabel} (closing balance ${formatInr(week.closing)}).`;

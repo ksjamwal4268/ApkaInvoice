@@ -11,7 +11,7 @@ import { formatDate, daysBetween } from "../utils/date";
 import { INVOICES, CUSTOMERS, getCustomer, totalOutstanding, totalOverdue } from "../data/sampleData";
 import { t, Language } from "../data/i18n";
 
-export function Dashboard({ lang }: { lang: Language }): JSX.Element {
+export function Dashboard({ lang }: { lang: Language }) {
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
 
@@ -153,10 +153,12 @@ export function Dashboard({ lang }: { lang: Language }): JSX.Element {
           />
           <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
             {shortfallWeek ? (
-              <span className="font-medium text-slate-900 dark:text-white">
-                Week of {shortfallWeek.weekLabel}:
-              </span>{" "}
-              closing balance dips below zero.
+              <>
+                <span className="font-medium text-slate-900 dark:text-white">
+                  Week of {shortfallWeek.weekLabel}:
+                </span>{" "}
+                closing balance dips below zero.
+              </>
             ) : (
               "No cash shortfall expected in the next 8 weeks."
             )}

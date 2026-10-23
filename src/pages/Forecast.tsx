@@ -1,14 +1,13 @@
 import { useMemo } from "react";
-import { Shell } from "../components/Shell";
 import { Money } from "../components/Money";
 import { ForecastChart } from "../components/ForecastChart";
 import { buildForecast } from "../utils/forecast";
 import { formatInr, add } from "../utils/money";
 import { formatWeekLabel } from "../utils/date";
 import { INVOICES } from "../data/sampleData";
-import { Language } from "../data/i18n;
+import { Language } from "../data/i18n";
 
-export function Forecast({ lang }: { lang: Language }): JSX.Element {
+export function Forecast({ lang }: { lang: Language }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -23,8 +22,7 @@ export function Forecast({ lang }: { lang: Language }): JSX.Element {
   const totalOutflow = add(...forecast.weeks.map((w) => w.outflow));
 
   return (
-    <Shell lang={lang} onLangChange={() => {}} dark={false} onToggleDark={() => {}}>
-      <div className="space-y-6">
+          <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
             Cash forecast
@@ -156,6 +154,5 @@ export function Forecast({ lang }: { lang: Language }): JSX.Element {
           )}
         </div>
       </div>
-    </Shell>
   );
 }

@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { formatDate } from "../utils/date";
 import { formatInr } from "../utils/money";
 import { getInvoice } from "../data/sampleData";
-import { Language } from "../data/i18n;
+import { Language } from "../data/i18n";
 
-export function Dispute({ lang }: { lang: Language }): JSX.Element {
+export function Dispute({ lang }: { lang: Language }) {
   const { invoiceId } = useParams();
   const navigate = useNavigate();
   const invoice = getInvoice(invoiceId || "");

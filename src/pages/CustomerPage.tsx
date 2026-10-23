@@ -1,22 +1,20 @@
 import { useParams } from "react-router-dom";
-import { Shell } from "../components/Shell";
 import { Money } from "../components/Money";
 import { formatDate } from "../utils/date";
+import { formatInr } from "../utils/money";
 import { getCustomer, getInvoicesForCustomer, CUSTOMERS } from "../data/sampleData";
-import { Language } from "../data/i18n;
+import { Language } from "../data/i18n";
 
-export function CustomerPage({ lang }: { lang: Language }): JSX.Element {
+export function CustomerPage({ lang }: { lang: Language }) {
   const { id } = useParams();
   const customer = getCustomer(id || "");
   const invoices = customer ? getInvoicesForCustomer(customer.id) : [];
 
   if (!customer) {
     return (
-      <Shell lang={lang} onLangChange={() => {}} dark={false} onToggleDark={() => {}}>
-        <div className="text-center py-20">
+              <div className="text-center py-20">
           <h2 className="text-lg font-medium text-slate-900 dark:text-white">Customer not found</h2>
         </div>
-      </Shell>
     );
   }
 
@@ -26,8 +24,7 @@ export function CustomerPage({ lang }: { lang: Language }): JSX.Element {
   const avgDaysLate = customer.isChronicallyLate ? 22 : customer.grade === "B" ? 7 : 1;
 
   return (
-    <Shell lang={lang} onLangChange={() => {}} dark={false} onToggleDark={() => {}}>
-      <div className="space-y-6">
+          <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
@@ -106,6 +103,5 @@ export function CustomerPage({ lang }: { lang: Language }): JSX.Element {
           )}
         </div>
       </div>
-    </Shell>
   );
 }

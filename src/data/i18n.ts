@@ -371,6 +371,7 @@ export const translations: Record<Language, Record<string, string>> = {
   },
 };
 
-export function t(lang: Language, key: string): string {
-  return translations[lang][key] || translations["en"][key] || key;
+export function t(lang: Language = "en", key: string): string {
+  const dict = translations[lang] || translations["en"];
+  return dict?.[key] || translations["en"]?.[key] || key;
 }

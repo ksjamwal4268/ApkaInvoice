@@ -1,6 +1,6 @@
 import React from "react";
 import { Globe, Sun, Moon } from "lucide-react";
-import { t, Language } from "../data/i18n;
+import { t, Language } from "../data/i18n";
 
 interface LanguageSwitchProps {
   lang: Language;
@@ -41,7 +41,7 @@ export function LanguageSwitch({
             <button
               key={l.value}
               onClick={() => onChange(l.value as Language)}
-              className="w-full text-left px-3 py-2 text-sm border-b hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 last:border-0 tap-target {lang === l.value ? "bg-slate-100 dark:bg-slate-700 font-medium" : ""}"
+              className={`w-full text-left px-3 py-2 text-sm border-b hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 last:border-0 tap-target ${lang === l.value ? "bg-slate-100 dark:bg-slate-700 font-medium" : ""}`}
             >
               {l.label}
             </button>

@@ -1,16 +1,22 @@
-import { useState } from "react";
-import { Shell } from "../components/Shell";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Money } from "../components/Money";
+import { formatInr } from "../utils/money";
 import { INVOICES } from "../data/sampleData";
-import { Language } from "../data/i18n;
+import { Language } from "../data/i18n";
 
-export function DemandLetter({ lang }: { lang: Language }): JSX.Element {
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+export function DemandLetter({ lang }: { lang: Language }) {
+  const [searchParams] = useSearchParams();
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(searchParams.get("invoice") || null);
+
+  useEffect(() => {
+    const inv = searchParams.get("invoice");
+    if (inv) setSelectedInvoiceId(inv);
+  }, [searchParams]);
   const invoice = selectedInvoiceId ? INVOICES.find((i) => i.id === selectedInvoiceId) : null;
 
   return (
-    <Shell lang={lang} onLangChange={() => {}} dark={false} onToggleDark={() => {}}>
-      <div className="space-y-6">
+          <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
             Payment demand letter
@@ -143,6 +149,5 @@ export function DemandLetter({ lang }: { lang: Language }): JSX.Element {
           </div>
         )}
       </div>
-    </Shell>
   );
 }

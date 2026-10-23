@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Shell } from "./components/Shell";
-import { t, Language } from "./data/i18n";
+import { Language } from "./data/i18n";
 import { Dashboard } from "./pages/Dashboard";
 import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
@@ -14,11 +14,12 @@ import { CreateInvoice } from "./pages/CreateInvoice";
 import { Payments } from "./pages/Payments";
 import { Reminders } from "./pages/Reminders";
 import { DemandLetter } from "./pages/DemandLetter";
+import { Customers } from "./pages/Customers";
 import { CustomerPage } from "./pages/CustomerPage";
 import { Dispute } from "./pages/Dispute";
 import { Forecast } from "./pages/Forecast";
 
-export default function App(): JSX.Element {
+export default function App() {
   const [lang, setLang] = useState<Language>("en");
   const [dark, setDark] = useState(false);
 
@@ -59,16 +60,17 @@ export default function App(): JSX.Element {
     <Router>
       <Shell lang={lang} onLangChange={onLangChange} dark={dark} onToggleDark={onToggleDark}>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/invoices" element={<Invoices />} />
-          <Route path="/invoices/:id" element={<InvoiceDetail />} />
-          <Route path="/invoices/create" element={<CreateInvoice />} />
-          <Route path="/payments" element={<Payments />} />
-          <Route path="/reminders" element={<Reminders />} />
-          <Route path="/demand-letter" element={<DemandLetter />} />
-          <Route path="/customers/:id" element={<CustomerPage />} />
-          <Route path="/dispute/:invoiceId" element={<Dispute />} />
-          <Route path="/forecast" element={<Forecast />} />
+          <Route path="/" element={<Dashboard lang={lang} />} />
+          <Route path="/invoices" element={<Invoices lang={lang} />} />
+          <Route path="/invoices/:id" element={<InvoiceDetail lang={lang} />} />
+          <Route path="/invoices/create" element={<CreateInvoice lang={lang} />} />
+          <Route path="/payments" element={<Payments lang={lang} />} />
+          <Route path="/reminders" element={<Reminders lang={lang} />} />
+          <Route path="/demand-letter" element={<DemandLetter lang={lang} />} />
+          <Route path="/customers" element={<Customers lang={lang} />} />
+          <Route path="/customers/:id" element={<CustomerPage lang={lang} />} />
+          <Route path="/dispute/:invoiceId" element={<Dispute lang={lang} />} />
+          <Route path="/forecast" element={<Forecast lang={lang} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>

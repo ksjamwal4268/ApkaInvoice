@@ -6,11 +6,12 @@ import {
   Banknote,
   MessageCircle,
   TrendingUp,
+  Users,
   Menu,
 } from "lucide-react";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { DemoBanner } from "./DemoBanner";
-import { t, Language } from "../data/i18n;
+import { t, Language } from "../data/i18n";
 
 const NAV_ITEMS = [
   { path: "/", label: "navDashboard", icon: LayoutDashboard },
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { path: "/payments", label: "navPayments", icon: Banknote },
   { path: "/reminders", label: "navReminders", icon: MessageCircle },
   { path: "/forecast", label: "navForecast", icon: TrendingUp },
+  { path: "/customers", label: "navCustomers", icon: Users },
 ];
 
 interface ShellProps {
@@ -48,23 +50,31 @@ export function Shell({
     (path !== "/" && location.pathname.startsWith(path));
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900">
-      <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
+      <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen((o) => !o)}
-            className="md:hidden tap-target"
+            className="md:hidden p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 tap-target"
             aria-label="Toggle menu"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded bg-teal-600 flex items-center justify-center text-white font-bold text-sm">
-              SC
+          <div
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2.5 cursor-pointer select-none"
+          >
+            <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-xs">
+              CC
             </div>
-            <span className="font-bold text-lg text-slate-900 dark:text-white">
-              Cash Copilot
-            </span>
+            <div>
+              <span className="font-bold text-lg text-slate-900 dark:text-white leading-tight block">
+                Cash Copilot
+              </span>
+              <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium hidden sm:block">
+                Cash shortage forecaster & unpaid invoice chaser
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -77,22 +87,29 @@ export function Shell({
         </div>
       </header>
 
+      {/* Mobile Drawer */}
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 bg-slate-900/50 z-30 md:hidden"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 md:hidden"
             onClick={() => setSidebarOpen(false)}
-          ></div>
-          <aside className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40 md:hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          />
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40 md:hidden flex flex-col shadow-xl">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded bg-teal-600 flex items-center justify-center text-white font-bold text-xs">
+                  CC
+                </div>
+                <span className="font-bold text-slate-900 dark:text-white">Cash Copilot</span>
+              </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:hover:text-white tap-target"
+                className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                <span className="text-sm font-medium">Back</span>
+                ✕
               </button>
             </div>
-            <nav className="p-3 space-y-1">
+            <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
               {NAV_ITEMS.map((item) => (
                 <button
                   key={item.path}
@@ -100,13 +117,13 @@ export function Shell({
                     navigate(item.path);
                     setSidebarOpen(false);
                   }}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                     isActive(item.path)
-                      ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400"
+                      ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400 font-semibold"
                       : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   } tap-target`}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className="w-5 h-5 shrink-0" />
                   <span>{t(lang, item.label)}</span>
                 </button>
               ))}
@@ -115,54 +132,54 @@ export function Shell({
         </>
       )}
 
-      <div className="hidden md:flex md:w-64 flex-col border-r border-slate-200 dark:border-slate-700">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-teal-600 flex items-center justify-center text-white font-bold text-sm">
-            SC
+      {/* Main Container: Sidebar + Main Content side by side */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:flex md:w-60 flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
+          <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive(item.path)
+                    ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400 font-semibold"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                } tap-target`}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span>{t(lang, item.label)}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="p-3 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-400 dark:text-slate-500">
+            <p className="font-semibold text-slate-600 dark:text-slate-400">Sharma Packaging</p>
+            <p>Pune, MH • GSTIN: 27AABCS1234Q1ZM</p>
           </div>
-          <span className="font-bold text-lg text-slate-900 dark:text-white">
-            Cash Copilot
-          </span>
-        </div>
-        <nav className="p-3 space-y-1 flex-1">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                isActive(item.path)
-                  ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-              } tap-target`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{t(lang, item.label)}</span>
-            </button>
-          ))}
-        </nav>
+        </aside>
+
+        {/* Scrollable Main View Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-8">
+          <DemoBanner />
+          <div className="space-y-6 max-w-7xl mx-auto">{children}</div>
+        </main>
       </div>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <DemoBanner />
-        <div className="space-y-6">{children}</div>
-      </main>
-
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
-        <div className="flex justify-around px-2 py-2">
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 shadow-lg">
+        <div className="flex justify-around px-1 py-1">
           {NAV_ITEMS.map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 px-2 py-2 text-sm transition-colors tap-target ${
+              className={`flex flex-col items-center gap-1 py-1 px-2 text-[11px] transition-colors tap-target ${
                 isActive(item.path)
-                  ? "text-teal-600"
+                  ? "text-teal-600 dark:text-teal-400 font-semibold"
                   : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               }`}
             >
-              <item.icon className="w-5 h-5" />
-              <span className={isActive(item.path) ? "font-medium" : ""}>
-                {t(lang, item.label)}
-              </span>
+              <item.icon className="w-4 h-4" />
+              <span>{t(lang, item.label)}</span>
             </button>
           ))}
         </div>
