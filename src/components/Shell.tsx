@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
@@ -8,19 +8,14 @@ import {
   TrendingUp,
   Users,
   Menu,
+  Plus,
+  Building2,
+  FileWarning,
 } from "lucide-react";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { DemoBanner } from "./DemoBanner";
 import { t, Language } from "../data/i18n";
-
-const NAV_ITEMS = [
-  { path: "/", label: "navDashboard", icon: LayoutDashboard },
-  { path: "/invoices", label: "navInvoices", icon: FileText },
-  { path: "/payments", label: "navPayments", icon: Banknote },
-  { path: "/reminders", label: "navReminders", icon: MessageCircle },
-  { path: "/forecast", label: "navForecast", icon: TrendingUp },
-  { path: "/customers", label: "navCustomers", icon: Users },
-];
+import { INVOICES, BUSINESS } from "../data/sampleData";
 
 interface ShellProps {
   children: React.ReactNode;
@@ -45,39 +40,78 @@ export function Shell({
     setSidebarOpen(false);
   }, [location]);
 
+  const overdueCount = INVOICES.filter(
+    (i) => i.status === "overdue" && i.outstanding > 0 && !i.isDisputed
+  ).length;
+
+  const NAV_ITEMS = [
+    { path: "/", label: "navDashboard", icon: LayoutDashboard },
+    { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${INVOICES.length}` },
+    { path: "/payments", label: "navPayments", icon: Banknote },
+    {
+      path: "/reminders",
+      label: "navReminders",
+      icon: MessageCircle,
+      badge: overdueCount > 0 ? `${overdueCount}` : undefined,
+      badgeColor: "bg-rose-500 text-white",
+    },
+    { path: "/forecast", label: "navForecast", icon: TrendingUp },
+    { path: "/customers", label: "navCustomers", icon: Users },
+  ];
+
   const isActive = (path: string) =>
     location.pathname === path ||
     (path !== "/" && location.pathname.startsWith(path));
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
-      <header className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-xs">
+    <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased font-sans">
+      {/* Top Glassmorphic Navigation Bar */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-700/80 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen((o) => !o)}
-            className="md:hidden p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 tap-target"
+            className="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 tap-target"
             aria-label="Toggle menu"
           >
             <Menu className="w-5 h-5" />
           </button>
+
+          {/* Logo & Brand */}
           <div
             onClick={() => navigate("/")}
-            className="flex items-center gap-2.5 cursor-pointer select-none"
+            className="flex items-center gap-2.5 cursor-pointer select-none group"
           >
-            <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-extrabold text-sm shadow-sm group-hover:scale-105 transition-transform">
               CC
             </div>
             <div>
-              <span className="font-bold text-lg text-slate-900 dark:text-white leading-tight block">
+              <span className="font-extrabold text-lg text-slate-900 dark:text-white leading-tight block tracking-tight">
                 Cash Copilot
               </span>
-              <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium hidden sm:block">
-                Cash shortage forecaster & unpaid invoice chaser
+              <span className="text-[11px] text-teal-600 dark:text-teal-400 font-medium hidden sm:block">
+                MSME Cash Shortage Forecaster
               </span>
             </div>
           </div>
+
+          {/* Active Business Chip */}
+          <div className="hidden lg:flex items-center gap-1.5 ml-4 pl-4 border-l border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+            <Building2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span className="font-semibold text-slate-800 dark:text-slate-200">{BUSINESS.name}</span>
+            <span className="text-[11px] text-slate-400">({BUSINESS.city})</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Right Actions */}
+        <div className="flex items-center gap-3">
+          <Link
+            to="/invoices/create"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition-colors tap-target"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Invoice</span>
+          </Link>
+
           <LanguageSwitch
             lang={lang}
             onChange={onLangChange}
@@ -91,13 +125,13 @@ export function Shell({
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 md:hidden"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-40 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-40 md:hidden flex flex-col shadow-xl">
+          <aside className="fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 z-50 md:hidden flex flex-col shadow-2xl">
             <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded bg-teal-600 flex items-center justify-center text-white font-bold text-xs">
+                <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-xs">
                   CC
                 </div>
                 <span className="font-bold text-slate-900 dark:text-white">Cash Copilot</span>
@@ -117,71 +151,131 @@ export function Shell({
                     navigate(item.path);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
                     isActive(item.path)
-                      ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400 font-semibold"
+                      ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400"
                       : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   } tap-target`}
                 >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  <span>{t(lang, item.label)}</span>
+                  <div className="flex items-center gap-3">
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    <span>{t(lang, item.label)}</span>
+                  </div>
+                  {item.badge && (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        item.badgeColor || "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 text-xs">
+              <Link
+                to="/demand-letter"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-teal-600"
+              >
+                <FileWarning className="w-4 h-4" />
+                <span>Demand Letters</span>
+              </Link>
+            </div>
           </aside>
         </>
       )}
 
-      {/* Main Container: Sidebar + Main Content side by side */}
+      {/* Desktop Layout Container */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden md:flex md:w-60 flex-col bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
-          <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.path)
-                    ? "bg-teal-600/10 border border-teal-600/30 text-teal-700 dark:text-teal-400 font-semibold"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                } tap-target`}
-              >
-                <item.icon className="w-5 h-5 shrink-0" />
-                <span>{t(lang, item.label)}</span>
-              </button>
-            ))}
-          </nav>
-          <div className="p-3 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-400 dark:text-slate-500">
-            <p className="font-semibold text-slate-600 dark:text-slate-400">Sharma Packaging</p>
-            <p>Pune, MH • GSTIN: 27AABCS1234Q1ZM</p>
+        {/* Modern Sidebar */}
+        <aside className="hidden md:flex md:w-64 flex-col bg-white dark:bg-slate-800 border-r border-slate-200/80 dark:border-slate-700/80 shrink-0">
+          <div className="p-3">
+            <nav className="space-y-1">
+              {NAV_ITEMS.map((item) => {
+                const active = isActive(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                      active
+                        ? "bg-teal-600 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60"
+                    } tap-target`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className={`w-5 h-5 shrink-0 ${active ? "text-white" : "text-slate-500"}`} />
+                      <span>{t(lang, item.label)}</span>
+                    </div>
+                    {item.badge && (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          active
+                            ? "bg-white/20 text-white"
+                            : item.badgeColor || "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Business Profile Footnote in Sidebar */}
+          <div className="mt-auto p-4 border-t border-slate-200/80 dark:border-slate-700/80 bg-slate-50/50 dark:bg-slate-850">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 font-bold text-xs flex items-center justify-center shrink-0">
+                SP
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                  {BUSINESS.name}
+                </p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
+                  GST: {BUSINESS.gstin}
+                </p>
+              </div>
+            </div>
           </div>
         </aside>
 
-        {/* Scrollable Main View Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-8">
-          <DemoBanner />
-          <div className="space-y-6 max-w-7xl mx-auto">{children}</div>
+        {/* Scrollable Main Area */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-10">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <DemoBanner />
+            {children}
+          </div>
         </main>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 shadow-lg">
-        <div className="flex justify-around px-1 py-1">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 py-1 px-2 text-[11px] transition-colors tap-target ${
-                isActive(item.path)
-                  ? "text-teal-600 dark:text-teal-400 font-semibold"
-                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              <span>{t(lang, item.label)}</span>
-            </button>
-          ))}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 shadow-xl">
+        <div className="flex justify-around px-1 py-1.5">
+          {NAV_ITEMS.slice(0, 5).map((item) => {
+            const active = isActive(item.path);
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`relative flex flex-col items-center gap-1 py-1 px-3 text-[10px] font-semibold transition-colors tap-target ${
+                  active
+                    ? "text-teal-600 dark:text-teal-400"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{t(lang, item.label)}</span>
+                {item.badge && (
+                  <span className="absolute top-1 right-2.5 h-2 w-2 rounded-full bg-rose-500" />
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>

@@ -1,17 +1,31 @@
 import { useState, useMemo } from "react";
-import { Shell } from "../components/Shell";
+import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
-import { StatusBadge } from "../components/StatusBadge";
-import { Money } from "../components/Money";
 import { ForecastChart } from "../components/ForecastChart";
 import { EmptyState } from "../components/EmptyState";
 import { formatInr, toPaise, fromPaise, add } from "../utils/money";
 import { buildForecast, DEFAULT_OUTFLOWS } from "../utils/forecast";
-import { formatDate, daysBetween } from "../utils/date";
-import { INVOICES, CUSTOMERS, getCustomer, totalOutstanding, totalOverdue } from "../data/sampleData";
-import { t, Language } from "../data/i18n";
+import { daysBetween } from "../utils/date";
+import { INVOICES, CUSTOMERS, getCustomer, totalOutstanding, totalOverdue, BUSINESS } from "../data/sampleData";
+import { Language } from "../data/i18n";
+import {
+  Wallet,
+  Clock,
+  TrendingUp,
+  Calendar,
+  AlertTriangle,
+  ArrowRight,
+  MessageSquare,
+  Plus,
+  Sliders,
+  ShieldAlert,
+  Percent,
+  Banknote,
+  Users,
+} from "lucide-react";
 
-export function Dashboard({ lang }: { lang: Language }) {
+export function Dashboard({ lang: _lang }: { lang: Language }) {
+  const navigate = useNavigate();
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
 
@@ -42,7 +56,7 @@ export function Dashboard({ lang }: { lang: Language }) {
 
   const forecast = useMemo(() => {
     return buildForecast({
-      openingBalance: toPaise(2500000),
+      openingBalance: toPaise(2500000), // ₹25,00,000 opening liquidity
       invoices: INVOICES,
       whatIf,
     });
@@ -56,7 +70,7 @@ export function Dashboard({ lang }: { lang: Language }) {
       const dLate = daysBetween(inv.dueDate, today);
       const isChronic = customer?.isChronicallyLate || false;
       const score = inv.outstanding * dLate * (isChronic ? 2 : 1);
-      return { inv, daysLate: dLate, isChronic, score };
+      return { inv, customer, daysLate: dLate, isChronic, score };
     }).sort((a, b) => b.score - a.score);
   }, []);
 
@@ -64,6 +78,7 @@ export function Dashboard({ lang }: { lang: Language }) {
     const current = INVOICES.filter(
       (inv) => inv.status === "due" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => add(sum, inv.outstanding), 0);
+
     const overdue1_30 = INVOICES.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
@@ -71,6 +86,7 @@ export function Dashboard({ lang }: { lang: Language }) {
       if (d <= 30) return add(sum, inv.outstanding);
       return sum;
     }, 0);
+
     const overdue31_60 = INVOICES.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
@@ -78,6 +94,7 @@ export function Dashboard({ lang }: { lang: Language }) {
       if (d > 30 && d <= 60) return add(sum, inv.outstanding);
       return sum;
     }, 0);
+
     const overdue60plus = INVOICES.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
     ).reduce((sum, inv) => {
@@ -85,13 +102,19 @@ export function Dashboard({ lang }: { lang: Language }) {
       if (d > 60) return add(sum, inv.outstanding);
       return sum;
     }, 0);
+
     return [
-      { label: "Current", amount: current, color: "text-teal-600 dark:text-teal-400" },
-      { label: "1–30 days", amount: overdue1_30, color: "text-amber-500 dark:text-amber-400" },
-      { label: "31–60 days", amount: overdue31_60, color: "text-orange-500 dark:text-orange-400" },
-      { label: "60+ days", amount: overdue60plus, color: "text-red-500 dark:text-red-400" },
+      { label: "Current (Not due)", amount: current, bg: "bg-teal-600", color: "text-teal-600 dark:text-teal-400" },
+      { label: "1–30 days overdue", amount: overdue1_30, bg: "bg-amber-500", color: "text-amber-500 dark:text-amber-400" },
+      { label: "31–60 days overdue", amount: overdue31_60, bg: "bg-orange-500", color: "text-orange-500 dark:text-orange-400" },
+      { label: "60+ days overdue", amount: overdue60plus, bg: "bg-rose-600", color: "text-rose-600 dark:text-rose-400" },
     ];
   }, []);
+
+  const totalAgeing = useMemo(
+    () => add(...ageingBuckets.map((b) => b.amount)),
+    [ageingBuckets]
+  );
 
   const shortfallWeek = forecast.shortfallWeekIndex !== null
     ? forecast.weeks[forecast.shortfallWeekIndex]
@@ -99,269 +122,488 @@ export function Dashboard({ lang }: { lang: Language }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
-          Dashboard
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Track invoices and see cash shortages coming.
-        </p>
+      {/* Business Header & Cash Health Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-teal-900 via-teal-800 to-slate-900 p-6 text-white shadow-xl">
+        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
+                {BUSINESS.city}, {BUSINESS.state}
+              </span>
+              {shortfallWeek ? (
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-ping" />
+                  Shortfall in {shortfallWeek.weekLabel}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Healthy Runway (8+ Weeks)
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {BUSINESS.name}
+            </h1>
+            <p className="text-sm text-teal-100/90 max-w-xl leading-relaxed">
+              You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{chaseList.length} overdue invoices</strong> totaling{" "}
+              <strong className="text-white font-bold">{formatInr(overdueAmount)}</strong>. Chase high-priority accounts today to secure your cash flow.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link
+              to="/invoices/create"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target"
+            >
+              <Plus className="w-4 h-4 text-teal-700" />
+              <span>Create Invoice</span>
+            </Link>
+            <Link
+              to="/reminders"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700/60 hover:bg-teal-700 text-white text-sm font-semibold border border-teal-500/40 backdrop-blur-xs transition-colors tap-target"
+            >
+              <MessageSquare className="w-4 h-4 text-teal-200" />
+              <span>Chase Invoices</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
+      {/* 4 Premium Metric KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Money owed"
+          label="Total Money Owed"
           value={formatInr(moneyOwed)}
-          changeType="negative"
+          icon={Wallet}
+          subtitle="Across all open customer invoices"
           highlight={overdueAmount > 0}
         />
         <KpiCard
-          label="Overdue"
+          label="Overdue Receivables"
           value={formatInr(overdueAmount)}
+          icon={Clock}
+          change={overdueAmount > 0 ? `${chaseList.length} accounts overdue` : "All paid"}
           changeType="negative"
+          subtitle="Action needed today"
         />
         <KpiCard
-          label="Expected in 4 weeks"
+          label="Expected Inflow (4W)"
           value={formatInr(expected4Weeks)}
+          icon={TrendingUp}
+          change="Due next 28 days"
           changeType="positive"
+          subtitle="Expected from compliant clients"
         />
         <KpiCard
-          label="Bills due in 4 weeks"
+          label="Committed Outflow (4W)"
           value={formatInr(bills4Weeks)}
-          changeType="negative"
+          icon={Calendar}
+          change="Rent, Salary & Suppliers"
+          changeType="neutral"
+          subtitle="Fixed obligations"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-slate-900 dark:text-white">
-              Cash forecast (8 weeks)
-            </h2>
-            {shortfallWeek && (
-              <div className="flex items-center gap-2 px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30">
-                <span className="text-xs font-medium text-red-700 dark:text-red-400">
-                  Shortfall: {formatInr(shortfallWeek.closing)}
-                </span>
+      {/* Middle Grid: Cash Forecast Chart + What-If Simulation */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Forecast Chart */}
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>8-Week Cash Position Forecast</span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+                    Live Model
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Ties out closing balance weekly: Inflow minus rent, payroll, and raw material vendor bills.
+                </p>
               </div>
-            )}
+
+              {shortfallWeek ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  <span>Deficit: {formatInr(shortfallWeek.closing)} in {shortfallWeek.weekLabel}</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-semibold shrink-0">
+                  <span>No deficit projected in 8 weeks</span>
+                </div>
+              )}
+            </div>
+
+            <ForecastChart
+              weeks={forecast.weeks}
+              shortfallWeekIndex={forecast.shortfallWeekIndex}
+              height={300}
+            />
           </div>
-          <ForecastChart
-            weeks={forecast.weeks}
-            shortfallWeekIndex={forecast.shortfallWeekIndex}
-            height={320}
-          />
-          <div className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-            {shortfallWeek ? (
-              <>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  Week of {shortfallWeek.weekLabel}:
-                </span>{" "}
-                closing balance dips below zero.
-              </>
-            ) : (
-              "No cash shortfall expected in the next 8 weeks."
-            )}
+
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Baseline liquidity: <strong>₹25,00,000</strong></span>
+            <Link
+              to="/forecast"
+              className="inline-flex items-center gap-1 font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+            >
+              <span>View full weekly table</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm flex flex-col">
-          <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
-            What if they pay late?
-          </h2>
-          <div className="space-y-4 flex-1">
+        {/* Interactive "What If They Pay Late?" Card */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                <Sliders className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  What If They Pay Late?
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Simulate delayed payment impact on cash
+                </p>
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                Select a customer
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Simulate Customer
               </label>
               <select
                 value={whatIfCustomer || ""}
                 onChange={(e) => setWhatIfCustomer(e.target.value || null)}
-                className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
               >
-                <option value="">Select a customer</option>
+                <option value="">Select customer to test...</option>
                 {CUSTOMERS.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.city})
+                    {c.name} ({c.city}) — Grade {c.grade}
                   </option>
                 ))}
               </select>
             </div>
+
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">
-                Days late
-              </label>
-              <input
-                type="number"
-                value={daysLate}
-                onChange={(e) => setDaysLate(parseInt(e.target.value) || 0)}
-                min={0}
-                max={90}
-                className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-600 focus:border-transparent"
-              />
-            </div>
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                See how late payments shift the shortfall week.
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-700 dark:text-slate-300">
-                  Projected shortfall:
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <span>Simulated Delay</span>
+                <span className="tabular-nums font-bold text-teal-600 dark:text-teal-400">
+                  +{daysLate} Days Late
                 </span>
-                <span className="text-sm font-medium tabular-nums">
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="60"
+                step="5"
+                value={daysLate}
+                onChange={(e) => setDaysLate(parseInt(e.target.value))}
+                className="w-full accent-teal-600 cursor-pointer"
+              />
+              <div className="flex justify-between gap-1 mt-2">
+                {[0, 7, 15, 30, 45].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDaysLate(d)}
+                    className={`px-2 py-1 text-[11px] rounded font-medium transition-colors ${
+                      daysLate === d
+                        ? "bg-teal-600 text-white font-bold"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    }`}
+                  >
+                    +{d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/70 space-y-2 text-xs">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                <span>Shortfall status:</span>
+                <span className="font-bold text-slate-900 dark:text-white">
                   {forecast.shortfallWeekIndex !== null
                     ? `Week of ${forecast.weeks[forecast.shortfallWeekIndex].weekLabel}`
-                    : "None"}
+                    : "None (Runway stable)"}
                 </span>
               </div>
+              {whatIfCustomer && daysLate > 0 && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 pt-1 border-t border-slate-200 dark:border-slate-700">
+                  Shifting invoice payments by {daysLate} days shifts liquidity into later weeks.
+                </p>
+              )}
             </div>
+          </div>
+
+          <div className="pt-3">
+            <button
+              onClick={() => {
+                setWhatIfCustomer(null);
+                setDaysLate(0);
+              }}
+              className="w-full py-2 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              Reset simulation
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-        <h2 className="text-lg font-medium text-slate-900 dark:text-white mb-4">
-          Quick actions
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <button
-            className="flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
-            onClick={() => window.location.href = "/invoices?filter=overdue"}
-          >
-            <span className="w-5 h-5 rounded bg-teal-600/10 text-teal-600 flex items-center justify-center">
-              ↷
-            </span>
+      {/* Bottom Grid: Chase These Today + Ageing Bar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chase List */}
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
-                Chase an invoice
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                Go to overdue invoices
-              </div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Chase These Today</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 font-bold">
+                  {chaseList.length} Critical
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Ranked by risk score: Outstanding balance × Days overdue × Chronic delay penalty.
+              </p>
             </div>
-          </button>
-          <button
-            className="flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
-            onClick={() => window.location.href = "/reminders"}
-          >
-            <span className="w-5 h-5 rounded bg-amber-600/10 text-amber-600 flex items-center justify-center">
-              $
-            </span>
-            <div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
-                Offer early-payment discount
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                2% discount if paid in 7 days
-              </div>
-            </div>
-          </button>
-          <button
-            className="flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
-            onClick={() => window.location.href = "/payments"}
-          >
-            <span className="w-5 h-5 rounded bg-slate-600/10 text-slate-600 dark:text-slate-400 flex items-center justify-center">
-              ↺
-            </span>
-            <div>
-              <div className="text-sm font-medium text-slate-900 dark:text-white">
-                Delay a supplier payment
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                Delay by 7 days to preserve cash
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-slate-900 dark:text-white">
-            Chase these today
-          </h2>
-        </div>
-        {chaseList.length === 0 ? (
-          <EmptyState title="No invoices to chase" message="All invoices are paid or not yet due." />
-        ) : (
-          <div className="space-y-3">
-            {chaseList.slice(0, 5).map(({ inv, daysLate, isChronic }) => {
-              const customer = getCustomer(inv.customerId);
-              return (
-                <div
-                  key={inv.id}
-                  className="flex items-center justify-between px-3 py-2.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-900 dark:text-white truncate">
-                        {inv.invoiceNumber}
-                      </span>
-                      {isChronic && (
-                        <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 rounded">
-                          Chronic late
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {customer?.name || ""}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
-                        • {daysLate} days overdue
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium tabular-nums text-slate-900 dark:text-white">
-                      {formatInr(inv.outstanding)}
-                    </div>
-                    <button
-                      onClick={() => (window.location.href = `/invoices/${inv.id}`)}
-                      className="mt-1 text-xs text-teal-600 dark:text-teal-400 hover:underline"
-                    >
-                      View
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            <Link
+              to="/reminders"
+              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
+            >
+              <span>Batch Remind</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
-        )}
-      </div>
 
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-medium text-slate-900 dark:text-white">
-            Ageing
-          </h2>
-          <span className="text-sm font-medium tabular-nums text-slate-900 dark:text-white">
-            {formatInr(add(...ageingBuckets.map((b) => b.amount)))}
-          </span>
-        </div>
-        <div className="space-y-3">
-          {ageingBuckets.map((bucket) => {
-            const total = add(...ageingBuckets.map((b) => b.amount));
-            const pct = total > 0 ? (Number(fromPaise(bucket.amount)) / Number(fromPaise(total))) * 100 : 0;
-            return (
-              <div key={bucket.label} className="space-y-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                    {bucket.label}
-                  </span>
-                  <span className="text-xs tabular-nums text-slate-700 dark:text-slate-300 font-medium">
-                    {formatInr(bucket.amount)}
-                  </span>
-                </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+          {chaseList.length === 0 ? (
+            <EmptyState title="No overdue invoices" message="All payments are current or up to date." />
+          ) : (
+            <div className="space-y-3">
+              {chaseList.slice(0, 5).map(({ inv, customer, daysLate: dLate, isChronic }, index) => {
+                const phoneClean = customer?.phone?.replace(/\D/g, "") || "919876543210";
+                const waMessage = `Hello ${customer?.name}, gentle reminder that payment of ${formatInr(inv.outstanding)} for invoice ${inv.invoiceNumber} is overdue by ${dLate} days. Please clear today. - Sharma Packaging`;
+                const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(waMessage)}`;
+
+                return (
                   <div
-                    className={`h-full ${bucket.color} transition-all duration-500`}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  ></div>
-                </div>
+                    key={inv.id}
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-800/60 hover:bg-white dark:hover:bg-slate-750 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                        #{index + 1}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/invoices/${inv.id}`}
+                            className="font-bold text-sm text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400"
+                          >
+                            {inv.invoiceNumber}
+                          </Link>
+                          <span className="text-slate-400">•</span>
+                          <Link
+                            to={`/customers/${inv.customerId}`}
+                            className="text-xs font-medium text-slate-700 dark:text-slate-300 hover:underline"
+                          >
+                            {customer?.name}
+                          </Link>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                              customer?.grade === "A"
+                                ? "bg-teal-100 text-teal-800"
+                                : customer?.grade === "B"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            Grade {customer?.grade}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">
+                            {dLate} days overdue
+                          </span>
+                          {isChronic && (
+                            <span className="text-[10px] font-bold uppercase bg-rose-50 text-rose-700 px-1.5 rounded border border-rose-200">
+                              Chronic Late
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-700">
+                      <div className="text-left sm:text-right">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 block">Balance</span>
+                        <span className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
+                          {formatInr(inv.outstanding)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-lg bg-[#25D366] text-white hover:opacity-90 shadow-2xs tap-target"
+                          title="Quick WhatsApp message"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </a>
+                        <button
+                          onClick={() => navigate(`/invoices/${inv.id}`)}
+                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 tap-target"
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Unified Stacked Ageing Breakdown */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Invoice Ageing Profile
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Total exposure: <strong>{formatInr(totalAgeing)}</strong>
+                </p>
               </div>
-            );
-          })}
+            </div>
+
+            {/* Stacked Multi-Color Progress Bar */}
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded-full bg-slate-100 dark:bg-slate-700 flex overflow-hidden shadow-inner">
+                {ageingBuckets.map((b) => {
+                  const pct = totalAgeing > 0 ? (b.amount / totalAgeing) * 100 : 0;
+                  if (pct === 0) return null;
+                  return (
+                    <div
+                      key={b.label}
+                      style={{ width: `${pct}%` }}
+                      className={`${b.bg} transition-all duration-500 hover:opacity-90`}
+                      title={`${b.label}: ${pct.toFixed(1)}%`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Ageing Legend Table */}
+            <div className="space-y-2.5 pt-2">
+              {ageingBuckets.map((bucket) => {
+                const pct = totalAgeing > 0 ? (bucket.amount / totalAgeing) * 100 : 0;
+                return (
+                  <div
+                    key={bucket.label}
+                    className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${bucket.bg} shrink-0`} />
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {bucket.label}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold tabular-nums text-slate-900 dark:text-white">
+                        {formatInr(bucket.amount)}
+                      </span>
+                      <span className="text-slate-400 text-[11px] ml-1.5">
+                        ({pct.toFixed(0)}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+            <Link
+              to="/invoices?filter=overdue"
+              className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
+            >
+              <span>Filter overdue ledger</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Action Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          onClick={() => navigate("/invoices/create")}
+          className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 group-hover:scale-105 transition-transform">
+              <Plus className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">New GST Invoice</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Intra/Inter state routing</p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate("/payments")}
+          className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 group-hover:scale-105 transition-transform">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Match Bank CSV</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">UPI, NEFT & TDS reconciliation</p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate("/customers")}
+          className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Customer Discipline</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Credit grades & late scores</p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          onClick={() => navigate("/reminders")}
+          className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+              <Percent className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">Early Discount Offer</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">2% instant settlement</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
