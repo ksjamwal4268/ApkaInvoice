@@ -282,7 +282,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setToastMessage(`🚀 Reminder dispatched to ${inv.customerName} for ${inv.invoiceNumber} via WhatsApp!`);
+      setToastMessage(`Reminder recorded for ${inv.customerName} (${inv.invoiceNumber}). WhatsApp/Email endpoints are unpublished.`);
     } catch (err: any) {
       console.error("Reminder failed", err);
       const updated: Invoice = {
@@ -431,7 +431,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           <input
             type="file"
             ref={photoInputRef}
-            accept="image/*,.jpg,.jpeg,.png,.webp,.heic"
+            accept="image/*,application/pdf"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -447,7 +447,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           <input
             type="file"
             ref={pdfInputRef}
-            accept="application/pdf,.pdf"
+            accept="image/*,application/pdf"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];

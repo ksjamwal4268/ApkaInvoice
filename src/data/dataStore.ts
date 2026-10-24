@@ -504,38 +504,47 @@ export async function uploadInvoiceToN8n(
   file: File | Blob
 ): Promise<N8nUploadedInvoice> {
   const fd = new FormData();
-  const fileName = file instanceof File ? file.name : "invoice.pdf";
-  // Field name must be exactly "data"
+  const fileName = file instanceof File ? file.name : "invoice_document";
+  // Field name is exactly "data", file appended once
   fd.append("data", file, fileName);
+
+  const controller = new AbortController();
+  // Photos take longer than PDFs, allow up to 60 seconds before timing out
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   let res: Response;
   try {
     res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-upload", {
       method: "POST",
       body: fd,
+      signal: controller.signal,
     });
   } catch (err: any) {
+    clearTimeout(timeoutId);
     console.error("n8n invoice-upload fetch error:", err);
-    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
     console.error("n8n invoice-upload error response:", res.status, errorText);
-    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
 
   let json: any;
   try {
     json = await res.json();
   } catch {
-    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
 
   const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
 
   if (!payload || payload.status !== "ready") {
-    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+    console.warn("n8n response not ready:", payload);
+    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
 
   return payload;
