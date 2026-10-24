@@ -33,8 +33,6 @@ import { useDataStore } from "../hooks/useDataStore";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import {
   ExtractedInvoiceData,
-  sendReminderViaN8n,
-  N8nReminderPayload,
   getStoredBusinessProfile,
 } from "../data/dataStore";
 import { Invoice } from "../data/sampleData";
@@ -54,7 +52,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [modalInitialFile, setModalInitialFile] = useState<File | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   // Edit Modal State
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -215,14 +212,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // 2. Send reminder option - takes invoice to Reminders page
-  const handleSendReminder = (inv: Invoice, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    if (inv.status === "paid" || inv.outstanding === 0) return;
-    navigate(`/reminders?invoice=${inv.id}`);
-  };
-
-  // 3. Edit invoice option
+  // 2. Edit invoice option
   const handleOpenEdit = (inv: Invoice, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const cust = customers.find((c) => c.id === inv.customerId);
@@ -336,7 +326,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             </span>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Master billing dataset: upload invoices, update details, tick received payments, and dispatch reminders.
+            Master billing dataset: upload invoices, update details, and track received payments.
           </p>
         </div>
 
@@ -530,7 +520,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                   <th className="px-4 py-3.5 text-right">Outstanding</th>
                   <th className="px-4 py-3.5">Due Date</th>
                   <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5 text-center">Reminder</th>
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -671,48 +660,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                       {/* Status */}
                       <td className="px-4 py-4">
                         <StatusBadge status={inv.status} />
-                      </td>
-
-                      {/* Reminder Column */}
-                      <td
-                        className="px-4 py-4 text-center shrink-0"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {isCompleted ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                            <Check className="w-3 h-3" /> Paid
-                          </span>
-                        ) : inv.lastReminderSentAt ? (
-                          <div className="inline-flex items-center gap-1">
-                            <span
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-[11px] font-bold"
-                              title={`Last sent at ${new Date(inv.lastReminderSentAt).toLocaleString()}`}
-                            >
-                              <CheckCircle2 className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-                              <span>Sent</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => handleSendReminder(inv, e)}
-                              disabled={sendingReminderId === inv.id}
-                              className="text-[10px] text-teal-600 hover:underline px-1 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
-                              title="Resend payment reminder"
-                            >
-                              Resend
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => handleSendReminder(inv, e)}
-                            disabled={sendingReminderId === inv.id}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all shadow-2xs hover:scale-102 tap-target"
-                            title="Dispatch WhatsApp payment reminder to buyer"
-                          >
-                            <Send className="w-3 h-3" />
-                            <span>{sendingReminderId === inv.id ? "Sending..." : "Send Reminder"}</span>
-                          </button>
-                        )}
                       </td>
 
                       {/* Actions Column (Edit, View, Delete) */}
