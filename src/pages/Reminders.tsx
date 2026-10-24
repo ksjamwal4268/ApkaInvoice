@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Language } from "../data/i18n";
 import {
@@ -23,6 +23,7 @@ import {
   AlertCircle,
   ExternalLink,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
@@ -156,35 +157,44 @@ ${bName}`;
   }, [selectedInvoice, selectedCustomer, businessProfile, isOverdue, overdueDays]);
 
   // Email Validation Helper
-  const isValidEmail = (emailStr: string) => {
+  const isValidEmail = (emailStr: string | null | undefined) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((emailStr ?? "").trim());
   };
 
-  // Dispatch Email Reminder via n8n Webhook
-  const handleSendEmailReminder = async () => {
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const modalEmailInputRef = useRef<HTMLInputElement>(null);
+  const [showPayerEmailModal, setShowPayerEmailModal] = useState(false);
+  const [payerEmailInput, setPayerEmailInput] = useState("");
+
+  // Send ONE request from the browser to n8n webhook
+  const executeSendEmail = async (targetEmail: string) => {
     if (!selectedInvoice) return;
-    setDispatchNotice(null);
-    setEmailValidationError(null);
+    if (isSending) return; // Send only once per click, disable while sending
 
-    const emailClean = (recipientEmail ?? "").trim();
-
-    // Rule: Before sending, if recipient_email is empty, ask user to type payer's email. Validate as email.
-    if (!emailClean) {
-      setEmailValidationError("Please enter the payer's email.");
-      return;
-    }
-
-    if (!isValidEmail(emailClean)) {
-      setEmailValidationError("Please enter a valid email address (e.g. accounts@buyer.com).");
+    const emailClean = (targetEmail ?? "").trim();
+    if (!emailClean || !isValidEmail(emailClean)) {
+      setEmailValidationError("Please enter the payer's email");
+      setDispatchNotice({
+        type: "warning",
+        message: "Please enter the payer's email",
+      });
+      setShowPayerEmailModal(true);
+      setPayerEmailInput(emailClean);
+      setTimeout(() => {
+        modalEmailInputRef.current?.focus();
+        emailInputRef.current?.focus();
+      }, 50);
       return;
     }
 
     setIsSending(true);
+    setDispatchNotice(null);
+    setEmailValidationError(null);
 
     try {
-      const senderName = businessProfile?.name ?? "ApkaInvoice";
-      const senderEmail = businessProfile?.email ?? "";
-      const invNum = selectedInvoice.invoiceNumber ?? "";
+      const senderName = (businessProfile?.name ?? "ApkaInvoice");
+      const senderEmail = (businessProfile?.email ?? "");
+      const invNum = (selectedInvoice.invoiceNumber ?? "");
       const dueDateFormatted = selectedInvoice.dueDate
         ? toISODateString(selectedInvoice.dueDate)
         : "";
@@ -222,14 +232,19 @@ ${bName}`;
         payload.sender_gmail_token = senderGmailToken;
       }
 
-      // Call dedicated n8n webhook
+      // Call dedicated n8n webhook (30s timeout handled in sendInvoiceReminderEmail)
       const res = await sendInvoiceReminderEmail(payload);
 
-      if (res.ok) {
+      // Handle the response per instructions:
+      // - 200 and status === "reminder_sent": show "Email sent to <recipient_email>".
+      // - 404 or 422: show "Please enter the payer's email" and open the email input.
+      // - Anything else: show "Couldn't send the email. Please try again."
+      if (res.ok && res.status === "reminder_sent") {
         setDispatchNotice({
           type: "success",
-          message: res.message, // "Reminder sent" or "Reminder sent (sent from ApkaInvoice's email)"
+          message: `Email sent to ${emailClean}`,
         });
+        setShowPayerEmailModal(false);
 
         // Record evidence and update last reminder timestamp on invoice
         try {
@@ -251,21 +266,72 @@ ${bName}`;
         } catch (e) {
           console.warn("Evidence recording notice:", e);
         }
+      } else if (res.status === "missing_email" || res.status === "not_found") {
+        setDispatchNotice({
+          type: "warning",
+          message: "Please enter the payer's email",
+        });
+        setEmailValidationError("Please enter the payer's email");
+        setShowPayerEmailModal(true);
+        setPayerEmailInput(emailClean);
+        setTimeout(() => {
+          modalEmailInputRef.current?.focus();
+          emailInputRef.current?.focus();
+        }, 50);
       } else {
         setDispatchNotice({
-          type: res.status === "missing_email" ? "warning" : "error",
-          message: res.message,
+          type: "error",
+          message: "Couldn't send the email. Please try again.",
         });
       }
     } catch (err: any) {
       console.error("Email reminder error:", err);
       setDispatchNotice({
         type: "error",
-        message: "Couldn't send the reminder. Please try again.",
+        message: "Couldn't send the email. Please try again.",
       });
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Dispatch Email Reminder via n8n Webhook
+  const handleSendEmailReminder = async () => {
+    if (!selectedInvoice) return;
+    if (isSending) return;
+
+    // 1. When the button is clicked, get the payer's email from the invoice/buyer record:
+    // (buyer?.email ?? invoice?.payer_email ?? '').trim()
+    const recordEmail = ((selectedCustomer?.email ?? (selectedInvoice as any)?.payer_email ?? "") as string).trim();
+    const effectiveEmail = ((recipientEmail ?? "").trim() || recordEmail).trim();
+
+    if (!effectiveEmail || !isValidEmail(effectiveEmail)) {
+      setEmailValidationError("Please enter the payer's email");
+      setDispatchNotice({
+        type: "warning",
+        message: "Please enter the payer's email",
+      });
+      setShowPayerEmailModal(true);
+      setPayerEmailInput(effectiveEmail || "");
+      setTimeout(() => {
+        modalEmailInputRef.current?.focus();
+        emailInputRef.current?.focus();
+      }, 50);
+      return;
+    }
+
+    await executeSendEmail(effectiveEmail);
+  };
+
+  // Submit handler when user types in the "Payer's email" modal
+  const handleModalSubmit = async () => {
+    const typed = (payerEmailInput ?? "").trim();
+    if (!typed || !isValidEmail(typed)) {
+      setEmailValidationError("Please enter a valid payer's email.");
+      return;
+    }
+    setRecipientEmail(typed);
+    await executeSendEmail(typed);
   };
 
   // WhatsApp Send helper
@@ -496,16 +562,17 @@ ${bName}`;
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                       <Mail className="w-3.5 h-3.5 text-teal-600" />
-                      Recipient Email (Payer) *
+                      Payer's email *
                     </label>
                     <input
+                      ref={emailInputRef}
                       type="email"
                       value={recipientEmail}
                       onChange={(e) => {
                         setRecipientEmail(e.target.value);
                         if (emailValidationError) setEmailValidationError(null);
                       }}
-                      placeholder="e.g. accounts@buyer.com"
+                      placeholder="Payer's email"
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${
                         emailValidationError
                           ? "border-rose-500 bg-rose-50/20 focus:ring-rose-500"
@@ -889,6 +956,92 @@ ${bName}`;
           </div>
         )}
       </div>
+
+      {/* Small input modal asking "Payer's email" */}
+      {showPayerEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/60 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">Payer's email</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Enter the payer's email address to send the reminder.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPayerEmailModal(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                Payer's email *
+              </label>
+              <input
+                ref={modalEmailInputRef}
+                type="email"
+                autoFocus
+                value={payerEmailInput}
+                onChange={(e) => {
+                  setPayerEmailInput(e.target.value);
+                  if (emailValidationError) setEmailValidationError(null);
+                }}
+                placeholder="Payer's email"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleModalSubmit();
+                  }
+                }}
+              />
+              {emailValidationError && (
+                <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{emailValidationError}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowPayerEmailModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSending}
+                onClick={handleModalSubmit}
+                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Email Reminder</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

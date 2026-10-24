@@ -949,20 +949,21 @@ export async function sendInvoiceReminderEmail(
   payload: InvoiceReminderEmailPayload
 ): Promise<InvoiceReminderEmailResponse> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000); // >= 30 seconds
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
 
   try {
+    const targetEmail = (payload.recipient_email ?? "").trim();
     const body: Record<string, any> = {
-      invoice_number: payload.invoice_number ?? "",
-      recipient_email: payload.recipient_email ?? "",
-      recipient_name: payload.recipient_name ?? "",
-      subject: payload.subject ?? "",
-      message: payload.message ?? "",
-      amount: payload.amount ?? "",
-      due_date: payload.due_date ?? "",
+      invoice_number: (payload.invoice_number ?? ""),
+      recipient_email: targetEmail,
+      recipient_name: (payload.recipient_name ?? ""),
+      subject: (payload.subject ?? ""),
+      message: (payload.message ?? ""),
+      amount: (payload.amount ?? ""),
+      due_date: (payload.due_date ?? ""),
       sender: {
-        name: payload.sender?.name ?? "ApkaInvoice",
-        email: payload.sender?.email ?? "",
+        name: (payload.sender?.name ?? "ApkaInvoice"),
+        email: (payload.sender?.email ?? ""),
       },
     };
 
@@ -988,36 +989,22 @@ export async function sendInvoiceReminderEmail(
       // not JSON
     }
 
-    if (res.status === 200) {
+    if (res.status === 200 && json?.status === "reminder_sent") {
       const sentFrom = json?.sent_from === "business_gmail" ? "business_gmail" : "shared_sender";
-      const displayMsg =
-        sentFrom === "shared_sender"
-          ? "Reminder sent (sent from ApkaInvoice's email)"
-          : "Reminder sent";
-
       return {
         ok: true,
         status: "reminder_sent",
         sent_from: sentFrom,
-        message: displayMsg,
+        message: `Email sent to ${targetEmail}`,
         rawJson: json,
       };
     }
 
-    if (res.status === 404) {
-      return {
-        ok: false,
-        status: "not_found",
-        message: "This invoice isn't saved yet. Please upload it again.",
-        rawJson: json,
-      };
-    }
-
-    if (res.status === 422) {
+    if (res.status === 404 || res.status === 422 || json?.status === "missing_email" || json?.status === "not_found") {
       return {
         ok: false,
         status: "missing_email",
-        message: "Please enter the payer's email.",
+        message: "Please enter the payer's email",
         rawJson: json,
       };
     }
@@ -1025,7 +1012,7 @@ export async function sendInvoiceReminderEmail(
     return {
       ok: false,
       status: "error",
-      message: "Couldn't send the reminder. Please try again.",
+      message: "Couldn't send the email. Please try again.",
       rawJson: json,
     };
   } catch (err: any) {
@@ -1034,7 +1021,7 @@ export async function sendInvoiceReminderEmail(
     return {
       ok: false,
       status: "error",
-      message: "Couldn't send the reminder. Please try again.",
+      message: "Couldn't send the email. Please try again.",
     };
   }
 }
