@@ -33,6 +33,7 @@ export function CustomerModal({
   const [phone, setPhone] = useState("");
   const [isChronicallyLate, setIsChronicallyLate] = useState(false);
   const [grade, setGrade] = useState<"A" | "B" | "C">("B");
+  const [paymentCategory, setPaymentCategory] = useState<"green" | "yellow" | "red">("green");
   const [reason, setReason] = useState("");
   const [gstinError, setGstinError] = useState<string | null>(null);
 
@@ -47,6 +48,8 @@ export function CustomerModal({
       setPhone(initialCustomer.phone);
       setIsChronicallyLate(initialCustomer.isChronicallyLate);
       setGrade(initialCustomer.grade);
+      const cat = initialCustomer.paymentCategory || (initialCustomer.grade === "A" ? "green" : initialCustomer.grade === "C" ? "red" : "yellow");
+      setPaymentCategory(cat);
       setReason(initialCustomer.gradeReasons?.[0] || "");
     } else {
       setName(suggestedName || "");
@@ -62,7 +65,8 @@ export function CustomerModal({
       setEmail("");
       setPhone("+91 ");
       setIsChronicallyLate(false);
-      setGrade("B");
+      setGrade("A");
+      setPaymentCategory("green");
       setReason("New buyer registered");
     }
   }, [initialCustomer, suggestedName, suggestedGstin, suggestedState, suggestedCity, isOpen]);
@@ -103,9 +107,16 @@ export function CustomerModal({
       pan: pan.trim() ? pan.toUpperCase().trim() : null,
       email: email.trim() || "",
       phone: phone.trim() || "",
-      isChronicallyLate,
-      grade,
-      gradeReasons: [reason || "Registered via ApkaInvoice Buyer Master"],
+      isChronicallyLate: paymentCategory === "red" || isChronicallyLate,
+      grade: paymentCategory === "green" ? "A" : paymentCategory === "red" ? "C" : "B",
+      paymentCategory,
+      gradeReasons: [
+        paymentCategory === "green"
+          ? "Green Marker: Submits payment under 7 days"
+          : paymentCategory === "red"
+          ? "Red Marker: Takes more than 30 days to pay"
+          : "Yellow Marker: Takes more than 7 days to pay",
+      ],
     };
 
     onSave(newCustomer);
@@ -270,30 +281,73 @@ export function CustomerModal({
             </div>
           </div>
 
-          {/* Credit Risk Discipline Grade */}
+          {/* Payment Discipline Marker: Green, Yellow, Red */}
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Award className="w-3.5 h-3.5 text-teal-600" />
-              Payment Discipline Grade
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-teal-600" />
+                Payment Discipline Marker *
+              </span>
+              <span className="text-[11px] font-medium text-slate-400">Green, Yellow, or Red</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { val: "A", title: "Grade A", desc: "Reliable / On-time", border: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20" },
-                { val: "B", title: "Grade B", desc: "Standard (0-7d late)", border: "border-sky-500 bg-sky-50/50 dark:bg-sky-950/20" },
-                { val: "C", title: "Grade C", desc: "High Risk (>15d late)", border: "border-rose-500 bg-rose-50/50 dark:bg-rose-950/20" },
-              ].map((g) => (
+                {
+                  cat: "green" as const,
+                  grade: "A" as const,
+                  title: "Green Client",
+                  timing: "Under 7 days",
+                  desc: "Submits payment under 7 days",
+                  dotBg: "bg-emerald-500",
+                  activeBorder: "border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 ring-2 ring-emerald-500 text-emerald-950 dark:text-emerald-200",
+                },
+                {
+                  cat: "yellow" as const,
+                  grade: "B" as const,
+                  title: "Yellow Client",
+                  timing: "More than 7 days",
+                  desc: "Takes more than 7 days to pay",
+                  dotBg: "bg-amber-500",
+                  activeBorder: "border-amber-500 bg-amber-50/80 dark:bg-amber-950/40 ring-2 ring-amber-500 text-amber-950 dark:text-amber-200",
+                },
+                {
+                  cat: "red" as const,
+                  grade: "C" as const,
+                  title: "Red Client",
+                  timing: "More than 30 days",
+                  desc: "Takes more than 30 days to pay",
+                  dotBg: "bg-rose-500",
+                  activeBorder: "border-rose-500 bg-rose-50/80 dark:bg-rose-950/40 ring-2 ring-rose-500 text-rose-950 dark:text-rose-200",
+                },
+              ].map((item) => (
                 <button
                   type="button"
-                  key={g.val}
-                  onClick={() => setGrade(g.val as any)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    grade === g.val
-                      ? `${g.border} ring-2 ring-teal-500`
-                      : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750"
+                  key={item.cat}
+                  onClick={() => {
+                    setPaymentCategory(item.cat);
+                    setGrade(item.grade);
+                    setIsChronicallyLate(item.cat === "red");
+                  }}
+                  className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                    paymentCategory === item.cat
+                      ? item.activeBorder
+                      : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  <p className="font-bold text-xs text-slate-900 dark:text-white">{g.title}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{g.desc}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-3 h-3 rounded-full ${item.dotBg} shadow-xs shrink-0`} />
+                      <span className="font-extrabold text-xs">{item.title}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 mb-1">
+                      ⏱ {item.timing}
+                    </span>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      {item.desc}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>

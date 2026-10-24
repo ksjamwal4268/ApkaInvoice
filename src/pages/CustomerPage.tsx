@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { CustomerModal } from "../components/CustomerModal";
-import { Customer } from "../data/sampleData";
+import { Customer, getCustomerCategory } from "../data/sampleData";
 
 export function CustomerPage({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
@@ -84,18 +84,32 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                   {customer.name}
                 </h1>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    customer.grade === "A"
-                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                      : customer.grade === "B"
-                      ? "bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300"
-                      : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
-                  }`}
-                >
-                  Grade {customer.grade} Client
-                </span>
-                {customer.isChronicallyLate && (
+                {(() => {
+                  const cat = getCustomerCategory(customer);
+                  if (cat === "green") {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        Green Tier (&lt; 7 days payment)
+                      </span>
+                    );
+                  }
+                  if (cat === "yellow") {
+                    return (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                        Yellow Tier (&gt; 7 days payment)
+                      </span>
+                    );
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                      Red Tier (&gt; 30 days payment)
+                    </span>
+                  );
+                })()}
+                {customer.isChronicallyLate && getCustomerCategory(customer) !== "red" && (
                   <span className="text-[10px] font-bold uppercase bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300 px-2 py-0.5 rounded">
                     Chronically Late
                   </span>

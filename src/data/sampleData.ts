@@ -36,7 +36,17 @@ export interface Customer {
   phone: string;
   isChronicallyLate: boolean;
   grade: "A" | "B" | "C";
+  paymentCategory?: "green" | "yellow" | "red";
   gradeReasons: string[];
+}
+
+export function getCustomerCategory(c: { paymentCategory?: "green" | "yellow" | "red"; grade?: string }): "green" | "yellow" | "red" {
+  if (c.paymentCategory === "green" || c.paymentCategory === "yellow" || c.paymentCategory === "red") {
+    return c.paymentCategory;
+  }
+  if (c.grade === "A") return "green";
+  if (c.grade === "C") return "red";
+  return "yellow";
 }
 
 export interface InvoiceLineItem {
