@@ -68,7 +68,6 @@ export function Shell({
       badge: overdueCount > 0 ? `${overdueCount}` : undefined,
       badgeColor: "bg-rose-500 text-white",
     },
-    { path: "/forecast", label: "navForecast", icon: TrendingUp },
   ];
 
   const isActive = (path: string) => {

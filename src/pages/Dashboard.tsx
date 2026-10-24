@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
-import { formatInr, toPaise, add } from "../utils/money";
-import { buildForecast, buildWeeklyOutflowsFromSettings } from "../utils/forecast";
+import { formatInr, add } from "../utils/money";
 import { daysBetween } from "../utils/date";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
@@ -12,21 +11,16 @@ import {
   Wallet,
   Clock,
   TrendingUp,
-  Calendar,
   AlertTriangle,
   ArrowRight,
   MessageSquare,
   Plus,
-  Sliders,
   Users,
-  User,
   Camera,
   Sparkles,
   Download,
-  FileCheck,
-  Eye,
   CheckCircle2,
-  XCircle,
+  Upload,
 } from "lucide-react";
 import {
   LineChart,
@@ -37,11 +31,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
 export function Dashboard({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
-  const { invoices, customers, businessProfile, forecastSettings, refresh } = useDataStore();
-  const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
-  const [daysLate, setDaysLate] = useState(0);
+  const { invoices, customers, businessProfile, refresh } = useDataStore();
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [scanSuccessBanner, setScanSuccessBanner] = useState<string | null>(null);
 
@@ -68,32 +61,6 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     }, 0);
   }, [invoices, today]);
 
-  const fourWeeksFromNow = useMemo(() => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 28);
-    return d;
-  }, [today]);
-
-  const expected4Weeks = useMemo(() => {
-    return invoices.reduce((sum, inv) => {
-      if (inv.status === "disputed" || inv.status === "paid") return sum;
-      const d = new Date(inv.dueDate);
-      if (d <= fourWeeksFromNow && d >= today && inv.outstanding > 0) {
-        return add(sum, inv.outstanding);
-      }
-      return sum;
-    }, 0);
-  }, [invoices, today, fourWeeksFromNow]);
-
-  const bills4Weeks = useMemo(() => {
-    const weeklyOutflows = buildWeeklyOutflowsFromSettings(forecastSettings);
-    return Object.values(weeklyOutflows).reduce(
-      (sum, o) => add(sum, o.amount),
-      0
-    );
-  }, [forecastSettings]);
-
-  /* ---- NEW KPI CALCULATIONS ---- */
   const totalPaid = useMemo(() => {
     return invoices.reduce((sum, inv) => {
       if (inv.status === "paid" || inv.status === "disputed") return sum + inv.total;
@@ -173,22 +140,6 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
       .slice(0, 5);
   }, [invoices, customers, today]);
 
-  /* ---- END NEW KPI CALCULATIONS ---- */
-
-  const whatIf = useMemo(() => {
-    return whatIfCustomer && daysLate > 0
-      ? { customerId: whatIfCustomer, daysLate }
-      : undefined;
-  }, [whatIfCustomer, daysLate]);
-
-  const forecast = useMemo(() => {
-    return buildForecast({
-      openingBalance: toPaise(2500000), // ₹25,00,000 opening liquidity
-      invoices,
-      whatIf,
-    });
-  }, [invoices, whatIf]);
-
   const chaseList = useMemo(() => {
     return invoices.filter(
       (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
@@ -243,40 +194,29 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     [ageingBuckets]
   );
 
-  const shortfallWeek = forecast.shortfallWeekIndex !== null
-    ? forecast.weeks[forecast.shortfallWeekIndex]
-    : null;
-
   return (
     <div className="space-y-6">
-      {/* Business Header & Cash Health Banner */}
+      {/* Business Header & Health Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-teal-900 via-teal-800 to-slate-900 p-6 text-white shadow-xl">
         <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
-                {businessProfile.city}, {businessProfile.state}
+                {businessProfile.city ? `${businessProfile.city}, ${businessProfile.state}` : "Operational Workspace"}
               </span>
-              {shortfallWeek ? (
-                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-ping" />
-                  Shortfall in {shortfallWeek.weekLabel}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Healthy Runway (8+ Weeks)
-                </span>
-              )}
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Invoices Synced
+              </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              {businessProfile.name}
+              {businessProfile.name || "ApkaInvoice Dashboard"}
             </h1>
             <p className="text-sm text-teal-100/90 max-w-xl leading-relaxed">
               {invoices.length === 0 ? (
-                <span>Welcome to your live operational workspace. Scan physical bills via camera or add your real invoices to start forecasting.</span>
+                <span>Welcome to your live operational workspace. Upload bill photos or PDF invoices to start tracking customer payments.</span>
               ) : (
                 <>
                   You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{chaseList.length} overdue invoices</strong> totaling{" "}
@@ -287,13 +227,14 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Link
-              to="/invoices/create"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target"
+            <button
+              type="button"
+              onClick={() => setIsCameraModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-teal-700" />
-              <span>Create Invoice</span>
-            </Link>
+              <Upload className="w-4 h-4 text-teal-700" />
+              <span>Upload Invoice (Photo or PDF)</span>
+            </button>
             <Link
               to="/reminders"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700/60 hover:bg-teal-700 text-white text-sm font-semibold border border-teal-500/40 backdrop-blur-xs transition-colors tap-target"
@@ -320,14 +261,14 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => setScanSuccessBanner(null)}
-            className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline font-semibold"
+            className="text-xs text-emerald-700 dark:text-emerald-300 hover:underline font-semibold cursor-pointer"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      {/* 4 Premium Metric KPIs */}
+      {/* 4 Metric KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           label="Payment Left to Receive"
@@ -344,7 +285,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           icon={CheckCircle2}
           change="All-time received"
           changeType="positive"
-          subtitle="Paid & disputed invoices settled"
+          subtitle="Paid & settled customer bills"
         />
         <KpiCard
           label="Total Expected Payment"
@@ -352,7 +293,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           icon={TrendingUp}
           change="Across all invoices"
           changeType="neutral"
-          subtitle="Gross invoice value expected"
+          subtitle="Gross invoice value recorded"
         />
         <KpiCard
           label="Monthly Invoices Received"
@@ -360,23 +301,23 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           icon={Download}
           change="This calendar month"
           changeType="neutral"
-          subtitle="New invoices recorded"
+          subtitle="New invoices added"
         />
       </div>
 
       {/* Real Data Onboarding Card (Shown when user has 0 invoices) */}
       {invoices.length === 0 && (
-        <div className="p-6 rounded-2xl border border-teal-200 border-teal-800 bg-linear-to-r from-teal-50/80 via-emerald-50/50 to-white from-teal-950/40 via-slate-850 to-slate-800 shadow-xs">
+        <div className="p-6 rounded-2xl border border-teal-200 dark:border-teal-800 bg-linear-to-r from-teal-50/80 via-emerald-50/50 to-white dark:from-teal-950/40 dark:via-slate-850 dark:to-slate-800 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className="space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 text-teal-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Real Operational Ledger Active
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Operational Ledger Active
               </span>
-              <h2 className="text-lg font-bold text-slate-900 text-slate-900">
-                Start Tracking Your Real Invoices & Cash Runway
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                Start Tracking Your Real Invoices
               </h2>
-              <p className="text-xs text-slate-600 text-slate-500 max-w-2xl leading-relaxed">
-                Demo data has been cleared. Upload any paper bill photo, receipt, or PDF invoice to auto-extract line items, or manually record your real customer invoices.
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+                Upload any paper bill photo, receipt, or PDF invoice to auto-extract details, or manually record your customer invoices.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
@@ -389,144 +330,36 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 <span>Upload Invoice (Photo or PDF)</span>
               </button>
               <Link
-                to="/customers"
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-50 text-xs font-semibold text-slate-700 text-slate-200 hover:bg-slate-50 transition-colors"
+                to="/invoices/create"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
               >
-                <Users className="w-4 h-4 text-teal-600" />
-                <span>Add Real Buyers</span>
+                <Plus className="w-4 h-4 text-teal-600" />
+                <span>Create Invoice Manually</span>
               </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* Middle Grid: Cash Forecast Chart + What-If Simulation */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Forecast Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 border-slate-200/80 bg-white bg-slate-50 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 text-slate-900 flex items-center gap-2">
-                  <span>8-Week Cash Position Forecast</span>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 bg-teal-50 text-teal-300">
-                    Live Model
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 text-slate-500 mt-0.5">
-                  Ties out closing balance weekly: Inflow minus rent, payroll, and raw material vendor bills.
-                </p>
-              </div>
-
-              {shortfallWeek ? (
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 bg-rose-50 border border-rose-200 border-rose-800 text-rose-700 text-rose-300 text-xs font-semibold shrink-0">
-                  <AlertTriangle className="w-4 h-4 text-rose-600" />
-                  <span>Deficit: {formatInr(shortfallWeek.closing)} in {shortfallWeek.weekLabel}</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 bg-emerald-950/40 border border-emerald-200 border-emerald-800 text-emerald-700 text-emerald-300 text-xs font-semibold shrink-0">
-                  <span>No deficit projected in 8 weeks</span>
-                </div>
-              )}
-            </div>
-
-            <div className="h-[320px] w-full flex-grow">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={kpiData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="label" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="invoiceCount" stroke="#3b82f6" strokeWidth={2} dot={false} name="Invoices" />
-                  <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2} dot={false} name="Payments Received" />
-                  <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={false} name="Expected Total" />
-                  <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={false} name="Outstanding" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-slate-100 border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
-            <span>Weekly aggregation from uploaded &amp; manual invoices</span>
-          </div>
-        </div>
-
-        {/* Critical Invoices Panel (Right Side) */}
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 pb-3 border-b border-rose-100">
-              <div className="p-2 rounded-lg bg-rose-100 text-rose-600">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-rose-900">Critical Invoices</h2>
-                <p className="text-xs text-rose-600">Overdue 30+ days</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 flex-grow overflow-y-auto">
-              {redInvoices.length === 0 ? (
-                <div className="text-center py-4 text-xs text-rose-500">
-                  No critical invoices overdue 30+ days.
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {redInvoices.map(({ invoice, customer, daysLate, amount }) => (
-                    <div
-                      key={invoice.id}
-                      className="p-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-rose-900 truncate">{invoice.invoiceNumber}</h3>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">{daysLate} days late</span>
-                          </div>
-                          <p className="text-xs text-rose-600">{customer?.name || "Unknown Customer"}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-rose-800">{formatInr(amount)}</div>
-                          <div className="text-[10px] text-rose-500">{new Date(invoice.dueDate).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-rose-100 flex items-center justify-between text-xs text-rose-500">
-            <span>Top 5 critical</span>
-            <Link
-              to="/reminders"
-              className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:underline"
-            >
-              <span>View all</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </div>
-      {/* Bottom Grid: Chase These Today + Ageing Bar */}
+      {/* Main Grid: Chase These Today (Left 2 cols) + Critical Invoices (Right 1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chase List */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 border-slate-200/80 bg-white bg-slate-50 p-6 shadow-xs">
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span>Chase These Today</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 bg-rose-50 text-rose-300 font-bold">
-                  {chaseList.length} Critical
+                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
+                  {chaseList.length} Pending
                 </span>
               </h2>
-              <p className="text-xs text-slate-500 text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Ranked by risk score: Outstanding balance × Days overdue × Chronic delay penalty.
               </p>
             </div>
             <Link
               to="/reminders"
-              className="text-xs font-semibold text-teal-600 text-teal-400 hover:underline inline-flex items-center gap-1"
+              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
             >
               <span>Batch Remind</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -545,41 +378,40 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 return (
                   <div
                     key={inv.id}
-                    className="p-4 rounded-xl border border-slate-200 border-slate-200/80 bg-slate-50/60 bg-slate-50/60 hover:bg-white hover:bg-slate-750 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-750 hover:bg-white dark:hover:bg-slate-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 bg-rose-950/50 text-rose-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                         #{index + 1}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <Link
                             to={`/invoices/${inv.id}`}
-                            className="font-bold text-sm text-slate-900 text-slate-900 hover:text-teal-600 hover:text-teal-600"
+                            className="font-bold text-sm text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400"
                           >
                             {inv.invoiceNumber}
                           </Link>
                           <span className="text-slate-400">•</span>
-                          <Link
-                            to={`/customers/${inv.customerId}`}
-                            className="text-xs font-medium text-slate-700 text-slate-500 hover:underline"
-                          >
-                            {customer?.name}
-                          </Link>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                              customer?.grade === "A"
-                                ? "bg-teal-100 text-teal-800"
-                                : customer?.grade === "B"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            Grade {customer?.grade}
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                            {customer?.name || inv.customerName}
                           </span>
+                          {customer?.grade && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                customer.grade === "A"
+                                  ? "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300"
+                                  : customer.grade === "B"
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
+                                  : "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300"
+                              }`}
+                            >
+                              Grade {customer.grade}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 text-slate-500">
-                          <span className="font-semibold text-rose-600 text-rose-400">
+                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold text-rose-600 dark:text-rose-400">
                             {dLate} days overdue
                           </span>
                           {isChronic && (
@@ -591,10 +423,10 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 border-slate-200">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-700">
                       <div className="text-left sm:text-right">
-                        <span className="text-xs text-slate-500 text-slate-500 block">Balance</span>
-                        <span className="text-base font-bold tabular-nums text-slate-900 text-slate-900">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 block">Balance</span>
+                        <span className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
                           {formatInr(inv.outstanding)}
                         </span>
                       </div>
@@ -604,13 +436,13 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-2 rounded-lg bg-[#25D366] text-white hover:opacity-90 shadow-2xs tap-target"
-                          title="Quick WhatsApp message"
+                          title="Quick WhatsApp reminder"
                         >
                           <MessageSquare className="w-4 h-4" />
                         </a>
                         <button
                           onClick={() => navigate(`/invoices/${inv.id}`)}
-                          className="px-3 py-2 rounded-lg border border-slate-200 border-slate-200 text-xs font-semibold text-slate-700 text-slate-500 hover:bg-slate-100 hover:bg-slate-50 tap-target"
+                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 tap-target"
                         >
                           View
                         </button>
@@ -623,15 +455,134 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           )}
         </div>
 
-        {/* Unified Stacked Ageing Breakdown */}
-        <div className="rounded-2xl border border-slate-200/80 border-slate-200/80 bg-white bg-slate-50 p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 border-slate-200">
+        {/* Critical Invoices Panel (Right Side) */}
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 pb-3 border-b border-rose-100 dark:border-rose-900/40">
+              <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900 text-slate-900">
+                <h2 className="text-base font-bold text-rose-900 dark:text-rose-200">Critical Invoices</h2>
+                <p className="text-xs text-rose-600 dark:text-rose-400">Overdue 30+ days</p>
+              </div>
+            </div>
+
+            <div className="space-y-3 flex-grow overflow-y-auto mt-4">
+              {redInvoices.length === 0 ? (
+                <div className="text-center py-6 text-xs text-rose-600 dark:text-rose-400">
+                  No critical invoices overdue 30+ days. All payments are healthy.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {redInvoices.map(({ invoice, customer, daysLate: dLate, amount }) => (
+                    <div
+                      key={invoice.id}
+                      onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      className="p-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer shadow-2xs"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200 truncate">{invoice.invoiceNumber}</h3>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
+                              {dLate}d late
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{customer?.name || invoice.customerName}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-rose-800 dark:text-rose-300">{formatInr(amount)}</div>
+                          <div className="text-[10px] text-slate-400">{new Date(invoice.dueDate).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-rose-100 dark:border-rose-900/40 flex items-center justify-between text-xs text-rose-600 dark:text-rose-400">
+            <span>Critical overdue ledger</span>
+            <Link
+              to="/reminders"
+              className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+            >
+              <span>View all</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Grid: Weekly Invoicing & Collections Activity (Left 2 cols) + Ageing Profile (Right 1 col) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Weekly Activity Trends Chart */}
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Weekly Billing & Collections Activity</span>
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
+                    Real Dataset
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Tracks actual invoices recorded, payments received, and outstanding dues across the last 6 weeks.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  Received
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  Expected
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  Outstanding
+                </span>
+              </div>
+            </div>
+
+            <div className="h-[280px] w-full flex-grow">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={kpiData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
+                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Payments Received" />
+                  <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Expected Total" />
+                  <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Outstanding" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Aggregated from your live invoices database</span>
+            <Link to="/invoices" className="text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-1">
+              <span>View full dataset</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Invoice Ageing Profile */}
+        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
                   Invoice Ageing Profile
                 </h2>
-                <p className="text-xs text-slate-500 text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Total exposure: <strong>{formatInr(totalAgeing)}</strong>
                 </p>
               </div>
@@ -639,7 +590,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
 
             {/* Stacked Multi-Color Progress Bar */}
             <div className="space-y-2">
-              <div className="h-4 w-full rounded-full bg-slate-100 bg-slate-700 flex overflow-hidden shadow-inner">
+              <div className="h-4 w-full rounded-full bg-slate-100 dark:bg-slate-700 flex overflow-hidden shadow-inner">
                 {ageingBuckets.map((b) => {
                   const pct = totalAgeing > 0 ? (b.amount / totalAgeing) * 100 : 0;
                   if (pct === 0) return null;
@@ -662,16 +613,16 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 return (
                   <div
                     key={bucket.label}
-                    className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 hover:bg-slate-50/30 transition-colors"
+                    className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-full ${bucket.bg} shrink-0`} />
-                      <span className="font-medium text-slate-700 text-slate-500">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
                         {bucket.label}
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="font-bold tabular-nums text-slate-900 text-slate-900">
+                      <span className="font-bold tabular-nums text-slate-900 dark:text-white">
                         {formatInr(bucket.amount)}
                       </span>
                       <span className="text-slate-400 text-[11px] ml-1.5">
@@ -684,10 +635,10 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-100 border-slate-200">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
             <Link
               to="/invoices?filter=overdue"
-              className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-600 text-teal-400 hover:underline"
+              className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
             >
               <span>Filter overdue ledger</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -695,7 +646,6 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
           </div>
         </div>
       </div>
-
 
       {/* Invoice Camera & PDF OCR Modal */}
       <InvoiceCameraModal

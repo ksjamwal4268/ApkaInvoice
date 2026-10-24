@@ -423,21 +423,21 @@ export function Welcome({ lang }: WelcomeProps) {
 
             {/* Step 2 */}
             <div
-              onClick={() => navigate("/forecast")}
+              onClick={() => navigate("/invoices")}
               className="group p-5 rounded-xl border border-slate-200/70 border-slate-200/70 hover:border-teal-500/50 bg-slate-50/50 bg-slate-850/50 hover:bg-teal-50/20 hover:bg-teal-950/20 transition-all cursor-pointer"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 bg-emerald-50 text-emerald-300 flex items-center justify-center font-bold text-sm mb-4 group-hover:scale-110 transition-transform">
                 2
               </div>
               <h3 className="font-bold text-slate-900 text-slate-900 text-sm mb-1.5 flex items-center justify-between">
-                <span>Predict Cash Shortages</span>
+                <span>Track Real-Time Invoices</span>
                 <TrendingUp className="w-4 h-4 text-emerald-600 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
               <p className="text-xs text-slate-600 text-slate-500 leading-relaxed mb-3">
-                See your 8-week cash balance forecast. Simulate "what if they pay late" and catch red shortfall weeks early.
+                Monitor actual billing, payments received, and open balances with 100% precision and zero guesswork.
               </p>
               <span className="text-[11px] font-bold text-teal-600 text-teal-600 flex items-center gap-1 group-hover:underline">
-                View forecast <ChevronRight className="w-3 h-3" />
+                View invoices dataset <ChevronRight className="w-3 h-3" />
               </span>
             </div>
 
