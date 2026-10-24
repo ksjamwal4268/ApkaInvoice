@@ -66,6 +66,7 @@ export interface N8nReminderPayload {
     name: string;
     email: string;
     phone: string;
+    location?: string;
     gstin?: string;
     upi?: string;
   };
@@ -610,6 +611,16 @@ export async function sendReminderViaN8n(
         payer_phone: payload.buyer?.phone,
         amount: payload.amountDueFormatted,
         due_date: payload.dueDate,
+        // Sender Credentials synced directly from user profile:
+        sender_name: payload.sender?.name,
+        sender_email: payload.sender?.email,
+        sender_phone: payload.sender?.phone,
+        sender_location: payload.sender?.location,
+        vendor_name: payload.sender?.name,
+        vendor_email: payload.sender?.email,
+        vendor_phone: payload.sender?.phone,
+        payment_phone: payload.sender?.phone,
+        payment_upi: payload.sender?.upi,
       };
 
       const res = await fetch(config.reminderWebhookUrl, {

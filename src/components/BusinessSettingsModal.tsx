@@ -5,11 +5,10 @@ import {
   MapPin,
   Phone,
   Mail,
-  CreditCard,
   QrCode,
-  FileText,
   Check,
   Trash2,
+  User,
 } from "lucide-react";
 import {
   BusinessProfile,
@@ -18,7 +17,7 @@ import {
   clearAllData,
 } from "../data/dataStore";
 import { updateStoredUser } from "../utils/auth";
-import { validateGstin, INDIAN_STATES } from "../utils/gstin";
+import { INDIAN_STATES } from "../utils/gstin";
 
 interface BusinessSettingsModalProps {
   isOpen: boolean;
@@ -30,27 +29,10 @@ export function BusinessSettingsModal({
   onClose,
 }: BusinessSettingsModalProps): React.JSX.Element | null {
   const [profile, setProfile] = useState<BusinessProfile>(getStoredBusinessProfile);
-  const [gstinError, setGstinError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleGstinChange = (val: string) => {
-    const upper = val.toUpperCase().trim();
-    setProfile({ ...profile, gstin: upper });
-    if (upper.length === 15) {
-      if (validateGstin(upper)) {
-        setGstinError(null);
-      } else {
-        setGstinError("Invalid Indian GSTIN structure (15 characters).");
-      }
-    } else if (upper.length > 0) {
-      setGstinError("GSTIN must be 15 characters (e.g. 27AABCS1234Q1ZM)");
-    } else {
-      setGstinError(null);
-    }
-  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,12 +40,27 @@ export function BusinessSettingsModal({
       alert("Business Name is required.");
       return;
     }
-    saveBusinessProfile(profile);
+    const cleanPhone = profile.phone?.trim() || "";
+    const cleanUpi = profile.upi?.trim() || (cleanPhone ? `${cleanPhone.replace(/\D/g, "")}@upi` : "");
+
+    const updated: BusinessProfile = {
+      ...profile,
+      phone: cleanPhone,
+      upi: cleanUpi,
+      bankName: "",
+      bankAccount: "",
+      ifsc: "",
+      accountHolderName: "",
+      gstin: "",
+      pan: "",
+    };
+
+    saveBusinessProfile(updated);
     if (profile.contactPerson || profile.email) {
       updateStoredUser({
         name: profile.contactPerson || undefined,
         email: profile.email || undefined,
-        phone: profile.phone || undefined,
+        phone: cleanPhone || undefined,
       });
     }
     setSaveSuccess(true);
@@ -92,10 +89,10 @@ export function BusinessSettingsModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Business Profile & Banking Settings
+                Business & Sender Contact Settings
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Configure your real business details, GSTIN, and UPI ID for customer invoices and reminders
+                Configure your contact phone number, email, and location. Buyers pay directly to your phone number.
               </p>
             </div>
           </div>
@@ -109,93 +106,34 @@ export function BusinessSettingsModal({
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-6 space-y-5 overflow-y-auto flex-1">
-          {/* Business Name */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-teal-600" />
-              Your Real Business / Trade Name *
-            </label>
-            <input
-              type="text"
-              required
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              placeholder="e.g. Apex Industries, Bharat Solutions, etc."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
-
-          {/* GSTIN & Address */}
+          {/* Business & Sender Name */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-teal-600" />
-                Your GSTIN (15 Digits)
+                <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                Business / Trade Name *
               </label>
               <input
                 type="text"
-                value={profile.gstin}
-                maxLength={15}
-                onChange={(e) => handleGstinChange(e.target.value)}
-                placeholder="27AABCS1234Q1ZM"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase focus:outline-none focus:ring-2 ${
-                  gstinError
-                    ? "border-rose-500 bg-rose-50/20 focus:ring-rose-500"
-                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-teal-500"
-                }`}
-              />
-              {gstinError ? (
-                <p className="text-[11px] text-rose-500">{gstinError}</p>
-              ) : profile.gstin.length === 15 ? (
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Valid Indian GSTIN
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-teal-600" />
-                State (Home State)
-              </label>
-              <select
-                value={profile.state}
-                onChange={(e) => setProfile({ ...profile, state: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                {STATES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                City / Industrial Area
-              </label>
-              <input
-                type="text"
-                value={profile.city}
-                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                placeholder="e.g. Pune / Mumbai / Bangalore"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                required
+                value={profile.name}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                placeholder="e.g. Jamwal Enterprises"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Full Physical Address
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-teal-600" />
+                Contact Person Name
               </label>
               <input
                 type="text"
-                value={profile.address}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                placeholder="Unit No, Industrial Area, PIN"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                value={profile.contactPerson || ""}
+                onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })}
+                placeholder="e.g. Kulvardhan Singh Jamwal"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
@@ -205,89 +143,98 @@ export function BusinessSettingsModal({
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-teal-600" />
-                Official Phone / WhatsApp
+                Phone Number (WhatsApp & Direct Payment) *
               </label>
               <input
                 type="text"
+                required
                 value={profile.phone}
                 onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                placeholder="+91 98200 12345"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                placeholder="+91 95413 41656"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 bg-teal-50/20 dark:bg-teal-950/20 text-sm font-mono font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
+              <p className="text-[11px] text-teal-600 dark:text-teal-400">
+                Buyers can pay directly to this phone number via PhonePe/GPay/Paytm.
+              </p>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-teal-600" />
-                Billing Email
+                Sender Email Address *
               </label>
               <input
                 type="email"
+                required
                 value={profile.email}
                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                placeholder="billing@yourbusiness.in"
+                placeholder="4268.kulvardhan.7a@gmail.com"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
 
-          {/* Banking & UPI Details */}
+          {/* Location Fields */}
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-              <CreditCard className="w-4 h-4 text-teal-600" />
-              Settlement Bank Account & UPI
+              <MapPin className="w-4 h-4 text-teal-600" />
+              Business Location
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                  Bank Name
+                  City
                 </label>
                 <input
                   type="text"
-                  value={profile.bankName}
-                  onChange={(e) => setProfile({ ...profile, bankName: e.target.value })}
-                  placeholder="e.g. HDFC Bank, ICICI Bank, SBI"
+                  value={profile.city}
+                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                  placeholder="e.g. Jammu / Pune / Delhi"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                  Bank Account Number
+                  State
                 </label>
-                <input
-                  type="text"
-                  value={profile.bankAccount}
-                  onChange={(e) => setProfile({ ...profile, bankAccount: e.target.value })}
-                  placeholder="50200012345678"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
+                <select
+                  value={profile.state}
+                  onChange={(e) => setProfile({ ...profile, state: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  {STATES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                  IFSC Code
+                  Street Address
                 </label>
                 <input
                   type="text"
-                  value={profile.ifsc}
-                  onChange={(e) => setProfile({ ...profile, ifsc: e.target.value.toUpperCase() })}
-                  placeholder="HDFC0001234"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-semibold uppercase text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  value={profile.address}
+                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                  placeholder="Street / Area / Market"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
                   <QrCode className="w-3.5 h-3.5 text-teal-600" />
-                  UPI ID (Used in Payment Reminders)
+                  UPI ID (Optional, defaults to phone number)
                 </label>
                 <input
                   type="text"
                   value={profile.upi}
                   onChange={(e) => setProfile({ ...profile, upi: e.target.value })}
-                  placeholder="yourbusiness@okhdfcbank"
+                  placeholder={profile.phone ? `${profile.phone.replace(/\D/g, "")}@upi` : "e.g. 9541341656@upi"}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-mono font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
@@ -310,14 +257,14 @@ export function BusinessSettingsModal({
                 <button
                   type="button"
                   onClick={handleClearAllFakeData}
-                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs"
+                  className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors"
                 >
-                  Confirm Wipe
+                  Yes, Wipe All Data
                 </button>
                 <button
                   type="button"
                   onClick={() => setClearConfirm(false)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-600"
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300"
                 >
                   Cancel
                 </button>
@@ -326,27 +273,34 @@ export function BusinessSettingsModal({
               <button
                 type="button"
                 onClick={() => setClearConfirm(true)}
-                className="px-3.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 hover:bg-rose-100 text-xs font-bold shrink-0 transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors"
               >
                 Clear Demo Data
               </button>
             )}
           </div>
 
-          {/* Footer Save */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all hover:scale-[1.02]"
             >
-              {saveSuccess ? "Saved!" : "Save Business Profile"}
+              {saveSuccess ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Saved!</span>
+                </>
+              ) : (
+                <span>Save Settings</span>
+              )}
             </button>
           </div>
         </form>

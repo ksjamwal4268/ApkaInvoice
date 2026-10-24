@@ -244,21 +244,21 @@ export function Welcome({ lang }: WelcomeProps) {
                       <div className="flex items-center gap-2 font-bold text-teal-300">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         <span>Automation Configured for: {businessProfile.name}</span>
-                        {businessProfile.gstin && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-900/80 text-teal-200">
-                            GST: {businessProfile.gstin}
+                        {businessProfile.city && (
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-teal-900/80 text-teal-200">
+                            {businessProfile.city}, {businessProfile.state}
                           </span>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-slate-300 text-[11px]">
                         <span className="flex items-center gap-1">
                           <Phone className="w-3 h-3 text-teal-400" />
-                          <span>WhatsApp: {businessProfile.phone}</span>
+                          <span>WhatsApp & Payment: {businessProfile.phone}</span>
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Mail className="w-3 h-3 text-teal-400" />
-                          <span>Gmail: {businessProfile.email}</span>
+                          <span>Email: {businessProfile.email}</span>
                         </span>
                         {businessProfile.upi && (
                           <>

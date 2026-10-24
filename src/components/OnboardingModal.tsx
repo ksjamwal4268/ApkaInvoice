@@ -158,18 +158,26 @@ export function OnboardingModal({
     setStep2Error(null);
     setIsSubmitting(true);
 
+    const cleanPhone = phone.trim();
+    const fallbackUpi = upi.trim() || (cleanPhone ? `${cleanPhone.replace(/\D/g, "")}@upi` : "");
+
     const updatedProfile: BusinessProfile = {
       ...existingProfile,
       name: businessName.trim(),
       contactPerson: contactPerson.trim() || undefined,
-      phone: phone.trim(),
+      phone: cleanPhone,
       email: email.trim(),
       state,
       stateCode,
       city: city.trim() || "Pune",
       address: address.trim() || `${city}, ${state}`,
-      gstin: gstin.trim(),
-      upi: upi.trim() || `${phone.replace(/\D/g, "")}@upi`,
+      gstin: "",
+      pan: "",
+      bankName: "",
+      bankAccount: "",
+      ifsc: "",
+      accountHolderName: "",
+      upi: fallbackUpi,
       isOnboarded: true,
     };
 
@@ -178,7 +186,7 @@ export function OnboardingModal({
       updateStoredUser({
         name: contactPerson.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone,
       });
     }
     setSuccessSaved(true);
@@ -425,25 +433,17 @@ export function OnboardingModal({
 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    GSTIN (Optional)
+                    Address / Area
                   </label>
                   <input
                     type="text"
-                    value={gstin}
-                    onChange={(e) => handleGstinChange(e.target.value)}
-                    placeholder="27AABCS1234Q1ZM"
-                    maxLength={15}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. Gandhi Nagar / Chakan"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>
               </div>
-
-              {gstinError && (
-                <p className="text-[11px] text-rose-500 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  <span>{gstinError}</span>
-                </p>
-              )}
             </div>
 
             {/* 1-Click UPI Payment */}

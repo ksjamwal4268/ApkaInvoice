@@ -25,8 +25,21 @@ import {
   User,
   Camera,
   Sparkles,
+  Download,
+  FileCheck,
+  Eye,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
-
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 export function Dashboard({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
   const { invoices, customers, businessProfile, refresh } = useDataStore();
@@ -79,6 +92,88 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     (sum, o) => add(sum, o.amount),
     0
   );
+
+  /* ---- NEW KPI CALCULATIONS ---- */
+  const totalPaid = useMemo(() => {
+    return invoices.reduce((sum, inv) => {
+      if (inv.status === "paid" || inv.status === "disputed") return sum + inv.total;
+      return sum;
+    }, 0);
+  }, [invoices]);
+
+  const expectedTotal = useMemo(() => {
+    return invoices.reduce((sum, inv) => add(sum, inv.total), 0);
+  }, [invoices]);
+
+  const monthlyInvoices = useMemo(() => {
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    return invoices.filter((inv) => {
+      const d = new Date(inv.invoiceDate);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).length;
+  }, [invoices, today]);
+
+  interface KpiPoint {
+    label: string;
+    invoiceCount: number;
+    paymentReceived: number;
+    expectedTotal: number;
+    outstanding: number;
+  }
+
+  const kpiData = useMemo((): KpiPoint[] => {
+    const result: KpiPoint[] = [];
+    const currentDate = new Date(today);
+    for (let i = 5; i >= 0; i--) {
+      const weekStart = new Date(currentDate);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (i * 7));
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      const weekInvoices = invoices.filter((inv) => {
+        const invDate = new Date(inv.invoiceDate);
+        return invDate >= weekStart && invDate <= weekEnd;
+      });
+      const invoiceCount = weekInvoices.length;
+      const paymentReceived = weekInvoices.filter((inv) => inv.status === "paid" || inv.status === "disputed")
+        .reduce((sum, inv) => add(sum, inv.total), 0);
+      const expected = weekInvoices.reduce((sum, inv) => add(sum, inv.total), 0);
+      const outstanding = weekInvoices.filter((inv) => inv.status !== "paid" && inv.status !== "disputed")
+        .reduce((sum, inv) => add(sum, inv.outstanding), 0);
+      result.push({
+        label: weekStart.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+        invoiceCount,
+        paymentReceived,
+        expectedTotal: expected,
+        outstanding,
+      });
+    }
+    return result;
+  }, [invoices, today]);
+
+  interface RedInvoice {
+    invoice: typeof invoices[number];
+    customer: typeof customers[number] | undefined;
+    daysLate: number;
+    amount: number;
+  }
+
+  const redInvoices = useMemo((): RedInvoice[] => {
+    return invoices
+      .filter((inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed)
+      .map((inv) => {
+        const customer = customers.find((c) => c.id === inv.customerId);
+        const dLate = daysBetween(new Date(inv.dueDate), today);
+        return { invoice: inv, customer: customer || undefined, daysLate: dLate, amount: inv.outstanding };
+      })
+      .filter((r) => r.daysLate >= 30)
+      .sort((a, b) => b.daysLate - a.daysLate)
+      .slice(0, 5);
+  }, [invoices, customers, today]);
+
+  /* ---- END NEW KPI CALCULATIONS ---- */
 
   const whatIf = useMemo(() => {
     return whatIfCustomer && daysLate > 0
@@ -159,18 +254,10 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
         <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
                 {businessProfile.city}, {businessProfile.state}
               </span>
-              <Link
-                to="/profile"
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/20 text-teal-200 border border-teal-500/30 transition-colors"
-                title="View & edit your user profile, contact info, and payment details"
-              >
-                <User className="w-3 h-3 text-teal-300" />
-                <span>Profile: {businessProfile.contactPerson || "My Profile"}</span>
-              </Link>
               {shortfallWeek ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-ping" />
@@ -243,35 +330,37 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
       {/* 4 Premium Metric KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          label="Total Money Owed"
+          label="Payment Left to Receive"
           value={formatInr(moneyOwed)}
           icon={Wallet}
-          subtitle="Across all open customer invoices"
+          change={overdueAmount > 0 ? `${chaseList.length} overdue` : "All clear"}
+          changeType={overdueAmount > 0 ? "negative" : "positive"}
+          subtitle="Outstanding across open invoices"
           highlight={overdueAmount > 0}
         />
         <KpiCard
-          label="Overdue Receivables"
-          value={formatInr(overdueAmount)}
-          icon={Clock}
-          change={overdueAmount > 0 ? `${chaseList.length} accounts overdue` : "All paid"}
-          changeType="negative"
-          subtitle="Action needed today"
-        />
-        <KpiCard
-          label="Expected Inflow (4W)"
-          value={formatInr(expected4Weeks)}
-          icon={TrendingUp}
-          change="Due next 28 days"
+          label="Total Payment Received"
+          value={formatInr(totalPaid)}
+          icon={CheckCircle2}
+          change="All-time received"
           changeType="positive"
-          subtitle="Expected from compliant clients"
+          subtitle="Paid & disputed invoices settled"
         />
         <KpiCard
-          label="Committed Outflow (4W)"
-          value={formatInr(bills4Weeks)}
-          icon={Calendar}
-          change="Rent, Salary & Suppliers"
+          label="Total Expected Payment"
+          value={formatInr(expectedTotal)}
+          icon={TrendingUp}
+          change="Across all invoices"
           changeType="neutral"
-          subtitle="Fixed obligations"
+          subtitle="Gross invoice value expected"
+        />
+        <KpiCard
+          label="Monthly Invoices Received"
+          value={monthlyInvoices.toString()}
+          icon={Download}
+          change="This calendar month"
+          changeType="neutral"
+          subtitle="New invoices recorded"
         />
       </div>
 

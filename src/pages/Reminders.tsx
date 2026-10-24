@@ -16,12 +16,16 @@ import {
   User,
   Phone,
   FileText,
+  MapPin,
+  ShieldCheck,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
+import { useAuth } from "../utils/auth";
 import {
   sendReminderViaN8n,
   N8nReminderPayload,
   getN8nConfig,
+  getStoredBusinessProfile,
 } from "../data/dataStore";
 import { N8nSettingsModal } from "../components/N8nSettingsModal";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
@@ -61,6 +65,7 @@ const DISPATCH_LOGS_KEY = "cc_n8n_dispatch_logs";
 export function Reminders({ lang: _appLang }: { lang: Language }) {
   const navigate = useNavigate();
   const { invoices, customers, businessProfile, addInvoiceEvidence, refresh } = useDataStore();
+  const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"quick-send" | "ladder" | "history">("quick-send");
   const [selectedStage, setSelectedStage] = useState<StageKey | "all">("all");
@@ -104,8 +109,11 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
   );
 
   const getTemplateText = useCallback((stage: StageKey, invNumber: string, custName: string, amount: string, lang: Language) => {
-    const bName = businessProfile.name || "Your Company";
-    const upi = businessProfile.upi || `${businessProfile.phone?.replace(/\D/g, "")}@upi`;
+    const freshProfile = getStoredBusinessProfile();
+    const bName = freshProfile.contactPerson || freshProfile.name || user?.name || "Your Company";
+    const payPhone = freshProfile.phone || user?.phone || "";
+    const upi = freshProfile.upi || (payPhone ? `${payPhone.replace(/\D/g, "")}@upi` : "");
+    const payTarget = payPhone ? `${payPhone} (PhonePe/GPay/Paytm)` : (upi || "phone number");
     const name = custName || "Valued Customer";
     const num = invNumber || "INV-001";
     const amt = amount || "the invoice amount";
@@ -113,44 +121,44 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     if (lang === "hi") {
       switch (stage) {
         case "friendly":
-          return `नमस्ते ${name}, ${bName} की ओर से सादर प्रणाम। आपका इनवॉइस ${num} (${amt}) का भुगतान देय है। कृपया सुविधा अनुसार UPI (${upi}) अथवा NEFT द्वारा भुगतान करें। धन्यवाद।`;
+          return `नमस्ते ${name}, ${bName} की ओर से सादर प्रणाम। आपका इनवॉइस ${num} (${amt}) का भुगतान देय है। कृपया सीधे फोन नंबर ${payTarget} पर भुगतान करें। धन्यवाद।`;
         case "due-date":
-          return `प्रिय ${name}, ${bName} से इनवॉइस ${num} (${amt}) की नियत तिथि आज है। कृपया खाता सक्रिय रखने हेतु आज ही UPI (${upi}) पर भुगतान पूर्ण करें।`;
+          return `प्रिय ${name}, ${bName} से इनवॉइस ${num} (${amt}) की नियत तिथि आज है। कृपया खाता सक्रिय रखने हेतु आज ही सीधे फोन नंबर ${payTarget} पर भुगतान पूर्ण करें।`;
         case "firm":
-          return `अति आवश्यक: ${name}, इनवॉइस ${num} का बकाया ${amt} कई दिनों से लंबित है। आपूर्ति निर्बाध रखने हेतु कृपया 48 घंटे में UPI (${upi}) पर भुगतान करें।`;
+          return `अति आवश्यक: ${name}, इनवॉइस ${num} का बकाया ${amt} कई दिनों से लंबित है। आपूर्ति निर्बाध रखने हेतु कृपया 48 घंटे में सीधे फोन नंबर ${payTarget} पर भुगतान करें।`;
         case "demand":
-          return `अंतिम भुगतान सूचना: ${name}, इनवॉइस ${num} (${amt}) का भुगतान अतिविलंबित है। कृपया तुरंत खातों का निपटारा करें। औपचारिक मांग पत्र संलग्न है।`;
+          return `अंतिम भुगतान सूचना: ${name}, इनवॉइस ${num} (${amt}) का भुगतान अतिविलंबित है। कृपया तुरंत सीधे फोन नंबर ${payTarget} पर भुगतान करें।`;
         default:
-          return `नमस्ते ${name}, ${bName} की ओर से इनवॉइस ${num} (${amt}) के संबंध में स्मरण पत्र। कृपया UPI (${upi}) द्वारा भुगतान करें।`;
+          return `नमस्ते ${name}, ${bName} की ओर से इनवॉइस ${num} (${amt}) के संबंध में स्मरण पत्र। कृपया फोन नंबर ${payTarget} पर भुगतान करें।`;
       }
     } else if (lang === "mr") {
       switch (stage) {
         case "friendly":
-          return `नमस्कार ${name}, ${bName} कडून सस्नेह नमस्कार। आपले इनव्हॉइस ${num} (${amt}) चे पेमेंट देय आहे। कृपया UPI (${upi}) द्वारे वर्ग करावे। धन्यवाद।`;
+          return `नमस्कार ${name}, ${bName} कडून सस्नेह नमस्कार। आपले इनव्हॉइस ${num} (${amt}) चे पेमेंट देय आहे। कृपया थेट फोन नंबर ${payTarget} वर वर्ग करावे। धन्यवाद।`;
         case "due-date":
-          return `प्रिय ${name}, इनव्हॉइस ${num} (${amt}) ची देय तारीख संपली आहे। पुढील सप्लाय सुरळीत राहण्यासाठी कृपया आजच UPI (${upi}) द्वारे पेमेंट करावे।`;
+          return `प्रिय ${name}, इनव्हॉइस ${num} (${amt}) ची देय तारीख संपली आहे। पुढील सप्लाय सुरळीत राहण्यासाठी कृपया आजच फोन नंबर ${payTarget} वर पेमेंट करावे।`;
         case "firm":
-          return `तातडीची सूचना: ${name}, इनव्हॉइस ${num} चे ${amt} अनेक दिवसांपासून थकीत आहे। कृपया पुढील 48 तासांत खात्यात जमा करावे।`;
+          return `तातडीची सूचना: ${name}, इनव्हॉइस ${num} चे ${amt} अनेक दिवसांपासून थकीत आहे। कृपया पुढील 48 तासांत फोन नंबर ${payTarget} वर जमा करावे।`;
         case "demand":
-          return `अंतिम मागणी सूचना: ${name}, इनव्हॉइस ${num} (${amt}) ची रक्कम तातडीने भरावी। अन्यथा अधिकृत कायदेशीर प्रक्रिया सुरू केली जाईल।`;
+          return `अंतिम मागणी सूचना: ${name}, इनव्हॉइस ${num} (${amt}) ची रक्कम तातडीने फोन नंबर ${payTarget} वर भरावी।`;
         default:
           return `नमस्कार ${name}, ${bName} कडून इनव्हॉइस ${num} (${amt}) बाबत स्मरण पत्र।`;
       }
     } else {
       switch (stage) {
         case "friendly":
-          return `Hello ${name}, greetings from ${bName}! A gentle reminder that invoice ${num} for ${amt} is due. You can pay instantly via UPI: ${upi}. Please arrange for payment at your earliest convenience.`;
+          return `Hello ${name}, greetings from ${bName}! A gentle reminder that invoice ${num} for ${amt} is due. You can pay directly to our phone number: ${payTarget}. Please arrange for payment at your earliest convenience.`;
         case "due-date":
-          return `Dear ${name}, payment for invoice ${num} (${amt}) is due. Please clear the outstanding dues via UPI (${upi}) or bank transfer today to keep your credit line active.`;
+          return `Dear ${name}, payment for invoice ${num} (${amt}) is due. Please clear the outstanding dues directly to our phone number: ${payTarget} today to keep your credit line active.`;
         case "firm":
-          return `Urgent Notice: Payment of ${amt} for invoice ${num} is significantly overdue. Please settle via UPI (${upi}) within 48 hours to avoid suspension of ongoing orders.`;
+          return `Urgent Notice: Payment of ${amt} for invoice ${num} is overdue. Please settle directly to phone number ${payTarget} within 48 hours to avoid suspension of ongoing orders.`;
         case "demand":
-          return `Final Payment Demand: Invoice ${num} (${amt}) remains unpaid. Immediate settlement via UPI (${upi}) is requested to avoid escalation. Formal demand letter attached.`;
+          return `Final Payment Demand: Invoice ${num} (${amt}) remains unpaid. Immediate settlement to phone number ${payTarget} is requested to avoid escalation. Formal demand letter attached.`;
         default:
-          return `Hello ${name}, this is a payment notification for invoice ${num} for ${amt}. Please arrange payment via UPI: ${upi}. Thank you!`;
+          return `Hello ${name}, this is a payment notification for invoice ${num} for ${amt}. Please arrange payment directly to phone number ${payTarget}. Thank you!`;
       }
     }
-  }, [businessProfile.name, businessProfile.upi, businessProfile.phone]);
+  }, [user, businessProfile]);
 
   // Sync quick message text when inputs change
   useEffect(() => {
@@ -229,15 +237,23 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     setIsSendingQuick(true);
     setQuickSendSuccess(null);
 
+    // Synchronize the fresh profile right when user presses send
+    const freshProfile = getStoredBusinessProfile();
+    const activeName = freshProfile.contactPerson || freshProfile.name || user?.name || "Business Owner";
+    const activeEmail = freshProfile.email || user?.email || "accounts@business.in";
+    const activePhone = freshProfile.phone || user?.phone || "";
+    const activeLocation = `${freshProfile.city || "Pune"}, ${freshProfile.state || "Maharashtra"}`;
+    const activeUpi = freshProfile.upi || (activePhone ? `${activePhone.replace(/\D/g, "")}@upi` : "");
+
     const payload: N8nReminderPayload = {
       invoiceId: selectedInvoiceId === "custom" ? `quick-${Date.now()}` : selectedInvoiceId,
       invoiceNumber: targetInvoiceNumber || "INV-001",
       sender: {
-        name: businessProfile.name,
-        email: businessProfile.email || "accounts@business.in",
-        phone: businessProfile.phone || "+91 98000 00000",
-        gstin: businessProfile.gstin,
-        upi: businessProfile.upi,
+        name: activeName,
+        email: activeEmail,
+        phone: activePhone,
+        location: activeLocation,
+        upi: activeUpi,
       },
       buyer: {
         id: `buyer-${Date.now().toString(36)}`,
@@ -254,10 +270,10 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       reminderMessage: messageText,
       language: previewLang,
       paymentDetails: {
-        upi: businessProfile.upi,
-        bankName: businessProfile.bankName,
-        bankAccount: businessProfile.bankAccount,
-        ifsc: businessProfile.ifsc,
+        upi: activeUpi,
+        bankName: "",
+        bankAccount: "",
+        ifsc: "",
       },
     };
 
@@ -306,15 +322,23 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     const key = `${inv.id}-${stage}`;
     setLadderSending((prev) => ({ ...prev, [key]: true }));
 
+    // Synchronize the fresh profile right when user presses send
+    const freshProfile = getStoredBusinessProfile();
+    const activeName = freshProfile.contactPerson || freshProfile.name || user?.name || "Business Owner";
+    const activeEmail = freshProfile.email || user?.email || "accounts@business.in";
+    const activePhone = freshProfile.phone || user?.phone || "";
+    const activeLocation = `${freshProfile.city || "Pune"}, ${freshProfile.state || "Maharashtra"}`;
+    const activeUpi = freshProfile.upi || (activePhone ? `${activePhone.replace(/\D/g, "")}@upi` : "");
+
     const payload: N8nReminderPayload = {
       invoiceId: inv.id,
       invoiceNumber: inv.invoiceNumber,
       sender: {
-        name: businessProfile.name,
-        email: businessProfile.email || "accounts@business.com",
-        phone: businessProfile.phone || "+91 98765 00000",
-        gstin: businessProfile.gstin,
-        upi: businessProfile.upi,
+        name: activeName,
+        email: activeEmail,
+        phone: activePhone,
+        location: activeLocation,
+        upi: activeUpi,
       },
       buyer: {
         id: cust?.id || inv.customerId,
@@ -331,10 +355,10 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       reminderMessage: message,
       language: previewLang,
       paymentDetails: {
-        upi: businessProfile.upi,
-        bankName: businessProfile.bankName,
-        bankAccount: businessProfile.bankAccount,
-        ifsc: businessProfile.ifsc,
+        upi: activeUpi,
+        bankName: "",
+        bankAccount: "",
+        ifsc: "",
       },
     };
 
@@ -429,6 +453,41 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
             <Settings className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Live Sender Identity Synced with Workflow */}
+      <div className="p-4 rounded-2xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-xs">
+            {(businessProfile.contactPerson || businessProfile.name || user?.name || "S").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                Sender Identity: {businessProfile.contactPerson || businessProfile.name || user?.name || "Business Owner"}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Synced on "Send Reminder"
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span>WhatsApp / Payment Phone: <strong className="font-mono text-teal-700 dark:text-teal-400 font-bold">{businessProfile.phone || "⚠️ Not set (Click Edit)"}</strong></span>
+              <span>•</span>
+              <span>Email: <strong className="text-teal-700 dark:text-teal-400">{businessProfile.email || "⚠️ Not set"}</strong></span>
+              <span>•</span>
+              <span>Location: <strong>{businessProfile.city || "Pune"}, {businessProfile.state || "Maharashtra"}</strong></span>
+            </p>
+          </div>
+        </div>
+        <Link
+          to="/profile"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-50 dark:hover:bg-teal-900/50 transition-colors shrink-0 text-center shadow-2xs"
+          title="Update your sender phone number, email, and location"
+        >
+          <User className="w-3.5 h-3.5" />
+          <span>Edit Sender Profile</span>
+        </Link>
       </div>
 
       {/* Ping Success Banner */}
