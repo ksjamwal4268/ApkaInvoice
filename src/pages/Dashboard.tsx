@@ -18,8 +18,6 @@ import {
   MessageSquare,
   Plus,
   Sliders,
-  Percent,
-  Banknote,
   Users,
   User,
   Camera,
@@ -695,68 +693,6 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
         </div>
       </div>
 
-      {/* Quick Action Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div
-          onClick={() => navigate("/invoices/create")}
-          className="p-4 rounded-xl border border-slate-200 border-slate-200 bg-white bg-slate-50 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-teal-50 bg-teal-50 text-teal-600 text-teal-400 group-hover:scale-105 transition-transform">
-              <Plus className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 text-slate-900">New GST Invoice</p>
-              <p className="text-xs text-slate-500 text-slate-500">Intra/Inter state routing</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate("/payments")}
-          className="p-4 rounded-xl border border-slate-200 border-slate-200 bg-white bg-slate-50 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-sky-50 bg-sky-950/40 text-sky-600 text-sky-400 group-hover:scale-105 transition-transform">
-              <Banknote className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 text-slate-900">Match Bank CSV</p>
-              <p className="text-xs text-slate-500 text-slate-500">UPI, NEFT & TDS reconciliation</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate("/customers")}
-          className="p-4 rounded-xl border border-slate-200 border-slate-200 bg-white bg-slate-50 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-50 bg-purple-950/40 text-purple-600 text-purple-400 group-hover:scale-105 transition-transform">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 text-slate-900">Customer Discipline</p>
-              <p className="text-xs text-slate-500 text-slate-500">Credit grades & late scores</p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate("/reminders")}
-          className="p-4 rounded-xl border border-slate-200 border-slate-200 bg-white bg-slate-50 hover:border-teal-500 hover:shadow-sm cursor-pointer transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-50 bg-amber-950/40 text-amber-600 text-amber-400 group-hover:scale-105 transition-transform">
-              <Percent className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-slate-900 text-slate-900">Early Discount Offer</p>
-              <p className="text-xs text-slate-500 text-slate-500">2% instant settlement</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Invoice Camera & PDF OCR Modal */}
       <InvoiceCameraModal
