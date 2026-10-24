@@ -153,47 +153,6 @@ export function Dashboard({ lang }: { lang: Language }) {
     }).sort((a, b) => b.score - a.score);
   }, [invoices, customers, today]);
 
-  const ageingBuckets = useMemo(() => {
-    const current = invoices.filter(
-      (inv) => (inv?.status ?? "").toLowerCase() === "due" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
-    ).reduce((sum, inv) => add(sum, inv?.outstanding || 0), 0);
-
-    const overdue1_30 = invoices.filter(
-      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
-    ).reduce((sum, inv) => {
-      const d = daysBetween(inv?.dueDate || today, today);
-      if (d <= 30) return add(sum, inv?.outstanding || 0);
-      return sum;
-    }, 0);
-
-    const overdue31_60 = invoices.filter(
-      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
-    ).reduce((sum, inv) => {
-      const d = daysBetween(inv?.dueDate || today, today);
-      if (d > 30 && d <= 60) return add(sum, inv?.outstanding || 0);
-      return sum;
-    }, 0);
-
-    const overdue60plus = invoices.filter(
-      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
-    ).reduce((sum, inv) => {
-      const d = daysBetween(inv?.dueDate || today, today);
-      if (d > 60) return add(sum, inv?.outstanding || 0);
-      return sum;
-    }, 0);
-
-    return [
-      { label: "Current (Not due)", amount: current, bg: "bg-teal-600", color: "text-teal-600 text-teal-400" },
-      { label: "1–30 days overdue", amount: overdue1_30, bg: "bg-amber-500", color: "text-amber-500 text-amber-400" },
-      { label: "31–60 days overdue", amount: overdue31_60, bg: "bg-orange-500", color: "text-orange-500 text-orange-400" },
-      { label: "60+ days overdue", amount: overdue60plus, bg: "bg-rose-600", color: "text-rose-600 text-rose-400" },
-    ];
-  }, [invoices, today]);
-
-  const totalAgeing = useMemo(
-    () => add(...ageingBuckets.map((b) => b.amount)),
-    [ageingBuckets]
-  );
 
   return (
     <div className="space-y-6">
@@ -234,13 +193,6 @@ export function Dashboard({ lang }: { lang: Language }) {
             >
               <FileText className="w-4 h-4 text-teal-700" />
               <span>View Invoices</span>
-            </Link>
-            <Link
-              to="/reminders"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700/60 hover:bg-teal-700 text-white text-sm font-semibold border border-teal-500/40 backdrop-blur-xs transition-colors tap-target"
-            >
-              <MessageSquare className="w-4 h-4 text-teal-200" />
-              <span>Chase Invoices</span>
             </Link>
           </div>
         </div>
@@ -341,6 +293,62 @@ export function Dashboard({ lang }: { lang: Language }) {
         </div>
       )}
 
+      {/* Weekly Billing & Collections Activity Graph */}
+      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Weekly Billing & Collections Activity</span>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
+                  Real Dataset
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Tracks actual invoices recorded, payments received, and outstanding dues across the last 6 weeks.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                Received
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                Expected
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                Outstanding
+              </span>
+            </div>
+          </div>
+
+          <div className="h-[280px] w-full flex-grow">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={kpiData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
+                <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
+                <YAxis stroke="#94a3b8" fontSize={11} />
+                <Tooltip />
+                <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Payments Received" />
+                <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Expected Total" />
+                <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Outstanding" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <span>Aggregated from your live invoices database</span>
+          <Link to="/invoices" className="text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-1">
+            <span>View full dataset</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </div>
+
       {/* Main Grid: Chase These Today (Left 2 cols) + Critical Invoices (Right 1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chase List */}
@@ -353,9 +361,6 @@ export function Dashboard({ lang }: { lang: Language }) {
                   {chaseList.length} Pending
                 </span>
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Ranked by risk score: Outstanding balance × Days overdue × Chronic delay penalty.
-              </p>
             </div>
             <Link
               to="/reminders"
@@ -517,137 +522,6 @@ export function Dashboard({ lang }: { lang: Language }) {
               className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 hover:underline"
             >
               <span>View all</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Grid: Weekly Invoicing & Collections Activity (Left 2 cols) + Ageing Profile (Right 1 col) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Weekly Activity Trends Chart */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>Weekly Billing & Collections Activity</span>
-                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
-                    Real Dataset
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Tracks actual invoices recorded, payments received, and outstanding dues across the last 6 weeks.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  Received
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  Expected
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  Outstanding
-                </span>
-              </div>
-            </div>
-
-            <div className="h-[280px] w-full flex-grow">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={kpiData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Payments Received" />
-                  <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Expected Total" />
-                  <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Outstanding" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Aggregated from your live invoices database</span>
-            <Link to="/invoices" className="text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-1">
-              <span>View full dataset</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Invoice Ageing Profile */}
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-700">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                  Invoice Ageing Profile
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Total exposure: <strong>{formatInr(totalAgeing)}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Stacked Multi-Color Progress Bar */}
-            <div className="space-y-2">
-              <div className="h-4 w-full rounded-full bg-slate-100 dark:bg-slate-700 flex overflow-hidden shadow-inner">
-                {ageingBuckets.map((b) => {
-                  const pct = totalAgeing > 0 ? (b.amount / totalAgeing) * 100 : 0;
-                  if (pct === 0) return null;
-                  return (
-                    <div
-                      key={b.label}
-                      style={{ width: `${pct}%` }}
-                      className={`${b.bg} transition-all duration-500 hover:opacity-90`}
-                      title={`${b.label}: ${pct.toFixed(1)}%`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Ageing Legend Table */}
-            <div className="space-y-2.5 pt-2">
-              {ageingBuckets.map((bucket) => {
-                const pct = totalAgeing > 0 ? (bucket.amount / totalAgeing) * 100 : 0;
-                return (
-                  <div
-                    key={bucket.label}
-                    className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${bucket.bg} shrink-0`} />
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
-                        {bucket.label}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-bold tabular-nums text-slate-900 dark:text-white">
-                        {formatInr(bucket.amount)}
-                      </span>
-                      <span className="text-slate-400 text-[11px] ml-1.5">
-                        ({pct.toFixed(0)}%)
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
-            <Link
-              to="/invoices?filter=overdue"
-              className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline"
-            >
-              <span>Filter overdue ledger</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
