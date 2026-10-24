@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
-import { ForecastChart } from "../components/ForecastChart";
 import { EmptyState } from "../components/EmptyState";
 import { formatInr, toPaise, add } from "../utils/money";
 import { buildForecast, DEFAULT_OUTFLOWS } from "../utils/forecast";

@@ -75,6 +75,7 @@ export interface Invoice {
   evidence: EvidenceEntry[];
   billOfSupply: boolean;
   pdfUrl: string | null;
+  lastReminderSentAt?: string | null;
 }
 
 export interface EvidenceEntry {

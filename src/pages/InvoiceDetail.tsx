@@ -15,6 +15,7 @@ import {
   Zap,
   MessageSquare,
   Check,
+  CheckCircle2,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { sendReminderViaN8n } from "../data/dataStore";
@@ -22,7 +23,7 @@ import { sendReminderViaN8n } from "../data/dataStore";
 export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invoices, customers, businessProfile, addInvoiceEvidence } = useDataStore();
+  const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice } = useDataStore();
 
   const [n8nSending, setN8nSending] = useState(false);
   const [n8nSuccess, setN8nSuccess] = useState<string | null>(null);
@@ -49,7 +50,9 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
     setN8nSending(true);
     setN8nSuccess(null);
 
-    const message = `Dear ${customer.name}, a payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is outstanding. Please remit to ${businessProfile.bankName} (A/C: ${businessProfile.bankAccount}) or UPI: ${businessProfile.upi}. Thank you.`;
+    const senderPhone = businessProfile.phone || "+91 98000 00000";
+    const senderUpi = businessProfile.upi || `${senderPhone}@upi`;
+    const message = `Dear ${customer.name}, gentle reminder that payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is pending. Please remit directly to ${senderPhone} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${businessProfile.name}`;
 
     try {
       const res = await sendReminderViaN8n({
@@ -58,9 +61,10 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         sender: {
           name: businessProfile.name,
           email: businessProfile.email || "accounts@business.com",
-          phone: businessProfile.phone || "+91 98765 00000",
+          phone: senderPhone,
+          location: `${businessProfile.city || ""}, ${businessProfile.state || ""}`.trim(),
           gstin: businessProfile.gstin,
-          upi: businessProfile.upi,
+          upi: senderUpi,
         },
         buyer: {
           id: customer.id,
@@ -77,10 +81,10 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         reminderMessage: message,
         language: "en",
         paymentDetails: {
-          upi: businessProfile.upi,
-          bankName: businessProfile.bankName,
-          bankAccount: businessProfile.bankAccount,
-          ifsc: businessProfile.ifsc,
+          upi: senderUpi,
+          bankName: "Direct Mobile Payment",
+          bankAccount: senderPhone,
+          ifsc: "UPI-DIRECT",
         },
       });
 
@@ -103,10 +107,49 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
     }
   };
 
+  const senderPhone = businessProfile.phone || "+91 98000 00000";
+  const senderUpi = businessProfile.upi || `${senderPhone}@upi`;
   const phoneClean = customer?.phone?.replace(/\D/g, "") || "919876543210";
   const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(
-    `Hello ${customer?.name || "Customer"}, payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is due. Please clear via UPI: ${businessProfile.upi}. Thanks, ${businessProfile.name}.`
+    `Hello ${customer?.name || "Customer"}, payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is due. Please remit directly to ${senderPhone} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thanks, ${businessProfile.name}.`
   )}`;
+
+  const handleToggleCompleted = () => {
+    const isCompleted = invoice.status === "paid" || invoice.outstanding === 0;
+    if (!isCompleted) {
+      const updated = {
+        ...invoice,
+        status: "paid" as const,
+        amountPaid: invoice.total,
+        outstanding: 0,
+        evidence: [
+          ...(invoice.evidence || []),
+          {
+            id: `ev-${Date.now()}`,
+            date: new Date(),
+            type: "payment" as const,
+            title: "Payment Received (Completed)",
+            description: `Full payment of ${formatInr(invoice.total)} received.`,
+            amount: invoice.total,
+            channel: "phone" as const,
+          },
+        ],
+      };
+      saveInvoice(updated);
+      setN8nSuccess(`Payment received! Invoice marked as Completed.`);
+    } else {
+      const isPastDue = new Date(invoice.dueDate).getTime() < Date.now();
+      const updated = {
+        ...invoice,
+        status: isPastDue ? ("overdue" as const) : ("due" as const),
+        amountPaid: 0,
+        outstanding: invoice.total,
+      };
+      saveInvoice(updated);
+      setN8nSuccess(`Invoice reopened as Pending.`);
+    }
+    setTimeout(() => setN8nSuccess(null), 4000);
+  };
 
   return (
     <div className="space-y-6">
@@ -144,6 +187,24 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Payment Received Tick Toggle Button */}
+          <button
+            type="button"
+            onClick={handleToggleCompleted}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs tap-target ${
+              invoice.status === "paid" || invoice.outstanding === 0
+                ? "bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-600"
+                : "bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>
+              {invoice.status === "paid" || invoice.outstanding === 0
+                ? "Payment Completed ✓"
+                : "Mark Payment Received"}
+            </span>
+          </button>
+
           {/* Edit Invoice Button */}
           <Link
             to={`/invoices/${invoice.id}/edit`}
