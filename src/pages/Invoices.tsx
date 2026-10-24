@@ -83,42 +83,48 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const counts = useMemo(() => {
     return {
       all: invoices.length,
-      ready: invoices.filter((i) => i.status === "ready").length,
-      completed: invoices.filter((i) => i.status === "paid" || i.outstanding === 0).length,
-      due: invoices.filter((i) => i.status === "due" && i.outstanding > 0).length,
-      overdue: invoices.filter((i) => i.status === "overdue" && i.outstanding > 0).length,
-      "part-paid": invoices.filter((i) => i.status === "part-paid").length,
-      disputed: invoices.filter((i) => i.status === "disputed" || i.isDisputed).length,
+      ready: invoices.filter((i) => (i?.status ?? "").toLowerCase() === "ready").length,
+      completed: invoices.filter((i) => (i?.status ?? "").toLowerCase() === "paid" || (i?.outstanding ?? 0) === 0).length,
+      due: invoices.filter((i) => (i?.status ?? "").toLowerCase() === "due" && (i?.outstanding ?? 0) > 0).length,
+      overdue: invoices.filter((i) => (i?.status ?? "").toLowerCase() === "overdue" && (i?.outstanding ?? 0) > 0).length,
+      "part-paid": invoices.filter((i) => (i?.status ?? "").toLowerCase() === "part-paid").length,
+      disputed: invoices.filter((i) => (i?.status ?? "").toLowerCase() === "disputed" || Boolean(i?.isDisputed)).length,
     };
   }, [invoices]);
 
-  const totalBilled = useMemo(() => invoices.reduce((sum, i) => sum + i.total, 0), [invoices]);
-  const totalPaid = useMemo(() => invoices.reduce((sum, i) => sum + i.amountPaid, 0), [invoices]);
-  const totalOutstanding = useMemo(() => invoices.reduce((sum, i) => sum + i.outstanding, 0), [invoices]);
+  const totalBilled = useMemo(() => invoices.reduce((sum, i) => sum + (i?.total || 0), 0), [invoices]);
+  const totalPaid = useMemo(() => invoices.reduce((sum, i) => sum + (i?.amountPaid || 0), 0), [invoices]);
+  const totalOutstanding = useMemo(() => invoices.reduce((sum, i) => sum + (i?.outstanding || 0), 0), [invoices]);
   const totalOverdue = useMemo(
-    () => invoices.filter((i) => i.status === "overdue").reduce((sum, i) => sum + i.outstanding, 0),
+    () => invoices.filter((i) => (i?.status ?? "").toLowerCase() === "overdue").reduce((sum, i) => sum + (i?.outstanding || 0), 0),
     [invoices]
   );
 
   // Filtering & Sorting
   const filtered = useMemo(() => {
     const list = invoices.filter((inv) => {
-      const isCompleted = inv.status === "paid" || inv.outstanding === 0;
-      if (filter === "ready" && inv.status !== "ready") return false;
+      if (!inv) return false;
+      const status = (inv.status ?? "").toLowerCase();
+      const isCompleted = status === "paid" || (inv.outstanding ?? 0) === 0;
+      if (filter === "ready" && status !== "ready") return false;
       if (filter === "completed" && !isCompleted) return false;
-      if (filter === "due" && (inv.status !== "due" || isCompleted)) return false;
-      if (filter === "overdue" && (inv.status !== "overdue" || isCompleted)) return false;
-      if (filter === "part-paid" && inv.status !== "part-paid") return false;
-      if (filter === "disputed" && !inv.isDisputed && inv.status !== "disputed") return false;
+      if (filter === "due" && (status !== "due" || isCompleted)) return false;
+      if (filter === "overdue" && (status !== "overdue" || isCompleted)) return false;
+      if (filter === "part-paid" && status !== "part-paid") return false;
+      if (filter === "disputed" && !inv.isDisputed && status !== "disputed") return false;
 
       if (search) {
-        const query = (search || "").toLowerCase().trim();
-        const matchesCustomer = Boolean(inv.customerName && inv.customerName.toLowerCase().includes(query));
-        const matchesNumber = Boolean(inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(query));
-        const matchesCity = Boolean(inv.customerCity && inv.customerCity.toLowerCase().includes(query));
+        const query = (search ?? "").toLowerCase().trim();
+        const matchesCustomer =
+          (inv.customerName ?? "").toLowerCase().includes(query) ||
+          (inv.payerName ?? "").toLowerCase().includes(query);
+        const matchesNumber = (inv.invoiceNumber ?? "").toLowerCase().includes(query);
+        const matchesCity = (inv.customerCity ?? "").toLowerCase().includes(query);
+        const matchesStatus = (inv.status ?? "").toLowerCase().includes(query);
         const cust = customers.find((c) => Boolean(c && c.id === inv.customerId));
-        const matchesPhone = Boolean(cust && cust.phone && cust.phone.includes(query));
-        if (!matchesCustomer && !matchesNumber && !matchesCity && !matchesPhone) {
+        const matchesPhone = Boolean(cust && (cust.phone ?? "").includes(query));
+        const matchesCustName = Boolean(cust && (cust.name ?? "").toLowerCase().includes(query));
+        if (!matchesCustomer && !matchesNumber && !matchesCity && !matchesStatus && !matchesPhone && !matchesCustName) {
           return false;
         }
       }
@@ -128,15 +134,15 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     return list.sort((a, b) => {
       let cmp = 0;
       if (sortField === "dueDate") {
-        cmp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        cmp = new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime();
       } else if (sortField === "invoiceNumber") {
-        cmp = (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "");
+        cmp = (a.invoiceNumber ?? "").localeCompare(b.invoiceNumber ?? "");
       } else if (sortField === "total") {
         cmp = (a.total || 0) - (b.total || 0);
       } else if (sortField === "outstanding") {
         cmp = (a.outstanding || 0) - (b.outstanding || 0);
       } else if (sortField === "customerName") {
-        cmp = (a.customerName || "").localeCompare(b.customerName || "");
+        cmp = (a.customerName ?? "").localeCompare(b.customerName ?? "");
       }
       return sortAsc ? cmp : -cmp;
     });

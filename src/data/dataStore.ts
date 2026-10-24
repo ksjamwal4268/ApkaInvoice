@@ -379,24 +379,24 @@ export function storeExtractedInvoice(
   const customers = getStoredCustomers();
 
   // Match or create customer
-  const buyerName = (extracted?.buyerName || "").trim() || "Customer";
-  const buyerGstin = (extracted?.buyerGstin || "").trim().toLowerCase();
+  const buyerName = (extracted?.buyerName ?? "").trim() || "Customer";
+  const buyerGstin = (extracted?.buyerGstin ?? "").trim().toLowerCase();
   let customer = customers.find(
     (c) =>
-      Boolean(c && c.name && c.name.toLowerCase() === buyerName.toLowerCase()) ||
-      Boolean(buyerGstin && c && c.gstin && c.gstin.toLowerCase() === buyerGstin)
+      Boolean(c && (c.name ?? "").toLowerCase() === (buyerName ?? "").toLowerCase()) ||
+      Boolean(buyerGstin && c && (c.gstin ?? "").toLowerCase() === buyerGstin)
   );
 
   if (!customer) {
     customer = {
       id: `cust-${Date.now().toString(36)}`,
-      name: extracted.buyerName,
-      city: extracted.buyerCity || "Pune",
-      state: extracted.buyerState || "Maharashtra",
-      gstin: extracted.buyerGstin || null,
-      pan: extracted.buyerGstin && extracted.buyerGstin.length >= 12 ? extracted.buyerGstin.substring(2, 12) : null,
-      email: extracted.buyerEmail || `accounts@${extracted.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "")}.in`,
-      phone: extracted.buyerPhone || "+91 98000 00000",
+      name: buyerName,
+      city: extracted?.buyerCity || "Pune",
+      state: extracted?.buyerState || "Maharashtra",
+      gstin: extracted?.buyerGstin || null,
+      pan: extracted?.buyerGstin && extracted.buyerGstin.length >= 12 ? extracted.buyerGstin.substring(2, 12) : null,
+      email: extracted?.buyerEmail || `accounts@${(buyerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+      phone: extracted?.buyerPhone || "+91 98000 00000",
       isChronicallyLate: false,
       grade: "A",
       gradeReasons: ["Extracted via n8n OCR Workflow"],
@@ -488,12 +488,17 @@ import {
  * Execute OCR extraction via n8n webhook or intelligent client-side OCR fallback
  */
 export interface N8nUploadedInvoice {
-  status: "ready" | string;
-  invoice_number: string;
-  payer_name: string;
-  amount: number;
-  currency: string;
-  due_date: string;
+  id?: string | null;
+  status?: string | null;
+  invoice_number?: string | null;
+  vendor_name?: string | null;
+  payer_name?: string | null;
+  payer_email?: string | null;
+  payer_phone?: string | null;
+  amount?: number | string | null;
+  currency?: string | null;
+  due_date?: string | null;
+  raw_text?: string | null;
 }
 
 /**
@@ -506,7 +511,7 @@ export async function uploadInvoiceToN8n(
   file: File | Blob
 ): Promise<N8nUploadedInvoice> {
   const fd = new FormData();
-  const fileName = file instanceof File ? file.name : "invoice_document";
+  const fileName = (file instanceof File ? (file?.name ?? "") : "") || "invoice_document";
   // Field name is exactly "data", file appended once
   fd.append("data", file, fileName);
 
@@ -544,7 +549,7 @@ export async function uploadInvoiceToN8n(
 
   const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
 
-  if (!payload || payload.status !== "ready") {
+  if (!payload || (payload.status ?? "").toLowerCase() !== "ready") {
     console.warn("n8n response not ready:", payload);
     throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
@@ -561,10 +566,12 @@ export function saveN8nExtractedInvoice(
   existingInvoiceId?: string
 ): Invoice {
   const customers = getStoredCustomers();
-  const payerName = (extracted?.payer_name || "").trim() || "Customer";
+  const payerName = (extracted?.payer_name ?? "").trim() || "Customer";
+  const payerEmail = (extracted?.payer_email ?? "").trim();
+  const payerPhone = (extracted?.payer_phone ?? "").trim();
 
   let customer = customers.find(
-    (c) => Boolean(c && c.name && c.name.toLowerCase() === payerName.toLowerCase())
+    (c) => Boolean(c && (c?.name ?? "").toLowerCase() === (payerName ?? "").toLowerCase())
   );
 
   if (!customer) {
@@ -575,22 +582,47 @@ export function saveN8nExtractedInvoice(
       state: "Maharashtra",
       gstin: null,
       pan: null,
-      email: `accounts@${payerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
-      phone: "+91 98000 00000",
+      email: payerEmail || `accounts@${(payerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+      phone: payerPhone || "+91 98000 00000",
       isChronicallyLate: false,
       grade: "A",
       gradeReasons: ["Imported from n8n Document AI"],
     };
     saveCustomer(customer);
+  } else {
+    let updatedCust = false;
+    if (payerEmail && !customer.email) {
+      customer.email = payerEmail;
+      updatedCust = true;
+    }
+    if (payerPhone && !customer.phone) {
+      customer.phone = payerPhone;
+      updatedCust = true;
+    }
+    if (updatedCust) {
+      saveCustomer(customer);
+    }
   }
 
-  const amountPaise = Math.round(Number(extracted.amount || 0) * 100);
-  const parsedDue = extracted.due_date ? new Date(extracted.due_date) : new Date(Date.now() + 30 * 86400000);
+  const numericAmount =
+    typeof extracted?.amount === "number"
+      ? extracted.amount
+      : parseFloat(String(extracted?.amount ?? "0")) || 0;
+  const amountPaise = Math.round(numericAmount * 100);
+  const parsedDue = extracted?.due_date ? new Date(extracted.due_date) : new Date(Date.now() + 30 * 86400000);
   const dueDate = isNaN(parsedDue.getTime()) ? new Date(Date.now() + 30 * 86400000) : parsedDue;
 
+  // Requirement 4: Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
+  const targetId = existingInvoiceId || extracted?.id || `inv-${Date.now().toString(36)}`;
+
+  // Safe fallback invoice number if empty, using response "id" field or timestamp
+  const safeInvoiceNumber =
+    (extracted?.invoice_number ?? "").trim() ||
+    (extracted?.id ? `INV-${extracted.id}` : `INV-${Date.now().toString().slice(-4)}`);
+
   const newInvoice: Invoice = {
-    id: existingInvoiceId || `inv-${Date.now().toString(36)}`,
-    invoiceNumber: extracted.invoice_number?.trim() || `INV-${Date.now().toString().slice(-4)}`,
+    id: targetId,
+    invoiceNumber: safeInvoiceNumber,
     customerId: customer.id,
     customerName: customer.name,
     customerCity: customer.city,
@@ -623,7 +655,7 @@ export function saveN8nExtractedInvoice(
     disputeReason: null,
     billOfSupply: false,
     pdfUrl: pdfPreviewUrl || null,
-    currency: extracted.currency || "INR",
+    currency: extracted?.currency || "INR",
     payerName,
     rawExtraction: extracted,
     evidence: [
@@ -632,7 +664,7 @@ export function saveN8nExtractedInvoice(
         date: new Date(),
         type: "invoice-sent",
         title: "Invoice Extracted via n8n Webhook",
-        description: `Status: Ready. Payer: ${payerName}, Amount: ₹${Number(extracted.amount || 0).toLocaleString()}, Due: ${extracted.due_date}`,
+        description: `Status: Ready. Payer: ${payerName}, Amount: ₹${numericAmount.toLocaleString()}, Due: ${extracted?.due_date || "Net 30"}`,
         amount: amountPaise,
         channel: "email",
       },

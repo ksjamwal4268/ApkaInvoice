@@ -129,11 +129,11 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
 
   const redInvoices = useMemo((): RedInvoice[] => {
     return invoices
-      .filter((inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed)
+      .filter((inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed)
       .map((inv) => {
-        const customer = customers.find((c) => c.id === inv.customerId);
-        const dLate = daysBetween(new Date(inv.dueDate), today);
-        return { invoice: inv, customer: customer || undefined, daysLate: dLate, amount: inv.outstanding };
+        const customer = customers.find((c) => Boolean(c && c.id === inv?.customerId));
+        const dLate = daysBetween(new Date(inv?.dueDate || Date.now()), today);
+        return { invoice: inv, customer: customer || undefined, daysLate: dLate, amount: inv?.outstanding || 0 };
       })
       .filter((r) => r.daysLate >= 30)
       .sort((a, b) => b.daysLate - a.daysLate)
@@ -142,12 +142,12 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
 
   const chaseList = useMemo(() => {
     return invoices.filter(
-      (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
+      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
     ).map((inv) => {
-      const customer = customers.find((c) => c.id === inv.customerId);
-      const dLate = daysBetween(new Date(inv.dueDate), today);
+      const customer = customers.find((c) => Boolean(c && c.id === inv?.customerId));
+      const dLate = daysBetween(new Date(inv?.dueDate || Date.now()), today);
       const isChronic = customer?.isChronicallyLate || false;
-      const score = inv.outstanding * dLate * (isChronic ? 2 : 1);
+      const score = (inv?.outstanding || 0) * dLate * (isChronic ? 2 : 1);
       return { inv, customer, daysLate: dLate, isChronic, score };
     }).sort((a, b) => b.score - a.score);
   }, [invoices, customers, today]);

@@ -61,6 +61,8 @@ export function InvoiceCameraModal({
   // Editable fields for review ("Photo reading can get a value wrong")
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
   const [editPayerName, setEditPayerName] = useState("");
+  const [editPayerEmail, setEditPayerEmail] = useState("");
+  const [editPayerPhone, setEditPayerPhone] = useState("");
   const [editAmount, setEditAmount] = useState(0);
   const [editDueDate, setEditDueDate] = useState("");
 
@@ -122,6 +124,12 @@ export function InvoiceCameraModal({
     setFileName("");
     setExtractedInvoice(null);
     setStoredInvoice(null);
+    setEditInvoiceNumber("");
+    setEditPayerName("");
+    setEditPayerEmail("");
+    setEditPayerPhone("");
+    setEditAmount(0);
+    setEditDueDate("");
     setUploadError(null);
     setIsUploading(false);
     setActiveTab(initialTab || "all");
@@ -129,15 +137,17 @@ export function InvoiceCameraModal({
 
   const handleApplyInvoice = (inv: N8nUploadedInvoice, previewUrl?: string) => {
     setExtractedInvoice(inv);
-    setEditInvoiceNumber(inv.invoice_number || "");
-    setEditPayerName(inv.payer_name || "");
-    setEditAmount(inv.amount || 0);
-    setEditDueDate(inv.due_date || "");
+    setEditInvoiceNumber((inv.invoice_number ?? "").trim() || (inv.id ? `INV-${inv.id}` : ""));
+    setEditPayerName((inv.payer_name ?? "").trim());
+    setEditPayerEmail((inv.payer_email ?? "").trim());
+    setEditPayerPhone((inv.payer_phone ?? "").trim());
+    setEditAmount(inv.amount != null ? Number(inv.amount) : 0);
+    setEditDueDate((inv.due_date ?? "").trim());
 
     const saved = saveN8nExtractedInvoice(
       inv,
       previewUrl || capturedPreview || fileName,
-      storedInvoice?.id
+      inv.id || storedInvoice?.id
     );
     setStoredInvoice(saved);
     onInvoiceStored?.(saved);
@@ -152,10 +162,10 @@ export function InvoiceCameraModal({
    */
   const processFile = async (file: File | Blob, isCameraCapture: boolean = false) => {
     const isFileInstance = file instanceof File;
-    const name = isFileInstance ? file.name : (isCameraCapture ? "camera-capture.jpg" : "invoice-document.jpg");
-    const mimeType = file.type || "";
-    const isPdf = mimeType === "application/pdf" || name.toLowerCase().endsWith(".pdf");
-    const isImage = mimeType.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|heic)$/i.test(name) || isCameraCapture;
+    const name = isFileInstance ? (file?.name ?? "") : (isCameraCapture ? "camera-capture.jpg" : "invoice-document.jpg");
+    const mimeType = (file?.type ?? "").toLowerCase();
+    const isPdf = mimeType === "application/pdf" || (name ?? "").toLowerCase().endsWith(".pdf");
+    const isImage = mimeType.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|heic)$/i.test(name ?? "") || isCameraCapture;
 
     setFileName(name);
     setLastUploadedFile(file);
@@ -191,8 +201,17 @@ export function InvoiceCameraModal({
       // Direct call to n8n webhook with file appended in field "data"
       const result = await uploadInvoiceToN8n(file);
 
-      if (result && result.status === "ready") {
-        handleApplyInvoice(result, previewDataUrl || name);
+      if (result && (result.status ?? "").toLowerCase() === "ready") {
+        // Requirement 3: Show the extracted values in editable fields so the user can type or correct
+        // invoice_number, payer_email, payer_phone and due_date before saving.
+        setExtractedInvoice(result);
+        setEditInvoiceNumber((result.invoice_number ?? "").trim() || (result.id ? `INV-${result.id}` : ""));
+        setEditPayerName((result.payer_name ?? "").trim());
+        setEditPayerEmail((result.payer_email ?? "").trim());
+        setEditPayerPhone((result.payer_phone ?? "").trim());
+        setEditAmount(result.amount != null ? Number(result.amount) : 0);
+        setEditDueDate((result.due_date ?? "").trim());
+        setActiveTab("review");
         return;
       }
 
@@ -217,7 +236,7 @@ export function InvoiceCameraModal({
 
     try {
       const isFileInstance = lastUploadedFile instanceof File;
-      const name = isFileInstance ? lastUploadedFile.name : "invoice.jpg";
+      const name = isFileInstance ? (lastUploadedFile?.name ?? "") : "invoice.jpg";
       const fileToScan = lastUploadedFile instanceof File ? lastUploadedFile : new File([lastUploadedFile], name, { type: "image/jpeg" });
       
       let ocrText = "";
@@ -235,24 +254,38 @@ export function InvoiceCameraModal({
       if (ocrText && ocrText.trim().length > 15) {
         const parsed = parseInvoiceText(ocrText);
         inv = {
+          id: `local-${Date.now().toString(36)}`,
           status: "ready",
           invoice_number: parsed.invoiceNumber,
           payer_name: parsed.buyerName || "Customer",
+          payer_email: parsed.buyerEmail || null,
+          payer_phone: parsed.buyerPhone || null,
           amount: parsed.grandTotal || 25000,
           currency: "INR",
           due_date: parsed.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+          raw_text: ocrText,
         };
       } else {
         inv = {
+          id: `local-${Date.now().toString(36)}`,
           status: "ready",
           invoice_number: `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
           payer_name: "Customer",
+          payer_email: null,
+          payer_phone: null,
           amount: 18500,
           currency: "INR",
           due_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+          raw_text: null,
         };
       }
-      handleApplyInvoice(inv, capturedPreview || fileName);
+      setExtractedInvoice(inv);
+      setEditInvoiceNumber((inv.invoice_number ?? "").trim() || (inv.id ? `INV-${inv.id}` : ""));
+      setEditPayerName((inv.payer_name ?? "").trim());
+      setEditPayerEmail((inv.payer_email ?? "").trim());
+      setEditPayerPhone((inv.payer_phone ?? "").trim());
+      setEditAmount(inv.amount != null ? Number(inv.amount) : 0);
+      setEditDueDate((inv.due_date ?? "").trim());
     } catch (e: any) {
       setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
     } finally {
@@ -278,15 +311,26 @@ export function InvoiceCameraModal({
 
   const handleSaveEditedInvoice = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storedInvoice) return;
+    if (!extractedInvoice) return;
+
+    // Requirement 4: Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
+    const invoiceId = extractedInvoice.id || storedInvoice?.id || `inv-${Date.now().toString(36)}`;
+    const finalInvoiceNumber =
+      editInvoiceNumber.trim() ||
+      (extractedInvoice.id ? `INV-${extractedInvoice.id}` : `INV-${Date.now().toString().slice(-4)}`);
 
     const updatedInv: N8nUploadedInvoice = {
+      id: invoiceId,
       status: "ready",
-      invoice_number: editInvoiceNumber.trim() || storedInvoice.invoiceNumber,
-      payer_name: editPayerName.trim() || storedInvoice.customerName,
-      amount: editAmount > 0 ? editAmount : storedInvoice.total / 100,
-      currency: "INR",
+      invoice_number: finalInvoiceNumber,
+      vendor_name: extractedInvoice.vendor_name ?? null,
+      payer_name: editPayerName.trim() || "Customer",
+      payer_email: editPayerEmail.trim() || null,
+      payer_phone: editPayerPhone.trim() || null,
+      amount: editAmount > 0 ? editAmount : 0,
+      currency: extractedInvoice.currency || "INR",
       due_date: editDueDate || new Date().toISOString().split("T")[0],
+      raw_text: extractedInvoice.raw_text ?? null,
     };
 
     handleApplyInvoice(updatedInv, capturedPreview || fileName);
@@ -791,8 +835,8 @@ export function InvoiceCameraModal({
                 </div>
               )}
 
-              {/* SUCCESS READY STATE: SHOW EXTRACTED VALUES SO USER CAN CHECK THEM */}
-              {!isUploading && extractedInvoice && storedInvoice && (
+              {/* SUCCESS READY STATE: SHOW EXTRACTED VALUES SO USER CAN CHECK & EDIT THEM BEFORE SAVING */}
+              {!isUploading && extractedInvoice && (
                 <div className="p-6 rounded-2xl bg-teal-50/60 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 space-y-5">
                   <div className="flex items-center justify-between pb-3 border-b border-teal-200/60 dark:border-teal-800">
                     <div className="flex items-center gap-2.5">
@@ -809,7 +853,7 @@ export function InvoiceCameraModal({
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Saved in dataset with status "Ready".
+                          Review or adjust extracted values below, then save to dataset.
                         </p>
                       </div>
                     </div>
@@ -834,14 +878,14 @@ export function InvoiceCameraModal({
                   <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
                     <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-bold">Check Extracted Values</p>
+                      <p className="font-bold">Check & Edit Extracted Values</p>
                       <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
-                        Photo reading can get a value wrong. Please verify the invoice number, payer name, total amount, and due date below before confirming.
+                        Photo reading and Document AI can get a value wrong or leave fields blank. Please verify or correct the invoice number, payer email, phone, and due date before saving.
                       </p>
                     </div>
                   </div>
 
-                  {/* Review / Verification Form with the 4 extracted values */}
+                  {/* Review / Verification Form with editable fields */}
                   <form onSubmit={handleSaveEditedInvoice} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                       {/* 1. Invoice Number */}
@@ -853,6 +897,7 @@ export function InvoiceCameraModal({
                           type="text"
                           value={editInvoiceNumber}
                           onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                          placeholder="e.g. INV-2026-001"
                           className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
                         />
                       </div>
@@ -866,11 +911,40 @@ export function InvoiceCameraModal({
                           type="text"
                           value={editPayerName}
                           onChange={(e) => setEditPayerName(e.target.value)}
+                          placeholder="e.g. Acme Corporation"
                           className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
                         />
                       </div>
 
-                      {/* 3. Amount */}
+                      {/* 3. Payer Email */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Payer Email
+                        </label>
+                        <input
+                          type="email"
+                          value={editPayerEmail}
+                          onChange={(e) => setEditPayerEmail(e.target.value)}
+                          placeholder="e.g. accounts@acme.in"
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
+                        />
+                      </div>
+
+                      {/* 4. Payer Phone */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Payer Phone / WhatsApp
+                        </label>
+                        <input
+                          type="text"
+                          value={editPayerPhone}
+                          onChange={(e) => setEditPayerPhone(e.target.value)}
+                          placeholder="e.g. +91 98000 00000"
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
+                        />
+                      </div>
+
+                      {/* 5. Amount */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                           Total Amount (₹)
@@ -884,7 +958,7 @@ export function InvoiceCameraModal({
                         />
                       </div>
 
-                      {/* 4. Due Date */}
+                      {/* 6. Due Date */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                           Due Date
@@ -911,7 +985,8 @@ export function InvoiceCameraModal({
                         type="submit"
                         className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                       >
-                        <span>Confirm & View in Invoices Dataset</span>
+                        <Check className="w-3.5 h-3.5 stroke-3" />
+                        <span>Save & View in Invoices Dataset</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </div>

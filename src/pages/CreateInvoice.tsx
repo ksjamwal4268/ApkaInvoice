@@ -130,12 +130,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       }
       setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
 
-      const bName = (data?.buyerName || "").trim();
-      const bGstin = (data?.buyerGstin || "").trim().toUpperCase();
+      const bName = (data?.buyerName ?? "").trim();
+      const bGstin = (data?.buyerGstin ?? "").trim().toUpperCase();
       let matchedCustomer = customers.find(
         (c) =>
-          Boolean(c && c.name && bName && c.name.toLowerCase() === bName.toLowerCase()) ||
-          Boolean(bGstin && c && c.gstin && c.gstin.toUpperCase() === bGstin)
+          Boolean(c && (c.name ?? "").toLowerCase() === (bName ?? "").toLowerCase()) ||
+          Boolean(bGstin && c && (c.gstin ?? "").toUpperCase() === bGstin)
       );
 
       if (!matchedCustomer && data.buyerName) {
@@ -146,7 +146,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           state: data.buyerState || "Maharashtra",
           gstin: data.buyerGstin || null,
           pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
-          email: data.buyerEmail || `accounts@${data.buyerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+          email: data.buyerEmail || `accounts@${(data.buyerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
           phone: data.buyerPhone || "+91 98000 00000",
           isChronicallyLate: false,
           grade: "A",

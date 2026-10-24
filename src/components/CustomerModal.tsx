@@ -101,7 +101,7 @@ export function CustomerModal({
       state: state.trim() || "Maharashtra",
       gstin: gstin.trim() ? gstin.toUpperCase().trim() : null,
       pan: pan.trim() ? pan.toUpperCase().trim() : null,
-      email: email.trim() || `accounts@${name.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+      email: email.trim() || `accounts@${(name ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
       phone: phone.trim() || "+91 98000 00000",
       isChronicallyLate,
       grade,

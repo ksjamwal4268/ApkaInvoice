@@ -178,15 +178,15 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       return;
     }
 
-    const inv = invoices.find((i) => i.id === invId);
+    const inv = invoices.find((i) => i && i.id === invId);
     if (inv) {
-      const cust = customers.find((c) => c.id === inv.customerId);
-      setTargetName(inv.customerName);
+      const cust = customers.find((c) => Boolean(c && c.id === inv.customerId));
+      setTargetName(inv.customerName ?? "");
       setTargetPhone(cust?.phone || "");
       setTargetEmail(cust?.email || "");
-      setTargetInvoiceNumber(inv.invoiceNumber);
-      setTargetAmount(formatInr(inv.outstanding));
-      setTargetDueDate(new Date(inv.dueDate).toISOString().split("T")[0]);
+      setTargetInvoiceNumber(inv.invoiceNumber ?? "");
+      setTargetAmount(formatInr(inv.outstanding || 0));
+      setTargetDueDate(new Date(inv.dueDate || Date.now()).toISOString().split("T")[0]);
     }
   };
 
@@ -871,8 +871,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           ) : (
             <div className="space-y-4">
               {invoices.map((inv) => {
-                const customer = customers.find((c) => c.id === inv.customerId);
-                const isOverdue = inv.status === "overdue";
+                const customer = customers.find((c) => Boolean(c && c.id === inv?.customerId));
+                const isOverdue = (inv?.status ?? "").toLowerCase() === "overdue";
 
                 return (
                   <div

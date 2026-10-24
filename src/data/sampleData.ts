@@ -78,14 +78,7 @@ export interface Invoice {
   lastReminderSentAt?: string | null;
   currency?: string;
   payerName?: string;
-  rawExtraction?: {
-    status: string;
-    invoice_number: string;
-    payer_name: string;
-    amount: number;
-    currency: string;
-    due_date: string;
-  };
+  rawExtraction?: any;
 }
 
 export interface EvidenceEntry {
