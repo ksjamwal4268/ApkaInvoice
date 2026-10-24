@@ -164,9 +164,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
       }
 
-      if (data.invoiceNumber) {
-        setInvoiceNumber(data.invoiceNumber);
-      }
+      setInvoiceNumber((data.invoiceNumber ?? "").trim());
       if (data.terms) {
         setTerms(data.terms as PaymentTerms);
       }
@@ -954,7 +952,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                   <p>Phone: {senderPhone || businessProfile.phone} • Email: {senderEmail || businessProfile.email}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">INVOICE #{invoiceNumber}</p>
+                  <p className="font-bold">{invoiceNumber ? `INVOICE #${invoiceNumber}` : "INVOICE"}</p>
                   <p>Date: {invoiceDate}</p>
                   <p>Terms: {terms}</p>
                 </div>

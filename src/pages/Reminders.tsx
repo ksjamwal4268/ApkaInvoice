@@ -895,7 +895,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                           to={`/invoices/${inv.id}`}
                           className="font-bold text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 text-base"
                         >
-                          {inv.invoiceNumber}
+                          {inv.invoiceNumber || <span className="text-slate-400 font-normal italic">— (No Number)</span>}
                         </Link>
                         <span className="text-xs text-slate-400">•</span>
                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -1041,7 +1041,9 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                   {dispatchLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-750/50">
                       <td className="py-2.5 px-3 font-mono text-slate-500">{log.timestamp}</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">{log.invoiceNumber}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
+                        {log.invoiceNumber || <span className="text-slate-400 font-normal italic">— (No Number)</span>}
+                      </td>
                       <td className="py-2.5 px-3">
                         <p className="font-semibold text-slate-800 dark:text-slate-200">{log.recipientName}</p>
                         <p className="text-[10px] text-slate-400 font-mono">{log.recipientPhone || log.recipientEmail}</p>

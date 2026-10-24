@@ -189,7 +189,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setToastMessage(`✓ Payment received for ${inv.invoiceNumber}! Status updated to Completed.`);
+      setToastMessage(`✓ Payment received${inv.invoiceNumber ? ` for ${inv.invoiceNumber}` : ""}! Status updated to Completed.`);
     } else {
       // Revert to pending / overdue
       const isPastDue = new Date(inv.dueDate).getTime() < Date.now();
@@ -212,7 +212,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setToastMessage(`Payment status for ${inv.invoiceNumber} reopened as Pending.`);
+      setToastMessage(`Payment status${inv.invoiceNumber ? ` for ${inv.invoiceNumber}` : ""} reopened as Pending.`);
     }
     setTimeout(() => setToastMessage(null), 4000);
   };
@@ -289,7 +289,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setToastMessage(`Reminder recorded for ${inv.customerName} (${inv.invoiceNumber}). WhatsApp/Email endpoints are unpublished.`);
+      setToastMessage(`Reminder recorded for ${inv.customerName}${inv.invoiceNumber ? ` (${inv.invoiceNumber})` : ""}. WhatsApp/Email endpoints are unpublished.`);
     } catch (err: any) {
       console.error("Reminder failed", err);
       const updated: Invoice = {
@@ -309,7 +309,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setToastMessage(`Payment reminder recorded for ${inv.invoiceNumber}!`);
+      setToastMessage(`Payment reminder recorded${inv.invoiceNumber ? ` for ${inv.invoiceNumber}` : ""}!`);
     } finally {
       setSendingReminderId(null);
       setTimeout(() => setToastMessage(null), 5000);
@@ -387,16 +387,17 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     }
 
     setEditingInvoice(null);
-    setToastMessage(`Invoice ${updatedInvoice.invoiceNumber} updated successfully!`);
+    setToastMessage(`Invoice ${updatedInvoice.invoiceNumber || updatedInvoice.id} updated successfully!`);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
   // 4. Delete invoice option
   const handleDeleteInvoice = (inv: Invoice, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (window.confirm(`Are you sure you want to delete invoice ${inv.invoiceNumber}?`)) {
+    const invLabel = inv.invoiceNumber ? `invoice ${inv.invoiceNumber}` : `invoice for ${inv.customerName}`;
+    if (window.confirm(`Are you sure you want to delete ${invLabel}?`)) {
       deleteInvoice(inv.id);
-      setToastMessage(`Invoice ${inv.invoiceNumber} deleted from dataset.`);
+      setToastMessage(`${invLabel} deleted from dataset.`);
       setTimeout(() => setToastMessage(null), 4000);
     }
   };
@@ -931,7 +932,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                     Edit Invoice Details
                   </h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Update billing data, buyer information, and payment status for {editingInvoice.invoiceNumber}
+                    Update billing data, buyer information, and payment status {editingInvoice.invoiceNumber ? `for ${editingInvoice.invoiceNumber}` : `for ${editingInvoice.customerName}`}
                   </p>
                 </div>
               </div>
@@ -1231,7 +1232,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           refresh();
           setIsCameraModalOpen(false);
           setModalInitialFile(null);
-          setToastMessage(`Invoice ${stored.invoiceNumber} uploaded and added to dataset!`);
+          const invDesc = stored.invoiceNumber ? `Invoice ${stored.invoiceNumber}` : `Invoice for ${stored.customerName}`;
+          setToastMessage(`${invDesc} uploaded and added to dataset!`);
           setTimeout(() => setToastMessage(null), 5000);
         }}
       />
