@@ -430,125 +430,84 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
               )}
             </div>
 
-            <ForecastChart
-              weeks={forecast.weeks}
-              shortfallWeekIndex={forecast.shortfallWeekIndex}
-              height={300}
-            />
+            <div className="h-[320px] w-full flex-grow">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={kpiData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="invoiceCount" stroke="#3b82f6" strokeWidth={2} dot={false} name="Invoices" />
+                  <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2} dot={false} name="Payments Received" />
+                  <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={false} name="Expected Total" />
+                  <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={false} name="Outstanding" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 border-slate-200/60 flex items-center justify-between text-xs text-slate-500 text-slate-500">
-            <span>Baseline liquidity: <strong>₹25,00,000</strong></span>
-            <Link
-              to="/forecast"
-              className="inline-flex items-center gap-1 font-semibold text-teal-600 text-teal-400 hover:underline"
-            >
-              <span>View full weekly table</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+          <div className="mt-4 pt-4 border-t border-slate-100 border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
+            <span>Weekly aggregation from uploaded &amp; manual invoices</span>
           </div>
         </div>
 
-        {/* Interactive "What If They Pay Late?" Card */}
-        <div className="rounded-2xl border border-slate-200/80 border-slate-200/80 bg-white bg-slate-50 p-6 shadow-xs flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 border-slate-200">
-              <div className="p-2 rounded-lg bg-amber-50 bg-amber-950/40 text-amber-600 text-amber-400">
-                <Sliders className="w-4 h-4" />
+        {/* Critical Invoices Panel (Right Side) */}
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 pb-3 border-b border-rose-100">
+              <div className="p-2 rounded-lg bg-rose-100 text-rose-600">
+                <AlertTriangle className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-slate-900 text-slate-900">
-                  What If They Pay Late?
-                </h2>
-                <p className="text-xs text-slate-500 text-slate-500">
-                  Simulate delayed payment impact on cash
-                </p>
+                <h2 className="text-base font-bold text-rose-900">Critical Invoices</h2>
+                <p className="text-xs text-rose-600">Overdue 30+ days</p>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 text-slate-500 mb-1.5">
-                Simulate Customer
-              </label>
-              <select
-                value={whatIfCustomer || ""}
-                onChange={(e) => setWhatIfCustomer(e.target.value || null)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 border-slate-200 bg-slate-50 bg-slate-900 text-slate-900 text-slate-900 focus:ring-2 focus:ring-teal-600 focus:border-transparent tap-target"
-              >
-                <option value="">Select customer to test...</option>
-                {customers.map((c: any) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.city}) — Grade {c.grade}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-700 text-slate-500 mb-1.5">
-                <span>Simulated Delay</span>
-                <span className="tabular-nums font-bold text-teal-600 text-teal-400">
-                  +{daysLate} Days Late
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="60"
-                step="5"
-                value={daysLate}
-                onChange={(e) => setDaysLate(parseInt(e.target.value))}
-                className="w-full accent-teal-600 cursor-pointer"
-              />
-              <div className="flex justify-between gap-1 mt-2">
-                {[0, 7, 15, 30, 45].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDaysLate(d)}
-                    className={`px-2 py-1 text-[11px] rounded font-medium transition-colors ${
-                      daysLate === d
-                        ? "bg-teal-600 text-white font-bold"
-                        : "bg-slate-100 bg-slate-700 text-slate-600 text-slate-500 hover:bg-slate-200"
-                    }`}
-                  >
-                    +{d}d
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 bg-slate-900/60 border border-slate-200/70 border-slate-200/70 space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-600 text-slate-500">
-                <span>Shortfall status:</span>
-                <span className="font-bold text-slate-900 text-slate-900">
-                  {forecast.shortfallWeekIndex !== null
-                    ? `Week of ${forecast.weeks[forecast.shortfallWeekIndex].weekLabel}`
-                    : "None (Runway stable)"}
-                </span>
-              </div>
-              {whatIfCustomer && daysLate > 0 && (
-                <p className="text-[11px] text-amber-700 text-amber-400 pt-1 border-t border-slate-200 border-slate-200">
-                  Shifting invoice payments by {daysLate} days shifts liquidity into later weeks.
-                </p>
+            <div className="space-y-3 flex-grow overflow-y-auto">
+              {redInvoices.length === 0 ? (
+                <div className="text-center py-4 text-xs text-rose-500">
+                  No critical invoices overdue 30+ days.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {redInvoices.map(({ invoice, customer, daysLate, amount }) => (
+                    <div
+                      key={invoice.id}
+                      className="p-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-rose-900 truncate">{invoice.invoiceNumber}</h3>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">{daysLate} days late</span>
+                          </div>
+                          <p className="text-xs text-rose-600">{customer?.name || "Unknown Customer"}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-rose-800">{formatInr(amount)}</div>
+                          <div className="text-[10px] text-rose-500">{new Date(invoice.dueDate).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
 
-          <div className="pt-3">
-            <button
-              onClick={() => {
-                setWhatIfCustomer(null);
-                setDaysLate(0);
-              }}
-              className="w-full py-2 text-xs text-slate-500 hover:text-slate-800 hover:text-slate-200 transition-colors"
+          <div className="mt-4 pt-4 border-t border-rose-100 flex items-center justify-between text-xs text-rose-500">
+            <span>Top 5 critical</span>
+            <Link
+              to="/reminders"
+              className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:underline"
             >
-              Reset simulation
-            </button>
+              <span>View all</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </div>
-
       {/* Bottom Grid: Chase These Today + Ageing Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chase List */}
