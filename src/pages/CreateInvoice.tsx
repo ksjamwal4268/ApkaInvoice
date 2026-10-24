@@ -19,12 +19,15 @@ import {
   Mail,
   User,
   ShieldCheck,
+  MapPin,
+  AlertTriangle,
+  Edit,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CustomerModal } from "../components/CustomerModal";
-import { ExtractedInvoiceData, processInvoiceImageWithN8n } from "../data/dataStore";
-import { Customer } from "../data/sampleData";
+import { ExtractedInvoiceData, processInvoiceImageWithN8n, getStoredBusinessProfile } from "../data/dataStore";
+import { Customer, getCustomerCategory } from "../data/sampleData";
 import { INDIAN_STATES } from "../utils/gstin";
 
 interface LineItem {
@@ -50,16 +53,26 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
   const { invoices, customers, businessProfile, saveInvoice, saveCustomer } = useDataStore();
 
+  // User / Sender Profile details (auto-filled from Profile)
+  const currentProfile = useMemo(() => {
+    const stored = getStoredBusinessProfile();
+    return { ...stored, ...(businessProfile || {}) };
+  }, [businessProfile]);
+
+  const [senderBusinessName, setSenderBusinessName] = useState(currentProfile.name || "Sharma Packaging");
+  const [senderPhone, setSenderPhone] = useState(currentProfile.phone || "");
+  const [senderEmail, setSenderEmail] = useState(currentProfile.email || "");
+  const [senderGstin, setSenderGstin] = useState(currentProfile.gstin || "");
+  const [senderAddress, setSenderAddress] = useState(currentProfile.address || "");
+  const [senderCity, setSenderCity] = useState(currentProfile.city || "Pune");
+  const [senderState, setSenderState] = useState(currentProfile.state || "Maharashtra");
+
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [gstin, setGstin] = useState("");
-  const [placeOfSupply, setPlaceOfSupply] = useState(businessProfile.state || "Maharashtra");
+  const [placeOfSupply, setPlaceOfSupply] = useState(currentProfile.state || "Maharashtra");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [terms, setTerms] = useState<PaymentTerms>("Net 30");
-
-  // User / Sender contact details
-  const [senderPhone, setSenderPhone] = useState(businessProfile.phone || "");
-  const [senderEmail, setSenderEmail] = useState(businessProfile.email || "");
 
   // Buyer contact details
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -82,11 +95,23 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync sender info from business profile
+  // Sync sender info from business profile whenever it updates or loads
   useEffect(() => {
-    if (!senderPhone && businessProfile.phone) setSenderPhone(businessProfile.phone);
-    if (!senderEmail && businessProfile.email) setSenderEmail(businessProfile.email);
-  }, [businessProfile, senderEmail, senderPhone]);
+    const prof = getStoredBusinessProfile();
+    const effective = { ...prof, ...(businessProfile || {}) };
+    if (effective) {
+      if (effective.name) setSenderBusinessName(effective.name);
+      if (effective.phone) setSenderPhone(effective.phone);
+      if (effective.email) setSenderEmail(effective.email);
+      if (effective.gstin) setSenderGstin(effective.gstin);
+      if (effective.address) setSenderAddress(effective.address);
+      if (effective.city) setSenderCity(effective.city);
+      if (effective.state) {
+        setSenderState(effective.state);
+        setPlaceOfSupply((prev) => prev || effective.state);
+      }
+    }
+  }, [businessProfile]);
 
   // Load existing invoice if in edit mode
   useEffect(() => {
@@ -122,14 +147,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       setInvoiceNumber((prev) => (prev ? prev : ""));
       const custParam = searchParams.get("customer");
       if (custParam) {
-        const selected = customers.find((c) => c.id === custParam);
-        if (selected) {
-          setCustomerId(selected.id);
-          setGstin(selected.gstin || "");
-          setPlaceOfSupply(selected.state || businessProfile.state || "Maharashtra");
-          setBuyerPhone(selected.phone || "");
-          setBuyerEmail(selected.email || "");
-        }
+        handleCustomerChange(custParam);
       }
     }
   }, [isEditing, routeInvoiceId, invoices, customers, searchParams, businessProfile.state]);
@@ -230,12 +248,19 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const roundOff = roundedTotal - rawTotal;
   const grandTotal = roundedTotal;
 
-  const handleCustomerChange = (id: string) => {
+  const handleCustomerChange = useCallback((id: string) => {
     setCustomerId(id);
-    const selected = customers.find((c) => c.id === id);
+    const selected = customers.find(
+      (c) => c.id === id || (c.name && c.name.toLowerCase() === id.toLowerCase())
+    );
     if (selected) {
       setGstin(selected.gstin || "");
-      setPlaceOfSupply(selected.state || "Maharashtra");
+      if (selected.state) {
+        const found = INDIAN_STATES.find(
+          (s) => s.state.toLowerCase() === selected.state.toLowerCase()
+        );
+        setPlaceOfSupply(found ? found.state : selected.state);
+      }
       setBuyerPhone(selected.phone || "");
       setBuyerEmail(selected.email || "");
       setGstinError(
@@ -245,8 +270,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           ? "Invalid GSTIN format"
           : null
       );
+    } else {
+      setGstin("");
+      setBuyerPhone("");
+      setBuyerEmail("");
+      setGstinError(null);
     }
-  };
+  }, [customers]);
 
   const handleGstinChange = (val: string) => {
     const upper = val.toUpperCase().trim();
@@ -486,30 +516,44 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       {/* Main Invoice Form Card */}
       <div className="rounded-2xl border border-slate-200 border-slate-200 bg-white bg-slate-50 p-5 sm:p-7 shadow-xs space-y-6">
         {/* Section 1: Logged-in Sender Details (Your Details) */}
-        <div className="p-4 rounded-xl bg-slate-50 bg-slate-50 border border-slate-200 border-slate-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 text-slate-500 flex items-center gap-1.5">
-              <User className="w-4 h-4 text-teal-600" />
-              Your Sender Details (Logged-in User Account)
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Your Sender Details (Auto-Filled from Profile)
             </h2>
-            <span className="text-[11px] text-teal-700 text-teal-400 font-semibold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Messages & emails will dispatch from this contact
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Synced with Profile Identity
+              </span>
+              <Link
+                to="/profile"
+                className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline font-bold inline-flex items-center gap-1"
+                title="Edit your details in Profile"
+              >
+                <Edit className="w-3 h-3" />
+                <span>Edit Profile</span>
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 text-slate-500 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                 Your Business / Sender Name
               </label>
-              <p className="text-sm font-bold text-slate-900 text-slate-900 px-3 py-2 bg-white bg-slate-900 rounded-lg border border-slate-200 border-slate-200">
-                {businessProfile.name}
-              </p>
+              <input
+                type="text"
+                value={senderBusinessName}
+                onChange={(e) => setSenderBusinessName(e.target.value)}
+                placeholder="Business Name"
+                className="w-full px-3 py-2 text-xs font-bold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <Phone className="w-3 h-3 text-teal-600" />
                 Your WhatsApp / Phone Number *
               </label>
@@ -518,12 +562,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={senderPhone}
                 onChange={(e) => setSenderPhone(e.target.value)}
                 placeholder="+91 98200 12345"
-                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-700 text-slate-500 mb-1 flex items-center gap-1">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <Mail className="w-3 h-3 text-teal-600" />
                 Your Billing / From Email *
               </label>
@@ -532,30 +576,54 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
                 placeholder="billing@yourbusiness.in"
-                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Your GSTIN
+              </label>
+              <input
+                type="text"
+                value={senderGstin}
+                onChange={(e) => setSenderGstin(e.target.value.toUpperCase())}
+                placeholder="27AABCS1234Q1ZM"
+                className="w-full px-3 py-2 text-xs font-mono font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white uppercase focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
+
+          {(senderAddress || senderCity) && (
+            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>
+                Registered Address: <strong>{senderAddress ? `${senderAddress}, ` : ""}{senderCity}, {senderState}</strong>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Section 2: Buyer (Recipient) Details */}
         <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 text-slate-500 mb-3 flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5 text-teal-600" />
-            Buyer / Recipient Information
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-teal-600" />
+              Buyer / Recipient Information
+            </h2>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Buyer Selector with + New Buyer Button */}
             <div className="col-span-1 sm:col-span-2">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-700 text-slate-500">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   Buyer Company Name *
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsCustomerModalOpen(true)}
-                  className="text-xs text-teal-600 text-teal-400 hover:text-teal-700 font-bold inline-flex items-center gap-1"
+                  className="text-xs text-teal-600 dark:text-teal-400 hover:text-teal-700 font-bold inline-flex items-center gap-1"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Add New Buyer</span>
@@ -564,7 +632,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               <select
                 value={customerId}
                 onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 <option value="">-- Select or Add a Buyer --</option>
                 {customers.map((c) => (
@@ -696,7 +764,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
             {/* Bill of Supply Option */}
             <div className="flex items-center sm:pt-6">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 text-slate-500">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={billOfSupply}
@@ -707,6 +775,70 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               </label>
             </div>
           </div>
+
+          {/* Auto-Extracted Buyer Profile Card */}
+          {customer && (
+            <div className="mt-4 p-4 rounded-xl border border-teal-200 dark:border-teal-800/80 bg-teal-50/50 dark:bg-teal-950/20 space-y-2.5 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-teal-200/60 dark:border-teal-800/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-teal-900 dark:text-teal-200">
+                    Auto-Extracted Buyer Profile: <strong>{customer.name}</strong>
+                  </span>
+                  {(() => {
+                    const cat = getCustomerCategory(customer);
+                    if (cat === "green") {
+                      return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                          🟢 Green Client (&lt; 7 Days)
+                        </span>
+                      );
+                    }
+                    if (cat === "yellow") {
+                      return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                          🟡 Yellow Client (&gt; 7 Days)
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                        🔴 Red Client (&gt; 30 Days)
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <Link
+                  to={`/customers/${customer.id}`}
+                  className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline"
+                >
+                  View Buyer Profile &rarr;
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600 dark:text-slate-300">
+                <div>
+                  <span className="text-slate-400">Phone:</span>{" "}
+                  <strong>{customer.phone || "—"}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400">Email:</span>{" "}
+                  <strong>{customer.email || "—"}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400">Location:</span>{" "}
+                  <strong>{customer.city}, {customer.state}</strong>
+                </div>
+              </div>
+
+              {customer.isChronicallyLate && (
+                <div className="p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span>Warning: This buyer is flagged with chronic payment delay habits.</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Section 3: Line Items */}
@@ -958,9 +1090,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             <div className="p-4 border rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs space-y-3 font-mono text-slate-800 dark:text-slate-200">
               <div className="flex justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
                 <div>
-                  <p className="font-bold text-sm text-slate-900 dark:text-white">{businessProfile.name}</p>
-                  <p>{businessProfile.city}, {businessProfile.state}</p>
-                  <p>GSTIN: {businessProfile.gstin}</p>
+                  <p className="font-bold text-sm text-slate-900 dark:text-white">{senderBusinessName || businessProfile.name}</p>
+                  <p>{senderCity || businessProfile.city}, {senderState || businessProfile.state}</p>
+                  <p>GSTIN: {senderGstin || businessProfile.gstin}</p>
                   <p>Phone: {senderPhone || businessProfile.phone} • Email: {senderEmail || businessProfile.email}</p>
                 </div>
                 <div className="text-right">
