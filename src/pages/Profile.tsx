@@ -11,9 +11,7 @@ import {
   RefreshCw,
   LayoutDashboard,
   Sparkles,
-  Zap,
   MapPin,
-  Send,
 } from "lucide-react";
 import { Language } from "../data/i18n";
 import { useAuth } from "../utils/auth";
@@ -455,39 +453,6 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                 <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Section 3: Live Workflow Sync Notice */}
-        <div className="bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                <Zap className="w-5 h-5 fill-amber-500" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    n8n Automated Reminder Sync
-                  </h4>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Live Webhook Ready
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  When you press <strong>"Send Reminder"</strong>, this profile is automatically synced into the webhook payload. No bank account setup required.
-                </p>
-              </div>
-            </div>
-
-            <Link
-              to="/reminders"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 text-xs font-semibold hover:bg-teal-100 transition-colors shrink-0"
-            >
-              <span>Go to Reminders</span>
-              <Send className="w-3.5 h-3.5" />
-            </Link>
           </div>
         </div>
 
