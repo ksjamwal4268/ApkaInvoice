@@ -16,7 +16,7 @@ export const translations: Record<Language, Record<string, string>> = {
     navDashboard: "Dashboard",
     navInvoices: "Invoices",
     navPayments: "Payments",
-    navReminders: "Workflow Messaging",
+    navReminders: "Reminders",
     navForecast: "Forecast",
     navCustomers: "Customers",
     kpiMoneyOwed: "Money owed",

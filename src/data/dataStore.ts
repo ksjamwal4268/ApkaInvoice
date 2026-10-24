@@ -84,6 +84,8 @@ export interface N8nReminderPayload {
   stage: string;
   reminderMessage: string;
   language: string;
+  channel?: "email" | "whatsapp";
+  subject?: string;
   paymentDetails: {
     upi: string;
     bankName: string;
@@ -815,18 +817,94 @@ export async function processInvoiceImageWithN8n(
 }
 
 /**
- * Trigger Payment Reminder dispatch via n8n webhook
+ * Trigger Payment Reminder dispatch via n8n webhook (focuses on Email or WhatsApp)
  */
 export async function sendReminderViaN8n(
   payload: N8nReminderPayload
-): Promise<{ success: boolean; message: string; channel: string; executionId: string }> {
+): Promise<{ success: boolean; message: string; channel: string; executionId: string; liveSent?: boolean }> {
   const executionId = `n8n-exec-${Date.now().toString(36)}`;
-  // Note: /invoice-reminder endpoint has been removed as requested.
-  await new Promise((r) => setTimeout(r, 400));
+  const channel = payload.channel || "email";
+  const config = getN8nConfig();
+
+  // Target endpoint:
+  // If reminderWebhookUrl is configured, use it.
+  // Otherwise default to the n8n cloud webhook for email/whatsapp
+  let endpoint = config.reminderWebhookUrl;
+  const isDefaultEndpoint = !endpoint || !endpoint.startsWith("http");
+  if (isDefaultEndpoint) {
+    endpoint = channel === "email"
+      ? "https://ksjamwal.app.n8n.cloud/webhook/email-reminder"
+      : "https://ksjamwal.app.n8n.cloud/webhook/whatsapp-reminder";
+  }
+
+  const requestBody = JSON.stringify({
+    ...payload,
+    invoice_number: payload.invoiceNumber || "",
+    invoice_id: payload.invoiceId || "",
+    recipient_email: payload.buyer.email || "",
+    recipient_phone: payload.buyer.phone || "",
+    recipient_name: payload.buyer.name || "",
+    subject: payload.subject || "",
+    message: payload.reminderMessage || "",
+    amount: payload.amountDueFormatted || "",
+    due_date: payload.dueDate || "",
+    sender_name: payload.sender.name || "",
+    sender_email: payload.sender.email || "",
+    sender_phone: payload.sender.phone || "",
+    upi: payload.sender.upi || "",
+    channel,
+    sent_at: new Date().toISOString(),
+  });
+
+  let liveSent = false;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    let res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
+      },
+      body: requestBody,
+      signal: controller.signal,
+    }).catch(() => null);
+    clearTimeout(timeoutId);
+
+    // If default email endpoint returned 404, fallback to invoice-reminder-email alternative
+    if (isDefaultEndpoint && channel === "email" && (!res || res.status === 404)) {
+      const altController = new AbortController();
+      const altTimeout = setTimeout(() => altController.abort(), 6000);
+      res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
+        },
+        body: requestBody,
+        signal: altController.signal,
+      }).catch(() => null);
+      clearTimeout(altTimeout);
+    }
+
+    if (res && res.ok) {
+      liveSent = true;
+    }
+  } catch (err) {
+    console.warn("n8n reminder dispatch endpoint notice:", err);
+  }
+
+  const targetRecipient = channel === "email"
+    ? (payload.buyer.email || "buyer email")
+    : (payload.buyer.phone || "buyer phone");
+
   return {
     success: true,
-    message: `Payment reminder prepared for ${payload.buyer.name} (${payload.invoiceNumber})`,
-    channel: "WhatsApp Business API / Direct Dispatch",
+    liveSent,
+    message: liveSent
+      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient} via n8n workflow!`
+      : `${channel === "email" ? "Email" : "WhatsApp"} reminder recorded and prepared for ${payload.buyer.name} (${payload.invoiceNumber || "Invoice"}).`,
+    channel: channel === "email" ? "Email Workflow" : "WhatsApp Workflow",
     executionId,
   };
 }
