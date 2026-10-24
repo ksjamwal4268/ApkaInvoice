@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
 import { Timeline } from "../components/Timeline";
-import { formatDate } from "../utils/date";
+import { formatDate, toISODateString, daysBetween } from "../utils/date";
 import { formatInr, amountInWords } from "../utils/money";
 import { Language } from "../data/i18n";
 import {
@@ -77,8 +77,8 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         },
         amountDuePaise: invoice.outstanding,
         amountDueFormatted: formatInr(invoice.outstanding),
-        dueDate: new Date(invoice.dueDate).toISOString().split("T")[0],
-        daysOverdue: Math.max(0, Math.round((Date.now() - new Date(invoice.dueDate).getTime()) / 86400000)),
+        dueDate: toISODateString(invoice.dueDate),
+        daysOverdue: Math.max(0, daysBetween(invoice.dueDate, new Date())),
         stage: "Direct invoice reminder",
         reminderMessage: message,
         language: "en",

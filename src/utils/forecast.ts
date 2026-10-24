@@ -124,16 +124,18 @@ export function buildForecast({
   // Build per-week inflows from real invoices expected to be paid
   const weeklyInflow: Paise[] = new Array(8).fill(0);
 
-  for (const inv of invoices) {
+  for (const inv of (invoices || [])) {
+    if (!inv) continue;
     // Skip disputed invoices
-    if (inv.status === "disputed" || inv.isDisputed) continue;
+    if ((inv.status ?? "").toLowerCase() === "disputed" || inv.isDisputed) continue;
     // Skip fully completed/paid invoices
-    if (inv.status === "paid" || inv.outstanding <= 0) continue;
+    if ((inv.status ?? "").toLowerCase() === "paid" || (inv.outstanding || 0) <= 0) continue;
 
-    const outstanding = inv.outstanding;
+    const outstanding = inv.outstanding || 0;
 
     // Determine expected payment week based on due date
-    let expectedDate = new Date(inv.dueDate);
+    const parsedDue = inv.dueDate ? new Date(inv.dueDate) : new Date();
+    let expectedDate = isNaN(parsedDue.getTime()) ? new Date() : parsedDue;
     expectedDate.setHours(0, 0, 0, 0);
 
     // Apply what-if simulation: this customer pays X days late

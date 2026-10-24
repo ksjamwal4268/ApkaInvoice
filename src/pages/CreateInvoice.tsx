@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { validateGstin } from "../utils/gstin";
 import { toPaise, formatInr, amountInWords, roundGst, splitCgstSgst } from "../utils/money";
-import { computeDueDate, PaymentTerms } from "../utils/date";
+import { computeDueDate, PaymentTerms, toISODateString } from "../utils/date";
 import { Language } from "../data/i18n";
 import {
   Eye,
@@ -96,7 +96,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         setCustomerId(existing.customerId);
         setGstin(existing.customerGstin || "");
         setPlaceOfSupply(existing.placeOfSupply);
-        setInvoiceDate(new Date(existing.invoiceDate).toISOString().split("T")[0]);
+        setInvoiceDate(toISODateString(existing.invoiceDate));
         setTerms(existing.terms);
         setBillOfSupply(existing.billOfSupply);
 

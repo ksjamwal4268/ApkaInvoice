@@ -70,7 +70,7 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
           description: reason,
           channel: "phone" as const,
         },
-        ...invoice.evidence,
+        ...(invoice.evidence || []),
       ],
     };
 

@@ -93,10 +93,11 @@ export function Forecast({ lang: _lang }: { lang: Language }) {
     for (let i = 0; i < 8; i++) map[i] = [];
 
     for (const inv of invoices) {
-      if (inv.status === "disputed" || inv.isDisputed) continue;
-      if (inv.status === "paid" || inv.outstanding <= 0) continue;
+      if ((inv.status ?? "").toLowerCase() === "disputed" || inv.isDisputed) continue;
+      if ((inv.status ?? "").toLowerCase() === "paid" || (inv.outstanding || 0) <= 0) continue;
 
-      let expectedDate = new Date(inv.dueDate);
+      const parsed = inv.dueDate ? new Date(inv.dueDate) : new Date();
+      let expectedDate = isNaN(parsed.getTime()) ? new Date() : parsed;
       expectedDate.setHours(0, 0, 0, 0);
 
       if (whatIf && whatIf.customerId === inv.customerId && whatIf.daysLate > 0) {
@@ -122,8 +123,8 @@ export function Forecast({ lang: _lang }: { lang: Language }) {
   const overdueInvoices = useMemo(
     () =>
       invoices
-        .filter((inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed)
-        .sort((a, b) => b.outstanding - a.outstanding),
+        .filter((inv) => (inv.status ?? "").toLowerCase() === "overdue" && (inv.outstanding || 0) > 0 && !inv.isDisputed)
+        .sort((a, b) => (b.outstanding || 0) - (a.outstanding || 0)),
     [invoices]
   );
   const topOverdue = overdueInvoices[0] || null;
@@ -131,8 +132,8 @@ export function Forecast({ lang: _lang }: { lang: Language }) {
   const upcomingInvoices = useMemo(
     () =>
       invoices
-        .filter((inv) => inv.status === "due" && inv.outstanding > 0 && !inv.isDisputed)
-        .sort((a, b) => b.outstanding - a.outstanding),
+        .filter((inv) => (inv.status ?? "").toLowerCase() === "due" && (inv.outstanding || 0) > 0 && !inv.isDisputed)
+        .sort((a, b) => (b.outstanding || 0) - (a.outstanding || 0)),
     [invoices]
   );
   const topUpcoming = upcomingInvoices[0] || null;

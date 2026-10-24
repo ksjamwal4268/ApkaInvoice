@@ -42,13 +42,13 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
     );
   }
 
-  const totalBilled = invoices.reduce((sum, inv) => sum + inv.total, 0);
-  const totalPaid = invoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
-  const totalOwed = invoices.reduce((sum, inv) => sum + inv.outstanding, 0);
-  const overdueCount = invoices.filter((inv) => inv.status === "overdue" && inv.outstanding > 0).length;
+  const totalBilled = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+  const totalOwed = invoices.reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
+  const overdueCount = invoices.filter((inv) => (inv.status ?? "").toLowerCase() === "overdue" && (inv.outstanding || 0) > 0).length;
   const avgDaysLate = customer.isChronicallyLate ? 22 : customer.grade === "B" ? 7 : 1;
 
-  const phoneClean = customer.phone.replace(/\D/g, "");
+  const phoneClean = (customer.phone ?? "").replace(/\D/g, "");
   const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(
     `Hello ${customer.name}, greetings from ${businessProfile.name}. Regarding your account balance of ${formatInr(
       totalOwed
@@ -77,7 +77,7 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 font-extrabold text-lg flex items-center justify-center shrink-0">
-              {customer.name.substring(0, 2).toUpperCase()}
+              {(customer.name ?? "CU").substring(0, 2).toUpperCase()}
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2.5">

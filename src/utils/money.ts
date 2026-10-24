@@ -7,12 +7,16 @@
 export type Paise = number;
 
 /** Convert rupees (with decimals) to whole paise integer */
-export function toPaise(rupees: number): Paise {
-  return Math.round(rupees * 100);
+export function toPaise(rupees: number | string | null | undefined): Paise {
+  if (rupees == null) return 0;
+  const num = typeof rupees === "number" ? rupees : parseFloat(String(rupees).replace(/[^0-9.-]/g, ""));
+  if (isNaN(num)) return 0;
+  return Math.round(num * 100);
 }
 
 /** Convert paise integer to rupees (decimal) */
-export function fromPaise(paise: Paise): number {
+export function fromPaise(paise: Paise | null | undefined): number {
+  if (paise == null || isNaN(paise)) return 0;
   return paise / 100;
 }
 
@@ -20,27 +24,32 @@ export function fromPaise(paise: Paise): number {
 export const ZERO: Paise = 0;
 
 /** Add two paise amounts */
-export function add(...amounts: Paise[]): Paise {
-  return amounts.reduce((sum, a) => sum + a, 0);
+export function add(...amounts: (Paise | null | undefined)[]): Paise {
+  return amounts.reduce((sum: number, a) => sum + (a && !isNaN(a) ? a : 0), 0);
 }
 
 /** Subtract b from a (paise) */
-export function subtract(a: Paise, b: Paise): Paise {
-  return a - b;
+export function subtract(a: Paise | null | undefined, b: Paise | null | undefined): Paise {
+  const safeA = a && !isNaN(a) ? a : 0;
+  const safeB = b && !isNaN(b) ? b : 0;
+  return safeA - safeB;
 }
 
 /** Multiply paise by a factor, rounding to whole paise */
-export function multiply(paise: Paise, factor: number): Paise {
-  return Math.round(paise * factor);
+export function multiply(paise: Paise | null | undefined, factor: number): Paise {
+  if (paise == null || isNaN(paise)) return 0;
+  return Math.round(paise * (isNaN(factor) ? 0 : factor));
 }
 
 /** Divide paise by a divisor, rounding to whole paise */
-export function divide(paise: Paise, divisor: number): Paise {
+export function divide(paise: Paise | null | undefined, divisor: number): Paise {
+  if (paise == null || isNaN(paise) || !divisor) return 0;
   return Math.round(paise / divisor);
 }
 
 /** Format paise as Indian rupee string: ₹1,41,600 */
-export function formatInr(paise: Paise): string {
+export function formatInr(paise: Paise | null | undefined): string {
+  if (paise == null || isNaN(paise)) return "₹0";
   const rupees = Math.abs(fromPaise(paise));
   const sign = paise < 0 ? "-" : "";
   const formatted = formatIndianNumber(rupees);
@@ -65,14 +74,16 @@ function formatIndianLakhs(num: number): string {
 }
 
 /** Format paise as rupees with no symbol: 1,41,600 */
-export function formatNumber(paise: Paise): string {
+export function formatNumber(paise: Paise | null | undefined): string {
+  if (paise == null || isNaN(paise)) return "0";
   const rupees = Math.abs(fromPaise(paise));
   const sign = paise < 0 ? "-" : "";
   return `${sign}${formatIndianNumber(rupees)}`;
 }
 
 /** Format paise as "₹1,41,600.00" with decimals */
-export function formatInrDecimals(paise: Paise): string {
+export function formatInrDecimals(paise: Paise | null | undefined): string {
+  if (paise == null || isNaN(paise)) return "₹0.00";
   const rupees = Math.abs(fromPaise(paise));
   const sign = paise < 0 ? "-" : "";
   const formatted = formatIndianNumber(Math.floor(rupees));
@@ -81,21 +92,25 @@ export function formatInrDecimals(paise: Paise): string {
 }
 
 /** Round GST per line: amount * rate / 100, rounded to whole paise */
-export function roundGst(amountPaise: Paise, gstRatePercent: number): Paise {
-  return Math.round((amountPaise * gstRatePercent) / 100);
+export function roundGst(amountPaise: Paise | null | undefined, gstRatePercent: number): Paise {
+  if (amountPaise == null || isNaN(amountPaise)) return 0;
+  return Math.round((amountPaise * (isNaN(gstRatePercent) ? 0 : gstRatePercent)) / 100);
 }
 
 /** Split GST into CGST + SGST (same state) - each half of total GST */
-export function splitCgstSgst(totalGstPaise: Paise): { cgst: Paise; sgst: Paise } {
-  const cgst = Math.floor(totalGstPaise / 2);
-  const sgst = totalGstPaise - cgst;
+export function splitCgstSgst(totalGstPaise: Paise | null | undefined): { cgst: Paise; sgst: Paise } {
+  const safe = totalGstPaise && !isNaN(totalGstPaise) ? totalGstPaise : 0;
+  const cgst = Math.floor(safe / 2);
+  const sgst = safe - cgst;
   return { cgst, sgst };
 }
 
 /** Convert total amount (incl GST) to words in Indian numbering (lakhs/crores) */
-export function amountInWords(paise: Paise): string {
-  const rupees = Math.floor(fromPaise(paise));
-  const paisePart = paise % 100;
+export function amountInWords(paise: Paise | null | undefined): string {
+  if (paise == null || isNaN(paise)) return "zero rupees";
+  const safePaise = Math.round(paise);
+  const rupees = Math.floor(fromPaise(safePaise));
+  const paisePart = safePaise % 100;
   if (rupees === 0) {
     return paisePart === 0 ? "zero rupees" : `${paisePart} paise`;
   }

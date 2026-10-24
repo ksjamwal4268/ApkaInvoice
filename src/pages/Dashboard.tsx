@@ -154,30 +154,30 @@ export function Dashboard({ lang }: { lang: Language }) {
 
   const ageingBuckets = useMemo(() => {
     const current = invoices.filter(
-      (inv) => inv.status === "due" && inv.outstanding > 0 && !inv.isDisputed
-    ).reduce((sum, inv) => add(sum, inv.outstanding), 0);
+      (inv) => (inv?.status ?? "").toLowerCase() === "due" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
+    ).reduce((sum, inv) => add(sum, inv?.outstanding || 0), 0);
 
     const overdue1_30 = invoices.filter(
-      (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
+      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(new Date(inv.dueDate), today);
-      if (d <= 30) return add(sum, inv.outstanding);
+      const d = daysBetween(inv?.dueDate || today, today);
+      if (d <= 30) return add(sum, inv?.outstanding || 0);
       return sum;
     }, 0);
 
     const overdue31_60 = invoices.filter(
-      (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
+      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(new Date(inv.dueDate), today);
-      if (d > 30 && d <= 60) return add(sum, inv.outstanding);
+      const d = daysBetween(inv?.dueDate || today, today);
+      if (d > 30 && d <= 60) return add(sum, inv?.outstanding || 0);
       return sum;
     }, 0);
 
     const overdue60plus = invoices.filter(
-      (inv) => inv.status === "overdue" && inv.outstanding > 0 && !inv.isDisputed
+      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
     ).reduce((sum, inv) => {
-      const d = daysBetween(new Date(inv.dueDate), today);
-      if (d > 60) return add(sum, inv.outstanding);
+      const d = daysBetween(inv?.dueDate || today, today);
+      if (d > 60) return add(sum, inv?.outstanding || 0);
       return sum;
     }, 0);
 

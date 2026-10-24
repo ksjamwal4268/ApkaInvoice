@@ -75,8 +75,8 @@ function computeGstinChecksum(gstin: string): string {
   return chars[checkDigit];
 }
 
-export function validateGstin(gstin: string): GstinValidationResult {
-  if (!gstin) {
+export function validateGstin(gstin: any): GstinValidationResult {
+  if (!gstin || typeof gstin !== "string") {
     return { valid: false, error: "GSTIN is required" };
   }
 

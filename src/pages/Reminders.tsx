@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Language } from "../data/i18n";
 import { formatInr } from "../utils/money";
+import { toISODateString, daysBetween } from "../utils/date";
 import {
   MessageSquare,
   Mail,
@@ -357,8 +358,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       },
       amountDuePaise: inv.outstanding,
       amountDueFormatted: formatInr(inv.outstanding),
-      dueDate: new Date(inv.dueDate).toISOString().split("T")[0],
-      daysOverdue: Math.max(1, Math.round((Date.now() - new Date(inv.dueDate).getTime()) / 86400000)),
+      dueDate: toISODateString(inv.dueDate),
+      daysOverdue: Math.max(1, daysBetween(inv.dueDate, new Date())),
       stage: `Stage ${stage} reminder`,
       reminderMessage: message,
       language: previewLang,

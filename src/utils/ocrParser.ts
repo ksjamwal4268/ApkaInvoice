@@ -5,9 +5,9 @@ import { STATE_CODES } from "./gstin";
 /**
  * Clean numeric string into a float
  */
-function parseMoney(val: string): number {
+function parseMoney(val: any): number {
   if (!val) return 0;
-  const cleaned = val.replace(/[^0-9.]/g, "");
+  const cleaned = String(val).replace(/[^0-9.]/g, "");
   const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
@@ -15,9 +15,10 @@ function parseMoney(val: string): number {
 /**
  * Standardize dates into YYYY-MM-DD
  */
-function normalizeDate(raw: string): string {
+function normalizeDate(raw: any): string {
+  if (!raw) return new Date().toISOString().split("T")[0];
   try {
-    const cleaned = raw.trim().replace(/[.]/g, "/");
+    const cleaned = String(raw).trim().replace(/[.]/g, "/");
     const parts = cleaned.split(/[/\\-]/);
     if (parts.length === 3) {
       const [p1, p2, p3] = parts;

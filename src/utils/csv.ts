@@ -91,8 +91,8 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
-function parsePaise(value: string): Paise {
-  const cleaned = value.replace(/[₹,\s]/g, "");
+function parsePaise(value: any): Paise {
+  const cleaned = String(value || "").replace(/[₹,\s]/g, "");
   const num = parseFloat(cleaned);
   if (isNaN(num)) return 0;
   return Math.round(num * 100);

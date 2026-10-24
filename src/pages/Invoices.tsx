@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { StatusBadge } from "../components/StatusBadge";
-import { formatDate, PaymentTerms } from "../utils/date";
+import { formatDate, PaymentTerms, toISODateString, daysBetween, isOverdue } from "../utils/date";
 import { formatInr, toPaise } from "../utils/money";
 import { Language } from "../data/i18n";
 import {
@@ -256,8 +256,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         },
         amountDuePaise: inv.outstanding,
         amountDueFormatted: formatInr(inv.outstanding),
-        dueDate: new Date(inv.dueDate).toISOString().split("T")[0],
-        daysOverdue: Math.max(0, Math.round((Date.now() - new Date(inv.dueDate).getTime()) / 86400000)),
+        dueDate: toISODateString(inv.dueDate),
+        daysOverdue: Math.max(0, daysBetween(inv.dueDate, new Date())),
         stage: "Friendly Reminder",
         reminderMessage: message,
         language: "en",
@@ -327,8 +327,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
       customerEmail: cust?.email || "",
       customerCity: inv.customerCity || "",
       customerState: inv.customerState || "",
-      invoiceDate: new Date(inv.invoiceDate).toISOString().split("T")[0],
-      dueDate: new Date(inv.dueDate).toISOString().split("T")[0],
+      invoiceDate: toISODateString(inv.invoiceDate),
+      dueDate: toISODateString(inv.dueDate),
       terms: inv.terms,
       totalInr: inv.total / 100,
       amountPaidInr: inv.amountPaid / 100,
@@ -695,11 +695,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                 {filtered.map((inv) => {
                   const cust = customers.find((c) => c.id === inv.customerId);
                   const isCompleted = inv.status === "paid" || inv.outstanding === 0;
-                  const isLate = new Date(inv.dueDate).getTime() < Date.now() && !isCompleted;
-                  const daysLate = Math.max(
-                    0,
-                    Math.round((Date.now() - new Date(inv.dueDate).getTime()) / 86400000)
-                  );
+                  const isLate = isOverdue(inv.dueDate) && !isCompleted;
+                  const daysLate = Math.max(0, daysBetween(inv.dueDate, new Date()));
 
                   return (
                     <tr

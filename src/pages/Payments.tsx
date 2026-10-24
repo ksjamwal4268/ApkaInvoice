@@ -36,7 +36,7 @@ export function Payments({ lang: _lang }: { lang: Language }) {
   const handleManualMatch = (rowIndex: number) => {
     const invId = manualLinks[rowIndex];
     if (!invId || !result) return;
-    const inv = getInvoice(invId);
+    const inv = invoices.find((i) => i.id === invId) || getInvoice(invId);
     if (!inv) return;
 
     const row = result.rows.find((r) => r.rowIndex === rowIndex);
