@@ -79,61 +79,7 @@ export function Shell({
   };
 
   if (isWelcome) {
-    return (
-      <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 antialiased font-sans">
-        {/* Top Header for Welcome Page */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-8 py-3 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 shadow-xs">
-          <div
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2.5 cursor-pointer select-none group"
-          >
-            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-teal-500 to-teal-700 flex items-center justify-center text-white font-extrabold text-sm shadow-sm group-hover:scale-105 transition-transform">
-              CC
-            </div>
-            <div>
-              <span className="font-extrabold text-lg text-white leading-tight block tracking-tight">
-                ApkaInvoice
-              </span>
-              <span className="text-[11px] text-teal-400 font-medium hidden sm:block">
-                MSME Cash Shortage Forecaster
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => navigate("/profile")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 hover:border-slate-600 tap-target"
-              title="View and edit your user & business profile"
-            >
-              <UserCircle className="w-3.5 h-3.5 text-teal-400" />
-              <span className="hidden xs:inline">Profile</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard")}
-              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-all hover:scale-105 tap-target"
-            >
-              <span>Go to Dashboard</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-
-            <LanguageSwitch
-              lang={lang}
-              onChange={onLangChange}
-              dark={dark}
-              onToggleDark={onToggleDark}
-            />
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    );
+    return <>{children}</>;
   }
 
   return (
