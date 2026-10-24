@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
 import { formatInr, toPaise, add } from "../utils/money";
-import { buildForecast, DEFAULT_OUTFLOWS } from "../utils/forecast";
+import { buildForecast, buildWeeklyOutflowsFromSettings } from "../utils/forecast";
 import { daysBetween } from "../utils/date";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
@@ -41,7 +41,7 @@ import {
 } from "recharts";
 export function Dashboard({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
-  const { invoices, customers, businessProfile, refresh } = useDataStore();
+  const { invoices, customers, businessProfile, forecastSettings, refresh } = useDataStore();
   const [whatIfCustomer, setWhatIfCustomer] = useState<string | null>(null);
   const [daysLate, setDaysLate] = useState(0);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
