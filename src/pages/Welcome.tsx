@@ -8,6 +8,17 @@ import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { OnboardingModal } from "../components/OnboardingModal";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CometCard } from "@/components/ui/comet-card";
+import {
+  Navbar,
+  NavBody,
+  NavItems,
+  MobileNav,
+  NavbarLogo,
+  NavbarButton,
+  MobileNavHeader,
+  MobileNavToggle,
+  MobileNavMenu,
+} from "@/components/ui/resizable-navbar";
 import "./Welcome.css";
 
 interface WelcomeProps {
@@ -21,6 +32,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   // Automatically trigger onboarding wizard if user logs in and profile is not yet completed
@@ -95,63 +107,134 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
   return (
     <div className="welcome-page">
-      {/* 1. NAVIGATION BAR */}
-      <nav>
-        <a className="l" href="#">apkainvoice</a>
-        <div className="m">
-          <a href="#how">How it works</a>
-          <a href="#live">Portfolio</a>
-          <a href="#tools">Tools</a>
-          <a href="#setup">Setup</a>
-        </div>
-        <div className="r">
-          {!user ? (
-            <button
-              type="button"
-              className="btn o"
-              onClick={handleGoogleSignIn}
-              title="Sign in with your Google account"
-            >
-              <svg className="w-3.5 h-3.5 inline mr-1.5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-              <span>Log in</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => navigate("/profile")}
-                className="btn o py-1.5 px-2.5 text-xs flex items-center gap-1.5"
-                title={`Signed in as ${user.email}`}
+      {/* 1. RESIZABLE NAVBAR */}
+      <Navbar>
+        {/* Desktop Navigation */}
+        <NavBody>
+          <NavbarLogo />
+          <NavItems
+            items={[
+              { name: "How it works", link: "#how" },
+              { name: "Portfolio", link: "#live" },
+              { name: "Tools", link: "#tools" },
+              { name: "Setup", link: "#setup" },
+            ]}
+          />
+          <div className="flex items-center gap-2.5">
+            {!user ? (
+              <NavbarButton
+                variant="secondary"
+                onClick={handleGoogleSignIn}
+                title="Sign in with your Google account"
               >
-                {user.picture ? (
-                  <img src={user.picture} alt="" className="w-4 h-4 rounded-full" />
-                ) : (
-                  <span className="w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-700 text-[10px] flex items-center justify-center font-bold">
-                    {user.name?.charAt(0) || "U"}
-                  </span>
-                )}
-                <span className="max-w-[110px] truncate">{user.name?.split(" ")[0] || "Profile"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={signOutUser}
-                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 px-1.5 py-1"
-                title="Sign out"
+                <svg className="w-3.5 h-3.5 inline mr-1.5" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Log in</span>
+              </NavbarButton>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => navigate("/profile")}
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 transition-colors shadow-2xs"
+                  title={`Signed in as ${user.email}`}
+                >
+                  {user.picture ? (
+                    <img src={user.picture} alt="" className="w-4 h-4 rounded-full" />
+                  ) : (
+                    <span className="w-4 h-4 rounded-full bg-slate-300 text-[10px] flex items-center justify-center font-bold">
+                      {user.name?.charAt(0) || "U"}
+                    </span>
+                  )}
+                  <span className="max-w-[100px] truncate">{user.name?.split(" ")[0] || "Profile"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={signOutUser}
+                  className="text-xs text-slate-500 hover:text-slate-800 px-1.5 py-1"
+                  title="Sign out"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+            <NavbarButton variant="primary" onClick={handleEnterDashboard}>
+              Dashboard →
+            </NavbarButton>
+          </div>
+        </NavBody>
+
+        {/* Mobile Navigation */}
+        <MobileNav>
+          <MobileNavHeader>
+            <NavbarLogo />
+            <MobileNavToggle
+              isOpen={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            />
+          </MobileNavHeader>
+
+          <MobileNavMenu
+            isOpen={isMobileMenuOpen}
+            onClose={() => setIsMobileMenuOpen(false)}
+          >
+            {[
+              { name: "How it works", link: "#how" },
+              { name: "Portfolio", link: "#live" },
+              { name: "Tools", link: "#tools" },
+              { name: "Setup", link: "#setup" },
+            ].map((item, idx) => (
+              <a
+                key={`mobile-link-${idx}`}
+                href={item.link}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="relative text-slate-700 font-semibold text-sm py-1"
               >
-                Sign out
-              </button>
+                <span>{item.name}</span>
+              </a>
+            ))}
+            <div className="flex w-full flex-col gap-2.5 pt-2 border-t border-slate-100">
+              {!user ? (
+                <NavbarButton
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    handleGoogleSignIn();
+                  }}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Log in
+                </NavbarButton>
+              ) : (
+                <NavbarButton
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    navigate("/profile");
+                  }}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  Profile ({user.name?.split(" ")[0] || "User"})
+                </NavbarButton>
+              )}
+              <NavbarButton
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleEnterDashboard();
+                }}
+                variant="primary"
+                className="w-full"
+              >
+                Dashboard
+              </NavbarButton>
             </div>
-          )}
-          <button type="button" className="btn" onClick={handleEnterDashboard}>
-            Go to dashboard
-          </button>
-        </div>
-      </nav>
+          </MobileNavMenu>
+        </MobileNav>
+      </Navbar>
 
       {/* 2. HERO SECTION */}
       <header className="hero">
