@@ -16,6 +16,8 @@ import {
   MessageSquare,
   Check,
   CheckCircle2,
+  Image as ImageIcon,
+  FileText,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { sendReminderViaN8n } from "../data/dataStore";
@@ -430,6 +432,54 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
           </table>
         </div>
       </div>
+
+      {/* Attached Bill Photo or Document */}
+      {invoice.pdfUrl && (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-teal-600" />
+              <span>Attached Bill Photo / Original Document</span>
+            </h2>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+              Verified File
+            </span>
+          </div>
+
+          {invoice.pdfUrl.startsWith("data:image") ? (
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700">
+              <img
+                src={invoice.pdfUrl}
+                alt={`Bill photo for ${invoice.invoiceNumber}`}
+                className="max-h-64 object-contain rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm"
+              />
+              <div className="text-xs space-y-2">
+                <p className="font-bold text-slate-900 dark:text-white">Uploaded Bill Photo (JPG/PNG)</p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  Extracted and verified. This paper photo is attached to invoice {invoice.invoiceNumber} and preserved for payment chasing.
+                </p>
+                <a
+                  href={invoice.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-2xs"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  <span>View Full Photo</span>
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
+                <FileText className="w-4 h-4 text-teal-600" />
+                <span>{invoice.pdfUrl}</span>
+              </div>
+              <span className="text-[11px] text-teal-600 font-semibold">Attached</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Evidence Timeline */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs">

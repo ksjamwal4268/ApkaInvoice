@@ -20,6 +20,7 @@ import {
   Check,
   Upload,
   X,
+  Image as ImageIcon,
   AlertTriangle,
   Building2,
   Phone,
@@ -51,6 +52,9 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const [sortField, setSortField] = useState<SortField>("dueDate");
   const [sortAsc, setSortAsc] = useState<boolean>(true);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [modalInitialFile, setModalInitialFile] = useState<File | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
@@ -423,27 +427,56 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Direct File Upload Input */}
+          {/* Photo File Input (JPG, JPEG, PNG, WEBP) */}
           <input
             type="file"
-            ref={fileInputRef}
-            accept="image/*,application/pdf"
+            ref={photoInputRef}
+            accept="image/*,.jpg,.jpeg,.png,.webp,.heic"
             className="hidden"
             onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
+              const file = e.target.files?.[0];
+              if (file) {
+                setModalInitialFile(file);
                 setIsCameraModalOpen(true);
+                e.target.value = "";
               }
             }}
           />
 
+          {/* PDF File Input */}
+          <input
+            type="file"
+            ref={pdfInputRef}
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setModalInitialFile(file);
+                setIsCameraModalOpen(true);
+                e.target.value = "";
+              }
+            }}
+          />
+
+          {/* Upload Bill Photo Button */}
           <button
             type="button"
-            onClick={() => setIsCameraModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors shadow-xs"
+            onClick={() => photoInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors shadow-xs cursor-pointer"
           >
-            <Upload className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Invoice (Photo or PDF)</span>
-            <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+            <ImageIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Upload Photo (JPG/PNG)</span>
+          </button>
+
+          {/* Upload PDF Button */}
+          <button
+            type="button"
+            onClick={() => pdfInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
+          >
+            <FileText className="w-4 h-4 text-slate-500" />
+            <span>Upload PDF</span>
           </button>
 
           <Link
@@ -505,7 +538,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
       {/* Upload Drag & Drop Banner */}
       <div
-        onClick={() => setIsCameraModalOpen(true)}
+        onClick={() => { setModalInitialFile(null); setIsCameraModalOpen(true); }}
         className="p-4 rounded-xl border border-dashed border-teal-300 dark:border-teal-800 bg-teal-50/40 dark:bg-teal-950/20 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
       >
         <div className="flex items-center gap-3">
@@ -709,9 +742,21 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
                       {/* Invoice # & Terms */}
                       <td className="px-5 py-4">
-                        <span className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                          {inv.invoiceNumber}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                            {inv.invoiceNumber}
+                          </span>
+                          {inv.pdfUrl && inv.pdfUrl.startsWith("data:image") && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800" title="Bill photo attached">
+                              📷 Photo
+                            </span>
+                          )}
+                          {inv.pdfUrl && (inv.pdfUrl.includes(".pdf") || inv.pdfUrl.startsWith("data:application/pdf")) && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600" title="PDF attached">
+                              📄 PDF
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono">
                             {inv.terms}
@@ -1168,11 +1213,16 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
       {/* Camera & n8n OCR Modal */}
       <InvoiceCameraModal
         isOpen={isCameraModalOpen}
-        onClose={() => setIsCameraModalOpen(false)}
+        initialFile={modalInitialFile}
+        onClose={() => {
+          setIsCameraModalOpen(false);
+          setModalInitialFile(null);
+        }}
         onApplyExtractedData={handleApplyExtractedData}
         onInvoiceStored={(stored) => {
           refresh();
           setIsCameraModalOpen(false);
+          setModalInitialFile(null);
           setToastMessage(`Invoice ${stored.invoiceNumber} uploaded and added to dataset!`);
           setTimeout(() => setToastMessage(null), 5000);
         }}

@@ -546,7 +546,8 @@ export async function uploadInvoiceToN8n(
  */
 export function saveN8nExtractedInvoice(
   extracted: N8nUploadedInvoice,
-  pdfPreviewUrl?: string
+  pdfPreviewUrl?: string,
+  existingInvoiceId?: string
 ): Invoice {
   const customers = getStoredCustomers();
   const payerName = extracted.payer_name?.trim() || "Customer";
@@ -577,7 +578,7 @@ export function saveN8nExtractedInvoice(
   const dueDate = isNaN(parsedDue.getTime()) ? new Date(Date.now() + 30 * 86400000) : parsedDue;
 
   const newInvoice: Invoice = {
-    id: `inv-${Date.now().toString(36)}`,
+    id: existingInvoiceId || `inv-${Date.now().toString(36)}`,
     invoiceNumber: extracted.invoice_number?.trim() || `INV-${Date.now().toString().slice(-4)}`,
     customerId: customer.id,
     customerName: customer.name,
