@@ -215,103 +215,11 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // 2. Send reminder option
-  const handleSendReminder = async (inv: Invoice, e?: React.MouseEvent) => {
+  // 2. Send reminder option - takes invoice to Reminders page
+  const handleSendReminder = (inv: Invoice, e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (inv.status === "paid" || inv.outstanding === 0) return;
-
-    setSendingReminderId(inv.id);
-    const cust = customers.find((c) => c.id === inv.customerId);
-    const targetPhone = cust?.phone || "";
-    const targetEmail = cust?.email || "";
-
-    try {
-      const profile = getStoredBusinessProfile();
-      const senderPhone = profile.phone || "";
-      const senderUpi = profile.upi || (senderPhone ? `${senderPhone}@upi` : "");
-
-      const invRefText = inv.invoiceNumber ? `for invoice ${inv.invoiceNumber}` : "";
-      const message = `Hello ${inv.customerName}, gentle reminder that payment of ${formatInr(
-        inv.outstanding
-      )} ${invRefText} is pending. Please remit directly to ${senderPhone || "our phone number"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${profile.name || "ApkaInvoice"}`.replace(/\s+/g, " ");
-
-      const payload: N8nReminderPayload = {
-        invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber || "",
-        sender: {
-          name: profile.name || "ApkaInvoice",
-          email: profile.email || "",
-          phone: senderPhone,
-          location: `${profile.city || ""}, ${profile.state || ""}`.trim(),
-          gstin: profile.gstin,
-          upi: senderUpi,
-        },
-        buyer: {
-          id: inv.customerId,
-          name: inv.customerName,
-          phone: targetPhone,
-          email: targetEmail,
-          gstin: inv.customerGstin,
-        },
-        amountDuePaise: inv.outstanding,
-        amountDueFormatted: formatInr(inv.outstanding),
-        dueDate: toISODateString(inv.dueDate),
-        daysOverdue: Math.max(0, daysBetween(inv.dueDate, new Date())),
-        stage: "Friendly Reminder",
-        reminderMessage: message,
-        language: "en",
-        paymentDetails: {
-          upi: senderUpi,
-          bankName: "Direct Mobile Payment",
-          bankAccount: senderPhone,
-          ifsc: "UPI-DIRECT",
-        },
-      };
-
-      const res = await sendReminderViaN8n(payload);
-
-      const updated: Invoice = {
-        ...inv,
-        lastReminderSentAt: new Date().toISOString(),
-        evidence: [
-          ...(inv.evidence || []),
-          {
-            id: `ev-${Date.now()}`,
-            date: new Date(),
-            type: "reminder",
-            title: "Payment Reminder Sent",
-            description: `Reminder dispatched to ${inv.customerName} (${targetPhone}) via ${res.channel}`,
-            amount: inv.outstanding,
-            channel: "whatsapp",
-          },
-        ],
-      };
-      saveInvoice(updated);
-      setToastMessage(`Reminder recorded for ${inv.customerName}${inv.invoiceNumber ? ` (${inv.invoiceNumber})` : ""}. WhatsApp/Email endpoints are unpublished.`);
-    } catch (err: any) {
-      console.error("Reminder failed", err);
-      const updated: Invoice = {
-        ...inv,
-        lastReminderSentAt: new Date().toISOString(),
-        evidence: [
-          ...(inv.evidence || []),
-          {
-            id: `ev-${Date.now()}`,
-            date: new Date(),
-            type: "reminder",
-            title: "Payment Reminder Sent",
-            description: `Reminder recorded for ${inv.customerName}`,
-            amount: inv.outstanding,
-            channel: "whatsapp",
-          },
-        ],
-      };
-      saveInvoice(updated);
-      setToastMessage(`Payment reminder recorded${inv.invoiceNumber ? ` for ${inv.invoiceNumber}` : ""}!`);
-    } finally {
-      setSendingReminderId(null);
-      setTimeout(() => setToastMessage(null), 5000);
-    }
+    navigate(`/reminders?invoice=${inv.id}`);
   };
 
   // 3. Edit invoice option
