@@ -441,8 +441,8 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             onClick={() => setIsCameraModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors shadow-xs"
           >
-            <Camera className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Invoice (Camera / PDF)</span>
+            <Upload className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Upload Invoice (Image or PDF)</span>
             <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
           </button>
 
@@ -514,10 +514,10 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-900 dark:text-white">
-              Quick Upload Invoice Bill or PDF
+              Quick Upload Invoice (Image or PDF)
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Snap physical bills via camera or upload PDF / image for automated data extraction and instant dataset addition.
+              Upload invoice photos (JPG, PNG), text-based PDFs, or snap physical bills via camera for automated data extraction and instant dataset addition.
             </p>
           </div>
         </div>
