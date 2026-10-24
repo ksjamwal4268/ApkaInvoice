@@ -79,8 +79,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
   const [targetName, setTargetName] = useState<string>("");
   const [targetPhone, setTargetPhone] = useState<string>("");
   const [targetEmail, setTargetEmail] = useState<string>("");
-  const [targetInvoiceNumber, setTargetInvoiceNumber] = useState<string>("INV-001");
-  const [targetAmount, setTargetAmount] = useState<string>("₹50,000");
+  const [targetInvoiceNumber, setTargetInvoiceNumber] = useState<string>("");
+  const [targetAmount, setTargetAmount] = useState<string>("");
   const [targetDueDate, setTargetDueDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [customStage, setCustomStage] = useState<StageKey>("friendly");
   const [messageText, setMessageText] = useState<string>("");
@@ -116,7 +116,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     const upi = freshProfile.upi || (payPhone ? `${payPhone.replace(/\D/g, "")}@upi` : "");
     const payTarget = payPhone ? `${payPhone} (PhonePe/GPay/Paytm)` : (upi || "phone number");
     const name = custName || "Valued Customer";
-    const num = invNumber || "INV-001";
+    const num = invNumber ? `invoice ${invNumber}` : "your invoice";
     const amt = amount || "the invoice amount";
 
     if (lang === "hi") {
@@ -173,8 +173,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       setTargetName("");
       setTargetPhone("");
       setTargetEmail("");
-      setTargetInvoiceNumber("INV-001");
-      setTargetAmount("₹50,000");
+      setTargetInvoiceNumber("");
+      setTargetAmount("");
       setTargetDueDate(new Date().toISOString().split("T")[0]);
       return;
     }
@@ -256,7 +256,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
 
     const payload: N8nReminderPayload = {
       invoiceId: selectedInvoiceId === "custom" ? `quick-${Date.now()}` : selectedInvoiceId,
-      invoiceNumber: targetInvoiceNumber || "INV-001",
+      invoiceNumber: targetInvoiceNumber || "",
       sender: {
         name: activeName,
         email: activeEmail,
@@ -352,8 +352,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       buyer: {
         id: cust?.id || inv.customerId,
         name: cust?.name || inv.customerName,
-        phone: cust?.phone || "+91 98765 43210",
-        email: cust?.email || "accounts@buyer.in",
+        phone: cust?.phone || "",
+        email: cust?.email || "",
         gstin: cust?.gstin || null,
       },
       amountDuePaise: inv.outstanding,

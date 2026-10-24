@@ -224,24 +224,25 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
     setSendingReminderId(inv.id);
     const cust = customers.find((c) => c.id === inv.customerId);
-    const targetPhone = cust?.phone || businessProfile.phone || "+91 98765 43210";
-    const targetEmail = cust?.email || businessProfile.email || "accounts@buyer.in";
+    const targetPhone = cust?.phone || "";
+    const targetEmail = cust?.email || "";
 
     try {
       const profile = getStoredBusinessProfile();
-      const senderPhone = profile.phone || "+91 98000 00000";
-      const senderUpi = profile.upi || `${senderPhone}@upi`;
+      const senderPhone = profile.phone || "";
+      const senderUpi = profile.upi || (senderPhone ? `${senderPhone}@upi` : "");
 
+      const invRefText = inv.invoiceNumber ? `for invoice ${inv.invoiceNumber}` : "";
       const message = `Hello ${inv.customerName}, gentle reminder that payment of ${formatInr(
         inv.outstanding
-      )} for invoice ${inv.invoiceNumber} is pending. Please remit directly to ${senderPhone} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${profile.name || "ApkaInvoice"}`;
+      )} ${invRefText} is pending. Please remit directly to ${senderPhone || "our phone number"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${profile.name || "ApkaInvoice"}`.replace(/\s+/g, " ");
 
       const payload: N8nReminderPayload = {
         invoiceId: inv.id,
-        invoiceNumber: inv.invoiceNumber,
+        invoiceNumber: inv.invoiceNumber || "",
         sender: {
           name: profile.name || "ApkaInvoice",
-          email: profile.email || "accounts@business.com",
+          email: profile.email || "",
           phone: senderPhone,
           location: `${profile.city || ""}, ${profile.state || ""}`.trim(),
           gstin: profile.gstin,
@@ -747,7 +748,11 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                            {inv.invoiceNumber}
+                            {inv.invoiceNumber ? (
+                              inv.invoiceNumber
+                            ) : (
+                              <span className="text-slate-400 font-normal italic">— (No Number)</span>
+                            )}
                           </span>
                           {inv.pdfUrl && inv.pdfUrl.startsWith("data:image") && (
                             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800" title="Bill photo attached">
@@ -950,9 +955,9 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                   </label>
                   <input
                     type="text"
-                    required
                     value={editForm.invoiceNumber}
                     onChange={(e) => setEditForm({ ...editForm, invoiceNumber: e.target.value })}
+                    placeholder="e.g. INV-001 (optional)"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono"
                   />
                 </div>

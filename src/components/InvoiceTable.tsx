@@ -66,7 +66,7 @@ export function InvoiceTable({
             >
               <td className="px-4 py-3">
                 <span className="font-medium text-slate-900 dark:text-white">
-                  {inv.invoiceNumber}
+                  {inv.invoiceNumber || <span className="text-slate-400 font-normal italic">— (No Number)</span>}
                 </span>
               </td>
               <td className="px-4 py-3 text-slate-700 dark:text-slate-300">

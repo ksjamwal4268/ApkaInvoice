@@ -92,6 +92,8 @@ export interface N8nReminderPayload {
   };
 }
 
+export type RemainderPayload = N8nReminderPayload;
+
 const INVOICES_KEY = "cc_invoices_real_v2";
 const CUSTOMERS_KEY = "cc_customers_real_v2";
 const N8N_CONFIG_KEY = "cc_n8n_config_v1";
@@ -395,8 +397,8 @@ export function storeExtractedInvoice(
       state: extracted?.buyerState || "Maharashtra",
       gstin: extracted?.buyerGstin || null,
       pan: extracted?.buyerGstin && extracted.buyerGstin.length >= 12 ? extracted.buyerGstin.substring(2, 12) : null,
-      email: extracted?.buyerEmail || `accounts@${(buyerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
-      phone: extracted?.buyerPhone || "+91 98000 00000",
+      email: extracted?.buyerEmail || "",
+      phone: extracted?.buyerPhone || "",
       isChronicallyLate: false,
       grade: "A",
       gradeReasons: ["Extracted via n8n OCR Workflow"],
@@ -419,7 +421,7 @@ export function storeExtractedInvoice(
 
   const newInvoice: Invoice = {
     id: `inv-${Date.now().toString(36)}`,
-    invoiceNumber: extracted.invoiceNumber || `INV-${Date.now().toString().slice(-4)}`,
+    invoiceNumber: extracted.invoiceNumber || "",
     customerId: customer.id,
     customerName: customer.name,
     customerCity: customer.city,
@@ -582,8 +584,8 @@ export function saveN8nExtractedInvoice(
       state: "Maharashtra",
       gstin: null,
       pan: null,
-      email: payerEmail || `accounts@${(payerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
-      phone: payerPhone || "+91 98000 00000",
+      email: payerEmail || "",
+      phone: payerPhone || "",
       isChronicallyLate: false,
       grade: "A",
       gradeReasons: ["Imported from n8n Document AI"],
@@ -615,20 +617,18 @@ export function saveN8nExtractedInvoice(
   // Requirement 4: Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
   const targetId = existingInvoiceId || extracted?.id || `inv-${Date.now().toString(36)}`;
 
-  // Safe fallback invoice number if empty, using response "id" field or timestamp
-  const safeInvoiceNumber =
-    (extracted?.invoice_number ?? "").trim() ||
-    (extracted?.id ? `INV-${extracted.id}` : `INV-${Date.now().toString().slice(-4)}`);
+  // Keep invoice number empty if not extracted
+  const safeInvoiceNumber = (extracted?.invoice_number ?? "").trim();
 
   const newInvoice: Invoice = {
     id: targetId,
     invoiceNumber: safeInvoiceNumber,
-    customerId: customer.id,
-    customerName: customer.name,
-    customerCity: customer.city,
-    customerState: customer.state,
+    customerId: customer?.id || `cust-${Date.now().toString(36)}`,
+    customerName: customer?.name || payerName,
+    customerCity: customer?.city || "Mumbai",
+    customerState: customer?.state || "Maharashtra",
     customerGstin: null,
-    placeOfSupply: customer.state,
+    placeOfSupply: customer?.state || "Maharashtra",
     invoiceDate: new Date(),
     dueDate,
     terms: "Net 30",
@@ -736,7 +736,7 @@ export async function processInvoiceImageWithN8n(
           const totalGst = Number(payload.totalGst || payload.total_gst || (grandTotal > 0 ? grandTotal * 0.18 : 0));
 
           const normalized: ExtractedInvoiceData = {
-            invoiceNumber: payload.invoice_number || payload.invoiceNumber || `INV-${Date.now().toString().slice(-4)}`,
+            invoiceNumber: payload.invoice_number || payload.invoiceNumber || "",
             buyerName: payload.payer_name || payload.buyerName || "Customer",
             buyerGstin: payload.payer_gstin || payload.buyerGstin || "",
             buyerCity: payload.payer_city || payload.buyerCity || "Mumbai",
@@ -830,3 +830,5 @@ export async function sendReminderViaN8n(
     executionId,
   };
 }
+
+export const sendReminderViaRemainder = sendReminderViaN8n;

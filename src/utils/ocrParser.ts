@@ -91,7 +91,7 @@ export function parseInvoiceText(
   }
 
   if (!invoiceNumber) {
-    invoiceNumber = `INV-${Date.now().toString().slice(-4)}`;
+    invoiceNumber = "";
   }
 
   // 3. Invoice Date & Due Date

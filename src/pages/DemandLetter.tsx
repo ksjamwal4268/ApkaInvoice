@@ -60,7 +60,7 @@ export function DemandLetter({ lang: _lang }: { lang: Language }) {
             <option value="">Select an overdue invoice</option>
             {overdueInvoices.map((inv) => (
               <option key={inv.id} value={inv.id}>
-                {inv.invoiceNumber} — {inv.customerName} ({formatInr(inv.outstanding)})
+                {inv.invoiceNumber || "(No number)"} — {inv.customerName} ({formatInr(inv.outstanding)})
               </option>
             ))}
           </select>
@@ -94,7 +94,7 @@ export function DemandLetter({ lang: _lang }: { lang: Language }) {
           {/* Letter Meta */}
           <div className="flex justify-between items-start text-xs text-slate-600 dark:text-slate-400">
             <div>
-              <p className="font-bold text-slate-900 dark:text-white">Ref: DEMAND/{invoice.invoiceNumber.replace(/\//g, "-")}</p>
+              <p className="font-bold text-slate-900 dark:text-white">Ref: DEMAND/{(invoice.invoiceNumber || invoice.id || "REC").replace(/\//g, "-")}</p>
               <p className="mt-1">Date: {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
             </div>
             <div className="text-right">
@@ -114,7 +114,7 @@ export function DemandLetter({ lang: _lang }: { lang: Language }) {
 
           {/* Subject */}
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-750 font-semibold text-xs border border-slate-200 dark:border-slate-700">
-            Subject: Formal Commercial Demand for Immediate Payment of Unsettled Dues — Invoice {invoice.invoiceNumber}
+            Subject: Formal Commercial Demand for Immediate Payment of Unsettled Dues{invoice.invoiceNumber ? ` — Invoice ${invoice.invoiceNumber}` : ""}
           </div>
 
           {/* Body */}

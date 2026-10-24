@@ -137,7 +137,7 @@ export function InvoiceCameraModal({
 
   const handleApplyInvoice = (inv: N8nUploadedInvoice, previewUrl?: string) => {
     setExtractedInvoice(inv);
-    setEditInvoiceNumber((inv.invoice_number ?? "").trim() || (inv.id ? `INV-${inv.id}` : ""));
+    setEditInvoiceNumber((inv.invoice_number ?? "").trim());
     setEditPayerName((inv.payer_name ?? "").trim());
     setEditPayerEmail((inv.payer_email ?? "").trim());
     setEditPayerPhone((inv.payer_phone ?? "").trim());
@@ -205,7 +205,7 @@ export function InvoiceCameraModal({
         // Requirement 3: Show the extracted values in editable fields so the user can type or correct
         // invoice_number, payer_email, payer_phone and due_date before saving.
         setExtractedInvoice(result);
-        setEditInvoiceNumber((result.invoice_number ?? "").trim() || (result.id ? `INV-${result.id}` : ""));
+        setEditInvoiceNumber((result.invoice_number ?? "").trim());
         setEditPayerName((result.payer_name ?? "").trim());
         setEditPayerEmail((result.payer_email ?? "").trim());
         setEditPayerPhone((result.payer_phone ?? "").trim());
@@ -269,7 +269,7 @@ export function InvoiceCameraModal({
         inv = {
           id: `local-${Date.now().toString(36)}`,
           status: "ready",
-          invoice_number: `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          invoice_number: "",
           payer_name: "Customer",
           payer_email: null,
           payer_phone: null,
@@ -280,7 +280,7 @@ export function InvoiceCameraModal({
         };
       }
       setExtractedInvoice(inv);
-      setEditInvoiceNumber((inv.invoice_number ?? "").trim() || (inv.id ? `INV-${inv.id}` : ""));
+      setEditInvoiceNumber((inv.invoice_number ?? "").trim());
       setEditPayerName((inv.payer_name ?? "").trim());
       setEditPayerEmail((inv.payer_email ?? "").trim());
       setEditPayerPhone((inv.payer_phone ?? "").trim());
@@ -313,11 +313,9 @@ export function InvoiceCameraModal({
     e.preventDefault();
     if (!extractedInvoice) return;
 
-    // Requirement 4: Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
+    // Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
     const invoiceId = extractedInvoice.id || storedInvoice?.id || `inv-${Date.now().toString(36)}`;
-    const finalInvoiceNumber =
-      editInvoiceNumber.trim() ||
-      (extractedInvoice.id ? `INV-${extractedInvoice.id}` : `INV-${Date.now().toString().slice(-4)}`);
+    const finalInvoiceNumber = editInvoiceNumber.trim();
 
     const updatedInv: N8nUploadedInvoice = {
       id: invoiceId,

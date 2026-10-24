@@ -371,8 +371,9 @@ export function Dashboard({ lang }: { lang: Language }) {
           ) : (
             <div className="space-y-3">
               {chaseList.slice(0, 5).map(({ inv, customer, daysLate: dLate, isChronic }, index) => {
-                const phoneClean = customer?.phone?.replace(/\D/g, "") || "919876543210";
-                const waMessage = `Hello ${customer?.name || "Customer"}, gentle reminder that payment of ${formatInr(inv.outstanding)} for invoice ${inv.invoiceNumber} is overdue by ${dLate} days. Please clear today. - ${businessProfile.name}`;
+                const phoneClean = customer?.phone?.replace(/\D/g, "") || "";
+                const invRefText = inv.invoiceNumber ? `for invoice ${inv.invoiceNumber}` : "";
+                const waMessage = `Hello ${customer?.name || "Customer"}, gentle reminder that payment of ${formatInr(inv.outstanding)} ${invRefText} is overdue by ${dLate} days. Please clear today. - ${businessProfile.name}`.replace(/\s+/g, " ");
                 const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(waMessage)}`;
 
                 return (
@@ -390,7 +391,11 @@ export function Dashboard({ lang }: { lang: Language }) {
                             to={`/invoices/${inv.id}`}
                             className="font-bold text-sm text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400"
                           >
-                            {inv.invoiceNumber}
+                            {inv.invoiceNumber ? (
+                              inv.invoiceNumber
+                            ) : (
+                              <span className="text-slate-400 font-normal italic">— (No number)</span>
+                            )}
                           </Link>
                           <span className="text-slate-400">•</span>
                           <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -484,7 +489,9 @@ export function Dashboard({ lang }: { lang: Language }) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200 truncate">{invoice.invoiceNumber}</h3>
+                            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200 truncate">
+                              {invoice.invoiceNumber || <span className="font-normal italic text-slate-400">— (No number)</span>}
+                            </h3>
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
                               {dLate}d late
                             </span>

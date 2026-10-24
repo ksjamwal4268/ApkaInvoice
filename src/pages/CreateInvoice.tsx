@@ -118,7 +118,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         );
       }
     } else {
-      setInvoiceNumber((prev) => (prev ? prev : `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`));
+      setInvoiceNumber((prev) => (prev ? prev : ""));
     }
   }, [isEditing, routeInvoiceId, invoices, customers]);
 
@@ -146,8 +146,8 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           state: data.buyerState || "Maharashtra",
           gstin: data.buyerGstin || null,
           pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
-          email: data.buyerEmail || `accounts@${(data.buyerName ?? "buyer").toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
-          phone: data.buyerPhone || "+91 98000 00000",
+          email: data.buyerEmail || "",
+          phone: data.buyerPhone || "",
           isChronicallyLate: false,
           grade: "A",
           gradeReasons: ["Registered via Invoice Document Scanner"],
@@ -287,7 +287,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
     const selectedCust = customers.find((c) => c.id === customerId);
     const invId = isEditing && routeInvoiceId ? routeInvoiceId : `inv-${Date.now().toString(36)}`;
-    const finalNumber = invoiceNumber.trim() || `INV-24-25/${String(invoices.length + 1).padStart(3, "0")}`;
+    const finalNumber = invoiceNumber.trim();
 
     const existingInv = isEditing && routeInvoiceId ? invoices.find((i) => i.id === routeInvoiceId) : null;
 

@@ -109,11 +109,12 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
     }
   };
 
-  const senderPhone = businessProfile.phone || "+91 98000 00000";
-  const senderUpi = businessProfile.upi || `${senderPhone}@upi`;
-  const phoneClean = customer?.phone?.replace(/\D/g, "") || "919876543210";
+  const senderPhone = businessProfile.phone || "";
+  const senderUpi = businessProfile.upi || (senderPhone ? `${senderPhone}@upi` : "");
+  const phoneClean = customer?.phone?.replace(/\D/g, "") || "";
+  const invRefText = invoice.invoiceNumber ? `for invoice ${invoice.invoiceNumber}` : "";
   const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(
-    `Hello ${customer?.name || "Customer"}, payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is due. Please remit directly to ${senderPhone} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thanks, ${businessProfile.name}.`
+    `Hello ${customer?.name || "Customer"}, payment of ${formatInr(invoice.outstanding)} ${invRefText} is due. Please remit directly to ${senderPhone || "our phone"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thanks, ${businessProfile.name}.`.replace(/\s+/g, " ")
   )}`;
 
   const handleToggleCompleted = () => {
@@ -171,7 +172,7 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {invoice.invoiceNumber}
+              {invoice.invoiceNumber || <span className="text-slate-400 font-normal italic">— (No Number)</span>}
             </h1>
             <StatusBadge status={invoice.status} />
           </div>
