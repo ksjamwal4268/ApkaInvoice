@@ -54,6 +54,27 @@ input::placeholder, textarea::placeholder {
   animation: none !important;
 }
 
+@keyframes cell-ripple {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.03);
+    background-color: rgba(15, 118, 110, 0.22);
+    border-color: rgba(15, 118, 110, 0.45);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+}
+
+.animate-cell-ripple {
+  animation: cell-ripple var(--duration, 200ms) ease-out none 1 var(--delay, 0ms);
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
