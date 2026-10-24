@@ -11,7 +11,6 @@ import {
   Zap,
   Check,
   Settings,
-  Camera,
   RefreshCw,
   Clock,
   User,
@@ -29,7 +28,6 @@ import {
   getStoredBusinessProfile,
 } from "../data/dataStore";
 import { N8nSettingsModal } from "../components/N8nSettingsModal";
-import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 
 type StageKey = "friendly" | "due-date" | "firm" | "demand" | "custom";
 
@@ -72,7 +70,6 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
   const [selectedStage, setSelectedStage] = useState<StageKey | "all">("all");
   const [previewLang, setPreviewLang] = useState<Language>("en");
   const [isN8nModalOpen, setIsN8nModalOpen] = useState(false);
-  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   // Quick Dispatcher Form States
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("custom");
@@ -429,17 +426,6 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
 
         {/* Header Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Upload / Scan Invoice Button */}
-          <button
-            type="button"
-            onClick={() => setIsCameraModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors shadow-xs"
-          >
-            <Camera className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Invoice (Photo or PDF)</span>
-            <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-          </button>
-
           {/* Test Ping Webhook */}
           <button
             type="button"
@@ -707,20 +693,6 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
               </div>
             </div>
 
-            {/* Quick Upload Action */}
-            <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/50 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-teal-900 dark:text-teal-200">
-                <Camera className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>Need to import from a bill photo or PDF first?</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsCameraModalOpen(true)}
-                className="font-bold text-teal-700 dark:text-teal-300 hover:underline shrink-0"
-              >
-                Scan Now &rarr;
-              </button>
-            </div>
           </div>
 
           {/* Right Area: Message Template, Preview & Dispatch */}
@@ -865,17 +837,15 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                   No Invoices in System Yet
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                  Upload a bill photo (JPG, PNG) or PDF invoice to automatically populate buyer details and send workflow reminders.
+                  Create or upload invoices in your Invoices section to track dues and dispatch workflow reminders.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsCameraModalOpen(true)}
+              <Link
+                to="/invoices"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-md transition-colors"
               >
-                <Camera className="w-4 h-4" />
-                <span>Upload First Invoice (Photo or PDF)</span>
-              </button>
+                <span>Go to Invoices</span>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">
@@ -1070,18 +1040,6 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       <N8nSettingsModal
         isOpen={isN8nModalOpen}
         onClose={() => setIsN8nModalOpen(false)}
-      />
-
-      <InvoiceCameraModal
-        isOpen={isCameraModalOpen}
-        onClose={() => setIsCameraModalOpen(false)}
-        onApplyExtractedData={(data, imagePreview) => {
-          navigate("/invoices/create", { state: { prefill: data, imagePreview } });
-        }}
-        onInvoiceStored={() => {
-          refresh();
-          setIsCameraModalOpen(false);
-        }}
       />
     </div>
   );

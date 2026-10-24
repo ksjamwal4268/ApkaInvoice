@@ -78,6 +78,8 @@ export interface Invoice {
   lastReminderSentAt?: string | null;
   currency?: string;
   payerName?: string;
+  payerEmail?: string;
+  payerPhone?: string;
   rawExtraction?: any;
 }
 

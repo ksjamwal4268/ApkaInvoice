@@ -40,7 +40,7 @@ export function Shell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [n8nModalOpen, setN8nModalOpen] = useState(false);
   const [businessModalOpen, setBusinessModalOpen] = useState(false);
-  const { invoices, businessProfile } = useDataStore();
+  const { invoices, customers, businessProfile } = useDataStore();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +56,6 @@ export function Shell({
   const isWelcome = location.pathname === "/" || location.pathname === "/welcome";
 
   const NAV_ITEMS = [
-    { path: "/profile", label: "navProfile", icon: UserCircle },
     { path: "/dashboard", label: "navDashboard", icon: LayoutDashboard },
     { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${invoices.length}` },
     {
@@ -66,6 +65,8 @@ export function Shell({
       badge: overdueCount > 0 ? `${overdueCount}` : undefined,
       badgeColor: "bg-rose-500 text-white",
     },
+    { path: "/customers", label: "navCustomers", icon: Users, badge: customers.length > 0 ? `${customers.length}` : undefined },
+    { path: "/profile", label: "navProfile", icon: UserCircle },
   ];
 
   const isActive = (path: string) => {
@@ -290,6 +291,21 @@ export function Shell({
                 );
               })}
             </nav>
+          </div>
+
+          {/* Demand Letter Link on Desktop */}
+          <div className="px-3 py-2 border-t border-slate-200/80 dark:border-slate-700/80">
+            <Link
+              to="/demand-letter"
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
+                location.pathname === "/demand-letter"
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60"
+              }`}
+            >
+              <FileWarning className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>MSME Demand Letters</span>
+            </Link>
           </div>
 
           {/* User & Business Profile Footnote in Sidebar (Clickable to /profile) */}

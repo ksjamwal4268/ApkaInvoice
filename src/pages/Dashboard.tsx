@@ -21,6 +21,7 @@ import {
   Download,
   CheckCircle2,
   Upload,
+  FileText,
 } from "lucide-react";
 import {
   LineChart,
@@ -227,14 +228,13 @@ export function Dashboard({ lang }: { lang: Language }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsCameraModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target cursor-pointer"
+            <Link
+              to="/invoices"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target"
             >
-              <Upload className="w-4 h-4 text-teal-700" />
-              <span>Upload Invoice (Photo or PDF)</span>
-            </button>
+              <FileText className="w-4 h-4 text-teal-700" />
+              <span>View Invoices</span>
+            </Link>
             <Link
               to="/reminders"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700/60 hover:bg-teal-700 text-white text-sm font-semibold border border-teal-500/40 backdrop-blur-xs transition-colors tap-target"

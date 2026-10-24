@@ -53,8 +53,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const [sortAsc, setSortAsc] = useState<boolean>(true);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [modalInitialFile, setModalInitialFile] = useState<File | null>(null);
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
@@ -435,56 +433,17 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Photo File Input (JPG, JPEG, PNG, WEBP) */}
-          <input
-            type="file"
-            ref={photoInputRef}
-            accept="image/*,application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setModalInitialFile(file);
-                setIsCameraModalOpen(true);
-                e.target.value = "";
-              }
-            }}
-          />
-
-          {/* PDF File Input */}
-          <input
-            type="file"
-            ref={pdfInputRef}
-            accept="image/*,application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                setModalInitialFile(file);
-                setIsCameraModalOpen(true);
-                e.target.value = "";
-              }
-            }}
-          />
-
-          {/* Upload Bill Photo Button */}
+          {/* Universal Upload Button (Photo or PDF) */}
           <button
             type="button"
-            onClick={() => photoInputRef.current?.click()}
+            onClick={() => {
+              setModalInitialFile(null);
+              setIsCameraModalOpen(true);
+            }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors shadow-xs cursor-pointer"
           >
-            <ImageIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Photo (JPG/PNG)</span>
-          </button>
-
-          {/* Upload PDF Button */}
-          <button
-            type="button"
-            onClick={() => pdfInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
-            <span>Upload PDF</span>
+            <Upload className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>Upload Invoice (Photo / PDF)</span>
           </button>
 
           <Link
@@ -541,32 +500,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             {formatInr(totalOverdue)}
           </p>
           <p className="text-[11px] text-slate-400 mt-0.5">{counts.overdue} overdue bills</p>
-        </div>
-      </div>
-
-      {/* Upload Drag & Drop Banner */}
-      <div
-        onClick={() => { setModalInitialFile(null); setIsCameraModalOpen(true); }}
-        className="p-4 rounded-xl border border-dashed border-teal-300 dark:border-teal-800 bg-teal-50/40 dark:bg-teal-950/20 hover:bg-teal-50 dark:hover:bg-teal-950/40 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Upload className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-slate-900 dark:text-white">
-              Quick Upload Invoice (Photo or PDF)
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Upload invoice photos (JPG, PNG), text-based PDFs, or snap physical bills via camera for automated data extraction and instant dataset addition.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-bold text-teal-700 dark:text-teal-300 group-hover:underline">
-            Click to upload & scan
-          </span>
-          <ArrowRight className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
 

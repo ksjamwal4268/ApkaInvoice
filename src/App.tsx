@@ -13,7 +13,6 @@ import { Welcome } from "./pages/Welcome";
 import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
 import { CreateInvoice } from "./pages/CreateInvoice";
-import { Payments } from "./pages/Payments";
 import { Reminders } from "./pages/Reminders";
 import { DemandLetter } from "./pages/DemandLetter";
 import { Customers } from "./pages/Customers";
@@ -70,7 +69,7 @@ export default function App() {
           <Route path="/invoices/:id" element={<InvoiceDetail lang={lang} />} />
           <Route path="/invoices/create" element={<CreateInvoice lang={lang} />} />
           <Route path="/invoices/:id/edit" element={<CreateInvoice lang={lang} isEditMode />} />
-          <Route path="/payments" element={<Payments lang={lang} />} />
+          <Route path="/payments" element={<Navigate to="/invoices" replace />} />
           <Route path="/reminders" element={<Reminders lang={lang} />} />
           <Route path="/demand-letter" element={<DemandLetter lang={lang} />} />
           <Route path="/customers" element={<Customers lang={lang} />} />
