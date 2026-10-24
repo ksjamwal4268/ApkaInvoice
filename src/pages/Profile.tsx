@@ -5,7 +5,6 @@ import {
   Building2,
   Mail,
   Phone,
-  QrCode,
   ShieldCheck,
   CheckCircle2,
   Save,
@@ -172,28 +171,12 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
         <div className="flex items-center gap-2.5">
           <Link
-            to="/reminders"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 text-xs font-bold transition-colors shadow-2xs hover:bg-teal-100"
-          >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send Reminders</span>
-          </Link>
-          <Link
             to="/dashboard"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors shadow-2xs"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
             <span>Go to Dashboard</span>
           </Link>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md transition-all hover:scale-[1.02] disabled:opacity-50"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{isSubmitting ? "Saving..." : "Save Profile"}</span>
-          </button>
         </div>
       </div>
 
@@ -255,10 +238,6 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
               <p className="text-xs text-slate-300 mt-0.5">
                 {email || user?.email || "No email specified"}
                 {phone ? ` • WhatsApp/Pay: ${phone}` : ""}
-              </p>
-              <p className="text-[11px] text-teal-400/90 mt-1 flex items-center gap-1 font-mono">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Synced with n8n reminder workflow (ksjamwal.app.n8n.cloud)</span>
               </p>
             </div>
           </div>
@@ -443,23 +422,6 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                 placeholder="e.g. 180001 / 412105"
                 className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
               />
-            </div>
-
-            {/* Optional UPI ID / Handle */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                UPI ID (Optional, defaults to your phone number)
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={upi}
-                  onChange={(e) => setUpi(e.target.value.toLowerCase().trim())}
-                  placeholder={phone ? `${phone.replace(/\D/g, "")}@upi` : "e.g. 9541341656@upi"}
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                />
-                <QrCode className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              </div>
             </div>
 
             {/* GSTIN */}
