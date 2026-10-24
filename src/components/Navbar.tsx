@@ -25,7 +25,6 @@ export function Navbar() {
   const _navItems: NavItem[] = [
     { label: t("navDashboard"), href: "/", icon: User },
     { label: t("navInvoices"), href: "/invoices", icon: FileText },
-    { label: t("navPayments"), href: "/payments", icon: CreditCard },
     { label: t("navForecast"), href: "/forecast", icon: BarChart2 },
     { label: t("navReminders"), href: "/reminders", icon: Clock },
   ];

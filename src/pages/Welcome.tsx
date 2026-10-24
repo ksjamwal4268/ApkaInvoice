@@ -466,7 +466,7 @@ export function Welcome({ lang }: WelcomeProps) {
         {/* Feature Shortcut Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div
-            onClick={() => navigate("/payments")}
+            onClick={() => navigate("/invoices")}
             className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-teal-200 cursor-pointer transition-all flex items-center gap-3.5"
           >
             <div className="p-2 rounded-xl bg-teal-50 border border-teal-100 text-teal-600">

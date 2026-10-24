@@ -3,7 +3,6 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
-  Banknote,
   MessageCircle,
   TrendingUp,
   Users,
@@ -60,7 +59,6 @@ export function Shell({
     { path: "/profile", label: "navProfile", icon: UserCircle },
     { path: "/dashboard", label: "navDashboard", icon: LayoutDashboard },
     { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${invoices.length}` },
-    { path: "/payments", label: "navPayments", icon: Banknote },
     {
       path: "/reminders",
       label: "navReminders",
