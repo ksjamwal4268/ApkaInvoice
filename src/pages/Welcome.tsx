@@ -231,7 +231,7 @@ export function Welcome({ lang }: WelcomeProps) {
                 className="inline-flex items-center gap-2 px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 transition-colors tap-target"
               >
                 <Camera className="w-4 h-4 text-teal-300" />
-                <span>Scan Bill</span>
+                <span>Upload Bill (Photo or PDF)</span>
               </button>
             </div>
 
@@ -410,7 +410,7 @@ export function Welcome({ lang }: WelcomeProps) {
                 1
               </div>
               <h3 className="font-bold text-slate-900 text-slate-900 text-sm mb-1.5 flex items-center justify-between">
-                <span>Scan or Upload Bills</span>
+                <span>Scan or Upload Bills (Photo or PDF)</span>
                 <Camera className="w-4 h-4 text-teal-600 text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
               </h3>
               <p className="text-xs text-slate-600 text-slate-500 leading-relaxed mb-3">

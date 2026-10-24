@@ -405,7 +405,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 ) : (
                   <Upload className="w-4 h-4 text-teal-600" />
                 )}
-                <span>{isUploadingDirect ? "Extracting..." : "Upload Bill"}</span>
+                <span>{isUploadingDirect ? "Extracting..." : "Upload Photo or PDF"}</span>
               </button>
             </>
           )}

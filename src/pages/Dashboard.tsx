@@ -376,7 +376,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 Start Tracking Your Real Invoices & Cash Runway
               </h2>
               <p className="text-xs text-slate-600 text-slate-500 max-w-2xl leading-relaxed">
-                Demo data has been cleared. Point your phone/webcam camera at any physical paper bill to auto-extract line items via n8n OCR, or manually record your real customer invoices.
+                Demo data has been cleared. Upload any paper bill photo, receipt, or PDF invoice to auto-extract line items, or manually record your real customer invoices.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
@@ -386,7 +386,7 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all tap-target cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
-                <span>Upload / Scan Bill (PDF & Camera)</span>
+                <span>Upload Invoice (Photo or PDF)</span>
               </button>
               <Link
                 to="/customers"

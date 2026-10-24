@@ -427,7 +427,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors shadow-xs"
           >
             <Camera className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Invoice (PDF / Camera)</span>
+            <span>Upload Invoice (Photo or PDF)</span>
             <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
           </button>
 
@@ -702,7 +702,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
             <div className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-800/50 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2 text-teal-900 dark:text-teal-200">
                 <Camera className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>Need to import from a paper bill or PDF first?</span>
+                <span>Need to import from a bill photo or PDF first?</span>
               </div>
               <button
                 type="button"
@@ -856,7 +856,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                   No Invoices in System Yet
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                  Upload a paper bill or PDF invoice with the n8n OCR scanner to automatically populate buyer details and send workflow reminders.
+                  Upload a bill photo (JPG, PNG) or PDF invoice to automatically populate buyer details and send workflow reminders.
                 </p>
               </div>
               <button
@@ -865,7 +865,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-md transition-colors"
               >
                 <Camera className="w-4 h-4" />
-                <span>Upload First Invoice (Camera / PDF)</span>
+                <span>Upload First Invoice (Photo or PDF)</span>
               </button>
             </div>
           ) : (
