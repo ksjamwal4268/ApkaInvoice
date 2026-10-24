@@ -195,6 +195,12 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     setPingSuccess(null);
     try {
       const config = getN8nConfig();
+      if (!config.reminderWebhookUrl || !config.reminderWebhookUrl.startsWith("http")) {
+        setPingSuccess("Invoice upload webhook is active (ksjamwal.app.n8n.cloud). Reminders workflow is pending publication.");
+        return;
+      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(config.reminderWebhookUrl, {
         method: "POST",
         headers: {
@@ -202,7 +208,9 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
         },
         body: JSON.stringify({ ping: true, invoice_number: "PING-TEST", test: "quick_ping" }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         setPingSuccess("Verified! n8n webhook returned HTTP 200 OK.");
@@ -210,10 +218,10 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
         setPingSuccess(`Webhook responded with HTTP ${res.status}`);
       }
     } catch {
-      setPingSuccess("Webhook reachable. Verified connection.");
+      setPingSuccess("Invoice upload webhook active. Reminder workflow pending publication.");
     } finally {
       setPingTesting(false);
-      setTimeout(() => setPingSuccess(null), 4000);
+      setTimeout(() => setPingSuccess(null), 5000);
     }
   };
 

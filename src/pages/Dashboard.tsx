@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
 import { formatInr, add } from "../utils/money";
-import { daysBetween } from "../utils/date";
+import { daysBetween, formatHindiDate } from "../utils/date";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
@@ -32,7 +32,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export function Dashboard({ lang: _lang }: { lang: Language }) {
+export function Dashboard({ lang }: { lang: Language }) {
   const navigate = useNavigate();
   const { invoices, customers, businessProfile, refresh } = useDataStore();
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);

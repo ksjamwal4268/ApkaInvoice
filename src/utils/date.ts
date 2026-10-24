@@ -48,6 +48,15 @@ export function formatDate(date: Date): string {
   });
 }
 
+/** Format date in Hindi: DD MMM YYYY (e.g., 14 oct 2024) */
+export function formatHindiDate(date: Date): string {
+  return date.toLocaleDateString("hi-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 /** Format date as DD/MM/YYYY */
 export function formatDateShort(date: Date): string {
   return date.toLocaleDateString("en-IN", {
