@@ -379,10 +379,12 @@ export function storeExtractedInvoice(
   const customers = getStoredCustomers();
 
   // Match or create customer
+  const buyerName = (extracted?.buyerName || "").trim() || "Customer";
+  const buyerGstin = (extracted?.buyerGstin || "").trim().toLowerCase();
   let customer = customers.find(
     (c) =>
-      c.name.toLowerCase() === extracted.buyerName.toLowerCase() ||
-      (extracted.buyerGstin && c.gstin && c.gstin.toLowerCase() === extracted.buyerGstin.toLowerCase())
+      Boolean(c && c.name && c.name.toLowerCase() === buyerName.toLowerCase()) ||
+      Boolean(buyerGstin && c && c.gstin && c.gstin.toLowerCase() === buyerGstin)
   );
 
   if (!customer) {
@@ -559,10 +561,10 @@ export function saveN8nExtractedInvoice(
   existingInvoiceId?: string
 ): Invoice {
   const customers = getStoredCustomers();
-  const payerName = extracted.payer_name?.trim() || "Customer";
+  const payerName = (extracted?.payer_name || "").trim() || "Customer";
 
   let customer = customers.find(
-    (c) => c.name.toLowerCase() === payerName.toLowerCase()
+    (c) => Boolean(c && c.name && c.name.toLowerCase() === payerName.toLowerCase())
   );
 
   if (!customer) {

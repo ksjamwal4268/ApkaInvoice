@@ -130,10 +130,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       }
       setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
 
+      const bName = (data?.buyerName || "").trim();
+      const bGstin = (data?.buyerGstin || "").trim().toUpperCase();
       let matchedCustomer = customers.find(
         (c) =>
-          c.name.toLowerCase() === data.buyerName.toLowerCase() ||
-          (data.buyerGstin && c.gstin && c.gstin.toUpperCase() === data.buyerGstin.toUpperCase())
+          Boolean(c && c.name && bName && c.name.toLowerCase() === bName.toLowerCase()) ||
+          Boolean(bGstin && c && c.gstin && c.gstin.toUpperCase() === bGstin)
       );
 
       if (!matchedCustomer && data.buyerName) {

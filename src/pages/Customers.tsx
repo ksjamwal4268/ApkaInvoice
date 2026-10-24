@@ -34,11 +34,11 @@ export function Customers({ lang: _lang }: { lang: Language }) {
     return customersData.filter((c) => {
       if (gradeFilter !== "all" && c.grade !== gradeFilter) return false;
       if (search) {
-        const q = search.toLowerCase();
+        const q = (search || "").toLowerCase().trim();
         return (
-          c.name.toLowerCase().includes(q) ||
-          c.city.toLowerCase().includes(q) ||
-          (c.gstin && c.gstin.toLowerCase().includes(q))
+          Boolean(c && c.name && c.name.toLowerCase().includes(q)) ||
+          Boolean(c && c.city && c.city.toLowerCase().includes(q)) ||
+          Boolean(c && c.gstin && c.gstin.toLowerCase().includes(q))
         );
       }
       return true;

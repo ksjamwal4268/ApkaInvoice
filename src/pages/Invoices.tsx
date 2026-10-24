@@ -112,12 +112,12 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
       if (filter === "disputed" && !inv.isDisputed && inv.status !== "disputed") return false;
 
       if (search) {
-        const query = search.toLowerCase();
-        const matchesCustomer = inv.customerName.toLowerCase().includes(query);
-        const matchesNumber = inv.invoiceNumber.toLowerCase().includes(query);
-        const matchesCity = inv.customerCity?.toLowerCase().includes(query);
-        const cust = customers.find((c) => c.id === inv.customerId);
-        const matchesPhone = cust?.phone?.includes(query);
+        const query = (search || "").toLowerCase().trim();
+        const matchesCustomer = Boolean(inv.customerName && inv.customerName.toLowerCase().includes(query));
+        const matchesNumber = Boolean(inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(query));
+        const matchesCity = Boolean(inv.customerCity && inv.customerCity.toLowerCase().includes(query));
+        const cust = customers.find((c) => Boolean(c && c.id === inv.customerId));
+        const matchesPhone = Boolean(cust && cust.phone && cust.phone.includes(query));
         if (!matchesCustomer && !matchesNumber && !matchesCity && !matchesPhone) {
           return false;
         }
@@ -130,13 +130,13 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
       if (sortField === "dueDate") {
         cmp = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       } else if (sortField === "invoiceNumber") {
-        cmp = a.invoiceNumber.localeCompare(b.invoiceNumber);
+        cmp = (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "");
       } else if (sortField === "total") {
-        cmp = a.total - b.total;
+        cmp = (a.total || 0) - (b.total || 0);
       } else if (sortField === "outstanding") {
-        cmp = a.outstanding - b.outstanding;
+        cmp = (a.outstanding || 0) - (b.outstanding || 0);
       } else if (sortField === "customerName") {
-        cmp = a.customerName.localeCompare(b.customerName);
+        cmp = (a.customerName || "").localeCompare(b.customerName || "");
       }
       return sortAsc ? cmp : -cmp;
     });
