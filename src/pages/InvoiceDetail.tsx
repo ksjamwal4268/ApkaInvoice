@@ -12,23 +12,19 @@ import {
   ArrowLeft,
   Building2,
   Edit,
-  Zap,
-  MessageSquare,
   Check,
   CheckCircle2,
   Image as ImageIcon,
   FileText,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
-import { sendReminderViaN8n } from "../data/dataStore";
 
 export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice } = useDataStore();
+  const { invoices, customers, saveInvoice } = useDataStore();
 
-  const [n8nSending, setN8nSending] = useState(false);
-  const [n8nSuccess, setN8nSuccess] = useState<string | null>(null);
+  const [toastNotice, setToastNotice] = useState<string | null>(null);
 
   const invoice = invoices.find((inv) => inv.id === id);
   const customer = customers.find((c) => c.id === invoice?.customerId);
@@ -46,77 +42,6 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
       </div>
     );
   }
-
-  const handleSendN8nReminder = async () => {
-    if (!customer) return;
-    setN8nSending(true);
-    setN8nSuccess(null);
-
-    const senderPhone = businessProfile.phone || "";
-    const senderUpi = businessProfile.upi || (senderPhone ? `${senderPhone.replace(/\D/g, "")}@upi` : "");
-    const invRef = invoice.invoiceNumber ? `for invoice ${invoice.invoiceNumber}` : "for your invoice";
-    const message = `Dear ${customer.name}, gentle reminder that payment of ${formatInr(invoice.outstanding)} ${invRef} is pending. Please remit directly to ${senderPhone || "our business phone"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${businessProfile.name}`;
-
-    try {
-      const res = await sendReminderViaN8n({
-        invoiceId: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        sender: {
-          name: businessProfile.name,
-          email: businessProfile.email || "accounts@business.com",
-          phone: senderPhone,
-          location: `${businessProfile.city || ""}, ${businessProfile.state || ""}`.trim(),
-          gstin: businessProfile.gstin,
-          upi: senderUpi,
-        },
-        buyer: {
-          id: customer.id,
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email,
-          gstin: customer.gstin,
-        },
-        amountDuePaise: invoice.outstanding,
-        amountDueFormatted: formatInr(invoice.outstanding),
-        dueDate: toISODateString(invoice.dueDate),
-        daysOverdue: Math.max(0, daysBetween(invoice.dueDate, new Date())),
-        stage: "Direct invoice reminder",
-        reminderMessage: message,
-        language: "en",
-        paymentDetails: {
-          upi: senderUpi,
-          bankName: "Direct Mobile Payment",
-          bankAccount: senderPhone,
-          ifsc: "UPI-DIRECT",
-        },
-      });
-
-      addInvoiceEvidence(invoice.id, {
-        id: `ev-${Date.now()}`,
-        date: new Date(),
-        type: "reminder",
-        title: "Automated Reminder Sent",
-        description: `Dispatched to ${customer.name} via ${res.channel}`,
-        amount: invoice.outstanding,
-        channel: "whatsapp",
-      });
-
-      setN8nSuccess("Dispatched reminder to buyer!");
-      setTimeout(() => setN8nSuccess(null), 4000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setN8nSending(false);
-    }
-  };
-
-  const senderPhone = businessProfile.phone || "";
-  const senderUpi = businessProfile.upi || (senderPhone ? `${senderPhone}@upi` : "");
-  const phoneClean = customer?.phone?.replace(/\D/g, "") || "";
-  const invRefText = invoice.invoiceNumber ? `for invoice ${invoice.invoiceNumber}` : "";
-  const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(
-    `Hello ${customer?.name || "Customer"}, payment of ${formatInr(invoice.outstanding)} ${invRefText} is due. Please remit directly to ${senderPhone || "our phone"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thanks, ${businessProfile.name}.`.replace(/\s+/g, " ")
-  )}`;
 
   const handleToggleCompleted = () => {
     const isCompleted = invoice.status === "paid" || invoice.outstanding === 0;
@@ -140,7 +65,7 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         ],
       };
       saveInvoice(updated);
-      setN8nSuccess(`Payment received! Invoice marked as Completed.`);
+      setToastNotice(`Payment received! Invoice marked as Completed.`);
     } else {
       const isPastDue = new Date(invoice.dueDate).getTime() < Date.now();
       const updated = {
@@ -150,9 +75,9 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         outstanding: invoice.total,
       };
       saveInvoice(updated);
-      setN8nSuccess(`Invoice reopened as Pending.`);
+      setToastNotice(`Invoice reopened as Pending.`);
     }
-    setTimeout(() => setN8nSuccess(null), 4000);
+    setTimeout(() => setToastNotice(null), 4000);
   };
 
   return (
@@ -218,36 +143,6 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
             <span>Edit Invoice</span>
           </Link>
 
-          {/* Send Reminder Button (if unpaid) */}
-          {invoice.outstanding > 0 && !invoice.isDisputed && (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleSendN8nReminder}
-                disabled={n8nSending}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-xs tap-target"
-              >
-                {n8nSending ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Zap className="w-3.5 h-3.5 text-amber-300" />
-                )}
-                <span>{n8nSending ? "Sending..." : "Send Automated Reminder"}</span>
-              </button>
-
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-3 py-2 bg-[#25D366] text-white rounded-xl text-xs font-semibold hover:opacity-90 shadow-2xs tap-target"
-                title="Send WhatsApp payment reminder"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">WhatsApp</span>
-              </a>
-            </div>
-          )}
-
           {invoice.status === "overdue" && invoice.outstanding > 0 && (
             <Link
               to={`/demand-letter?invoice=${invoice.id}`}
@@ -255,16 +150,6 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
             >
               <FileWarning className="w-4 h-4" />
               <span>Demand Letter</span>
-            </Link>
-          )}
-
-          {!invoice.isDisputed && invoice.outstanding > 0 && (
-            <Link
-              to={`/dispute/${invoice.id}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-slate-50 dark:hover:bg-slate-700 tap-target"
-            >
-              <AlertOctagon className="w-4 h-4" />
-              <span>Log dispute</span>
             </Link>
           )}
 
@@ -278,11 +163,11 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
         </div>
       </div>
 
-      {/* Success Alert */}
-      {n8nSuccess && (
+      {/* Toast Notice */}
+      {toastNotice && (
         <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
           <Check className="w-4 h-4 text-emerald-600" />
-          <span>{n8nSuccess}</span>
+          <span>{toastNotice}</span>
         </div>
       )}
 
