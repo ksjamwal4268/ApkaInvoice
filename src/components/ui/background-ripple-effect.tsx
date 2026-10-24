@@ -52,8 +52,10 @@ export const BackgroundRippleEffect = ({
     const handleGlobalClick = (e: MouseEvent) => {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const gridLeft = Math.max(0, (rect.width - cols * cellSize) / 2);
+      const gridTop = Math.max(0, (rect.height - rows * cellSize) / 2);
+      const x = e.clientX - rect.left - gridLeft;
+      const y = e.clientY - rect.top - gridTop;
       const col = Math.floor(x / cellSize);
       const row = Math.floor(y / cellSize);
       if (row >= 0 && row < rows && col >= 0 && col < cols) {

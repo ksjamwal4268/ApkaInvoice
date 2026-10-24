@@ -166,14 +166,20 @@ export const MobileNavMenu = ({
   if (!isOpen) return null;
 
   return (
-    <div
-      className={cn(
-        "absolute inset-x-0 top-14 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-2xl bg-white/95 backdrop-blur-md p-6 shadow-xl border border-slate-200/80 animate-in fade-in slide-in-from-top-2 duration-200",
-        className
-      )}
-    >
-      {children}
-    </div>
+    <>
+      <div
+        className="fixed inset-0 bg-slate-900/20 backdrop-blur-xs z-40"
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          "absolute inset-x-0 top-14 z-50 flex w-full flex-col items-start justify-start gap-4 rounded-2xl bg-white/95 backdrop-blur-md p-6 shadow-xl border border-slate-200/80 animate-in fade-in slide-in-from-top-2 duration-200",
+          className
+        )}
+      >
+        {children}
+      </div>
+    </>
   );
 };
 

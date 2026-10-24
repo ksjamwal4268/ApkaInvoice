@@ -270,7 +270,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </div>
 
       {/* 4. HOW IT WORKS SECTION */}
-      <section className="s1 wrap" id="how">
+      <section className="s1 wrap scroll-mt-28" id="how">
         <h2 className="d">Your invoices went out.<br />Then the money stopped.</h2>
         <p className="sub">Three steps to keep working capital moving, without a collections team.</p>
         <div className="g3">
@@ -308,7 +308,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </section>
 
       {/* 5. LIVE PORTFOLIO STATS SECTION (PINK) */}
-      <section className="blk pink" id="live">
+      <section className="blk pink scroll-mt-28" id="live">
         <div className="wrap">
           <div className="hd">
             <h2 className="d">You slept 8 hours.<br />Apka Invoice didn't.</h2>
@@ -386,7 +386,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </section>
 
       {/* 7. RECOVERY TOOLS SECTION (BLUE) */}
-      <section className="blk blu" id="tools">
+      <section className="blk blu scroll-mt-28" id="tools">
         <div className="wrap">
           <div className="hd">
             <h2 className="d">Recovery tools,<br />ready when you are.</h2>
@@ -425,7 +425,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </section>
 
       {/* 8. AUTOMATION SETUP SECTION */}
-      <section className="wrap my-16 sm:my-24" id="setup">
+      <section className="wrap my-16 sm:my-24 scroll-mt-28" id="setup">
         <CometCard className="w-full">
           <div className="cfg">
             <h2 className="d">

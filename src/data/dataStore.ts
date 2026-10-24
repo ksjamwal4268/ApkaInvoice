@@ -410,7 +410,7 @@ export function storeExtractedInvoice(
       phone: extracted?.buyerPhone || "",
       isChronicallyLate: false,
       grade: "A",
-      gradeReasons: ["Extracted via n8n OCR Workflow"],
+      gradeReasons: ["Scanned via Document AI"],
     };
     saveCustomer(customer);
   }
@@ -477,8 +477,8 @@ export function storeExtractedInvoice(
         id: `ev-${Date.now()}`,
         date: new Date(),
         type: "invoice-sent",
-        title: "Invoice Scanned & Stored via n8n Workflow",
-        description: `Imported via n8n OCR Vision model (${extracted.confidenceScore || 98}% confidence).`,
+        title: "Invoice Scanned & Verified",
+        description: `Imported via OCR Vision model (${extracted.confidenceScore || 98}% confidence).`,
         amount: grandTotalPaise,
         channel: "email",
       },
@@ -598,7 +598,7 @@ export function saveN8nExtractedInvoice(
       phone: payerPhone || "",
       isChronicallyLate: false,
       grade: "A",
-      gradeReasons: ["Imported from n8n Document AI"],
+      gradeReasons: ["Imported from Document AI"],
     };
     saveCustomer(customer);
   } else {
@@ -673,7 +673,7 @@ export function saveN8nExtractedInvoice(
         id: `ev-${Date.now()}`,
         date: new Date(),
         type: "invoice-sent",
-        title: "Invoice Extracted via n8n Webhook",
+        title: "Invoice Extracted & Verified",
         description: `Status: Ready. Payer: ${payerName}, Amount: ₹${numericAmount.toLocaleString()}, Due: ${extracted?.due_date || "Net 30"}`,
         amount: amountPaise,
         channel: "email",
@@ -910,7 +910,7 @@ export async function sendReminderViaN8n(
     success: true,
     liveSent,
     message: liveSent
-      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient} via n8n workflow!`
+      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient} via cloud automation!`
       : `${channel === "email" ? "Email" : "WhatsApp"} reminder recorded and prepared for ${payload.buyer.name} (${payload.invoiceNumber || "Invoice"}).`,
     channel: channel === "email" ? "Email Workflow" : "WhatsApp Workflow",
     executionId,

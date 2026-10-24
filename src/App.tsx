@@ -14,7 +14,6 @@ import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
 import { CreateInvoice } from "./pages/CreateInvoice";
 import { Reminders } from "./pages/Reminders";
-import { DemandLetter } from "./pages/DemandLetter";
 import { Customers } from "./pages/Customers";
 import { CustomerPage } from "./pages/CustomerPage";
 import { Dispute } from "./pages/Dispute";
@@ -63,7 +62,7 @@ export default function App() {
               <Route path="/invoices/:id/edit" element={<CreateInvoice lang={lang} isEditMode />} />
               <Route path="/payments" element={<Navigate to="/invoices" replace />} />
               <Route path="/reminders" element={<Reminders lang={lang} />} />
-              <Route path="/demand-letter" element={<DemandLetter lang={lang} />} />
+              <Route path="/demand-letter" element={<Navigate to="/dashboard" replace />} />
               <Route path="/customers" element={<Customers lang={lang} />} />
               <Route path="/customers/:id" element={<CustomerPage lang={lang} />} />
               <Route path="/dispute/:invoiceId" element={<Dispute lang={lang} />} />

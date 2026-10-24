@@ -8,6 +8,7 @@ import {
   Users,
   Plus,
   Zap,
+  Menu,
 } from "lucide-react";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
@@ -131,12 +132,23 @@ export function Shell({
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top Header */}
         <header className="h-14 px-4 sm:px-6 flex items-center justify-between bg-white/85 backdrop-blur-md border-b border-slate-200/80 shrink-0 z-10 shadow-2xs">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="p-1.5 -ml-1 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors md:hidden tap-target flex items-center justify-center"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <button
               type="button"
               onClick={() => navigate("/profile")}
               className="flex items-center gap-2 text-xs font-semibold text-slate-700 hover:text-teal-600 transition-colors"
             >
+              <div className="w-6 h-6 rounded-lg bg-teal-600 flex md:hidden items-center justify-center text-white font-extrabold text-[11px] shadow-xs">
+                AI
+              </div>
               <span className="font-bold">{businessProfile.name || "ApkaInvoice"}</span>
               {businessProfile.city && (
                 <span className="text-[11px] text-slate-400 font-normal hidden sm:inline">

@@ -253,7 +253,7 @@ ${bName}`;
             date: new Date(),
             type: "reminder",
             title: "Email Reminder Sent",
-            description: `Sent to ${emailClean} via n8n (${res.sent_from ?? "shared_sender"})`,
+            description: `Sent to ${emailClean} via automated email (${res.sent_from ?? "shared_sender"})`,
             amount: selectedInvoice.outstanding,
             channel: "email",
           });

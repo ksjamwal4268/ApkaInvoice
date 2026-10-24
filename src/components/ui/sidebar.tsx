@@ -118,67 +118,34 @@ export const MobileSidebar = ({
 }) => {
   const { open, setOpen } = useSidebar();
 
-  return (
-    <>
-      {/* Mobile Top App Bar */}
-      <div className="h-14 px-4 flex flex-row md:hidden items-center justify-between bg-white/90 backdrop-blur-md border-b border-slate-200/80 w-full z-30 shrink-0">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
-            AI
-          </div>
-          <span className="font-extrabold text-base text-slate-900 tracking-tight">
-            ApkaInvoice
-          </span>
-        </Link>
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          className="p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors"
-          aria-label={open ? "Close menu" : "Open menu"}
-        >
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
-      </div>
+  if (!open) return null;
 
-      {/* Mobile Slide-in Drawer */}
-      {open && (
-        <div className="fixed inset-0 z-50 md:hidden flex">
-          <div
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+  return (
+    <div className="fixed inset-0 z-50 md:hidden flex">
+      <div
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+        onClick={() => setOpen(false)}
+      />
+      <div
+        className={cn(
+          "relative w-72 max-w-[80vw] h-full bg-white flex flex-col justify-between p-5 z-10 shadow-2xl transition-transform animate-in slide-in-from-left duration-250",
+          className
+        )}
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <Logo />
+          <button
+            type="button"
             onClick={() => setOpen(false)}
-          />
-          <div
-            className={cn(
-              "relative w-72 max-w-[80vw] h-full bg-white flex flex-col justify-between p-5 z-10 shadow-2xl transition-transform animate-in slide-in-from-left duration-250",
-              className
-            )}
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+            aria-label="Close menu"
           >
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <Link
-                to="/"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5"
-              >
-                <div className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white font-extrabold text-sm shadow-xs">
-                  AI
-                </div>
-                <span className="font-extrabold text-base text-slate-900 tracking-tight">
-                  ApkaInvoice
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {children}
-          </div>
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      )}
-    </>
+        {children}
+      </div>
+    </div>
   );
 };
 
