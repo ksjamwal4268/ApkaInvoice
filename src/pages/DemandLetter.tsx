@@ -121,8 +121,7 @@ export function DemandLetter({ lang: _lang }: { lang: Language }) {
           <div className="space-y-3 leading-relaxed text-xs">
             <p>Dear {invoice.customerName},</p>
             <p>
-              We are writing to bring to your urgent attention the outstanding balance on invoice{" "}
-              <strong>{invoice.invoiceNumber}</strong> dated {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}, which became due on{" "}
+              We are writing to bring to your urgent attention the outstanding balance on {invoice.invoiceNumber ? <>invoice <strong>{invoice.invoiceNumber}</strong></> : "your billing account"} dated {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}, which became due on{" "}
               <strong>{new Date(invoice.dueDate).toLocaleDateString("en-IN")}</strong>.
             </p>
             <p>

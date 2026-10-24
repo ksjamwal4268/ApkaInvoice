@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
+import { useNavigate, useParams, useLocation, useSearchParams, Link } from "react-router-dom";
 import { validateGstin } from "../utils/gstin";
 import { toPaise, formatInr, amountInWords, roundGst, splitCgstSgst } from "../utils/money";
 import { computeDueDate, PaymentTerms, toISODateString } from "../utils/date";
@@ -44,6 +44,7 @@ interface CreateInvoiceProps {
 export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateInvoiceProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { id: routeInvoiceId } = useParams<{ id?: string }>();
   const isEditing = Boolean(propEditMode || routeInvoiceId);
 
@@ -119,8 +120,19 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       }
     } else {
       setInvoiceNumber((prev) => (prev ? prev : ""));
+      const custParam = searchParams.get("customer");
+      if (custParam) {
+        const selected = customers.find((c) => c.id === custParam);
+        if (selected) {
+          setCustomerId(selected.id);
+          setGstin(selected.gstin || "");
+          setPlaceOfSupply(selected.state || businessProfile.state || "Maharashtra");
+          setBuyerPhone(selected.phone || "");
+          setBuyerEmail(selected.email || "");
+        }
+      }
     }
-  }, [isEditing, routeInvoiceId, invoices, customers]);
+  }, [isEditing, routeInvoiceId, invoices, customers, searchParams, businessProfile.state]);
 
   // Callback from Camera / OCR modal
   const handleApplyExtractedData = useCallback(
@@ -932,9 +944,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       {/* Invoice PDF Preview Modal */}
       {showPdfPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="relative w-full max-w-2xl bg-white bg-slate-50 rounded-2xl p-6 shadow-2xl border border-slate-200 border-slate-200 max-h-[90vh] overflow-y-auto space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 border-slate-200">
-              <span className="font-bold text-base text-slate-900 text-slate-900">Tax Invoice Preview</span>
+          <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-base text-slate-900 dark:text-white">Tax Invoice Preview</span>
               <button
                 type="button"
                 onClick={() => setShowPdfPreview(false)}
@@ -943,28 +955,28 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 border rounded-xl bg-slate-50 bg-slate-850 text-xs space-y-3 font-mono">
-              <div className="flex justify-between border-b pb-2">
+            <div className="p-4 border rounded-xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs space-y-3 font-mono text-slate-800 dark:text-slate-200">
+              <div className="flex justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
                 <div>
-                  <p className="font-bold text-sm">{businessProfile.name}</p>
+                  <p className="font-bold text-sm text-slate-900 dark:text-white">{businessProfile.name}</p>
                   <p>{businessProfile.city}, {businessProfile.state}</p>
                   <p>GSTIN: {businessProfile.gstin}</p>
                   <p>Phone: {senderPhone || businessProfile.phone} • Email: {senderEmail || businessProfile.email}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold">{invoiceNumber ? `INVOICE #${invoiceNumber}` : "INVOICE"}</p>
+                  <p className="font-bold text-slate-900 dark:text-white">{invoiceNumber ? `INVOICE #${invoiceNumber}` : "INVOICE"}</p>
                   <p>Date: {invoiceDate}</p>
                   <p>Terms: {terms}</p>
                 </div>
               </div>
               <div>
-                <p className="font-bold text-slate-600">BILLED TO:</p>
-                <p className="font-bold text-sm">{customer?.name || "Customer"}</p>
+                <p className="font-bold text-slate-600 dark:text-slate-400">BILLED TO:</p>
+                <p className="font-bold text-sm text-slate-900 dark:text-white">{customer?.name || "Customer"}</p>
                 <p>Phone: {buyerPhone || customer?.phone || "—"} • Email: {buyerEmail || customer?.email || "—"}</p>
                 <p>GSTIN: {gstin || "Unregistered"}</p>
                 <p>Place of Supply: {placeOfSupply}</p>
               </div>
-              <div className="border-t border-b py-2 space-y-1">
+              <div className="border-t border-b border-slate-200 dark:border-slate-700 py-2 space-y-1">
                 {lineItems.map((li, idx) => (
                   <div key={idx} className="flex justify-between">
                     <span>{li.description} ({li.quantity} x ₹{li.rate})</span>
@@ -982,14 +994,14 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 ) : (
                   <p>IGST (18%): {formatInr(igst)}</p>
                 )}
-                <p className="text-base text-teal-600">Total: {formatInr(grandTotal)}</p>
+                <p className="text-base text-teal-600 dark:text-teal-400">Total: {formatInr(grandTotal)}</p>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setShowPdfPreview(false)}
-                className="px-4 py-2 bg-slate-200 bg-slate-700 rounded-lg text-xs font-semibold"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold"
               >
                 Close
               </button>

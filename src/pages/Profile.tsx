@@ -46,6 +46,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
   // Direct Phone Payment / UPI
   const [upi, setUpi] = useState("");
+  const [gstin, setGstin] = useState("");
 
   // Status & Feedback
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -66,6 +67,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
       setState(businessProfile.state || "Maharashtra");
       setStateCode(businessProfile.stateCode || "27");
       setPincode(businessProfile.pincode || "");
+      setGstin(businessProfile.gstin || "");
 
       // Direct Phone payment / UPI
       setUpi(businessProfile.upi || (businessProfile.phone ? `${businessProfile.phone.replace(/\D/g, "")}@upi` : ""));
@@ -105,6 +107,8 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
     const cleanPhone = phone.trim();
     const fallbackUpi = upi.trim() || (cleanPhone ? `${cleanPhone.replace(/\D/g, "")}@upi` : "");
+    const cleanGstin = gstin.trim().toUpperCase();
+    const cleanPan = cleanGstin.length >= 12 ? cleanGstin.substring(2, 12) : (businessProfile.pan || "");
 
     const updatedProfile: BusinessProfile = {
       ...businessProfile,
@@ -120,12 +124,12 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
       pincode: pincode.trim(),
       // Direct Phone Payment (no bank account required)
       upi: fallbackUpi,
-      bankName: "",
-      bankAccount: "",
-      ifsc: "",
-      accountHolderName: "",
-      gstin: "",
-      pan: "",
+      gstin: cleanGstin,
+      pan: cleanPan,
+      bankName: businessProfile.bankName || "",
+      bankAccount: businessProfile.bankAccount || "",
+      ifsc: businessProfile.ifsc || "",
+      accountHolderName: businessProfile.accountHolderName || "",
       isOnboarded: true,
       syncedAt: new Date().toISOString(),
     };
@@ -456,6 +460,21 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                 />
                 <QrCode className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               </div>
+            </div>
+
+            {/* GSTIN */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                GSTIN (Optional)
+              </label>
+              <input
+                type="text"
+                maxLength={15}
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase().trim())}
+                placeholder="e.g. 27AABCS1234Q1ZM"
+                className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              />
             </div>
 
             {/* Full Street Address */}

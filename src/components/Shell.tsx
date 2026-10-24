@@ -56,6 +56,7 @@ export function Shell({
   const isWelcome = location.pathname === "/" || location.pathname === "/welcome";
 
   const NAV_ITEMS = [
+    { path: "/profile", label: "navProfile", icon: UserCircle },
     { path: "/dashboard", label: "navDashboard", icon: LayoutDashboard },
     { path: "/invoices", label: "navInvoices", icon: FileText, badge: `${invoices.length}` },
     {
@@ -66,7 +67,6 @@ export function Shell({
       badgeColor: "bg-rose-500 text-white",
     },
     { path: "/customers", label: "navCustomers", icon: Users, badge: customers.length > 0 ? `${customers.length}` : undefined },
-    { path: "/profile", label: "navProfile", icon: UserCircle },
   ];
 
   const isActive = (path: string) => {

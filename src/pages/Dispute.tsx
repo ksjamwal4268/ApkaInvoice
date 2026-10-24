@@ -129,7 +129,12 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
                   Log Commercial Dispute
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Invoice <strong className="text-slate-800 dark:text-slate-200">{invoice.invoiceNumber}</strong> • {invoice.customerName} (
+                  {invoice.invoiceNumber ? (
+                    <>
+                      Invoice <strong className="text-slate-800 dark:text-slate-200">{invoice.invoiceNumber}</strong> •{" "}
+                    </>
+                  ) : null}
+                  {invoice.customerName} (
                   <strong className="text-slate-800 dark:text-slate-200">{formatInr(invoice.outstanding)}</strong>)
                 </p>
               </div>
@@ -234,7 +239,7 @@ export function Dispute({ lang: _lang }: { lang: Language }) {
                 Dispute Logged Successfully
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Invoice <strong>{invoice.invoiceNumber}</strong> has been tagged as <strong>Disputed</strong>. Payment reminders are now paused and cash projections have been updated.
+                Invoice {invoice.invoiceNumber ? <strong>{invoice.invoiceNumber}</strong> : <strong>for {invoice.customerName}</strong>} has been tagged as <strong>Disputed</strong>. Payment reminders are now paused and cash projections have been updated.
               </p>
             </div>
 

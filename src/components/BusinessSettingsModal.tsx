@@ -47,12 +47,12 @@ export function BusinessSettingsModal({
       ...profile,
       phone: cleanPhone,
       upi: cleanUpi,
-      bankName: "",
-      bankAccount: "",
-      ifsc: "",
-      accountHolderName: "",
-      gstin: "",
-      pan: "",
+      bankName: profile.bankName || "",
+      bankAccount: profile.bankAccount || "",
+      ifsc: profile.ifsc || "",
+      accountHolderName: profile.accountHolderName || "",
+      gstin: profile.gstin || "",
+      pan: profile.pan || "",
     };
 
     saveBusinessProfile(updated);

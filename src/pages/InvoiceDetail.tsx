@@ -52,9 +52,10 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
     setN8nSending(true);
     setN8nSuccess(null);
 
-    const senderPhone = businessProfile.phone || "+91 98000 00000";
-    const senderUpi = businessProfile.upi || `${senderPhone}@upi`;
-    const message = `Dear ${customer.name}, gentle reminder that payment of ${formatInr(invoice.outstanding)} for invoice ${invoice.invoiceNumber} is pending. Please remit directly to ${senderPhone} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${businessProfile.name}`;
+    const senderPhone = businessProfile.phone || "";
+    const senderUpi = businessProfile.upi || (senderPhone ? `${senderPhone.replace(/\D/g, "")}@upi` : "");
+    const invRef = invoice.invoiceNumber ? `for invoice ${invoice.invoiceNumber}` : "for your invoice";
+    const message = `Dear ${customer.name}, gentle reminder that payment of ${formatInr(invoice.outstanding)} ${invRef} is pending. Please remit directly to ${senderPhone || "our business phone"} (PhonePe/Google Pay/Paytm) or UPI: ${senderUpi}. Thank you - ${businessProfile.name}`;
 
     try {
       const res = await sendReminderViaN8n({

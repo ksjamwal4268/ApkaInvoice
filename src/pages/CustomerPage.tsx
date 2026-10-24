@@ -129,7 +129,7 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
             </button>
 
             <Link
-              to="/invoices/create"
+              to={`/invoices/create?customer=${customer.id}`}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs tap-target"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
             </p>
           </div>
           <Link
-            to="/invoices/create"
+            to={`/invoices/create?customer=${customer.id}`}
             className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
                   className="hover:bg-slate-50/70 dark:hover:bg-slate-750/50 cursor-pointer transition-colors group"
                 >
                   <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                    {inv.invoiceNumber}
+                    {inv.invoiceNumber || <span className="text-slate-400 font-normal italic">— (No Number)</span>}
                   </td>
                   <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-300">
                     {formatDate(inv.invoiceDate)}

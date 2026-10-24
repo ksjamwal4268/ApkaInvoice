@@ -379,7 +379,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <div className="fc">
           <div>
             <b>Product</b>
-            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => setIsCameraModalOpen(true)}>Invoice scanner</button>
+            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/invoices")}>Invoices ledger</button>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/reminders")}>Reminders</button>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={handleEnterDashboard}>Cash forecast</button>
           </div>

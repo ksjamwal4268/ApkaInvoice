@@ -160,6 +160,8 @@ export function OnboardingModal({
 
     const cleanPhone = phone.trim();
     const fallbackUpi = upi.trim() || (cleanPhone ? `${cleanPhone.replace(/\D/g, "")}@upi` : "");
+    const cleanGstin = gstin.trim() ? gstin.toUpperCase().trim() : existingProfile.gstin || "";
+    const cleanPan = cleanGstin.length >= 12 ? cleanGstin.substring(2, 12) : existingProfile.pan || "";
 
     const updatedProfile: BusinessProfile = {
       ...existingProfile,
@@ -169,14 +171,14 @@ export function OnboardingModal({
       email: email.trim(),
       state,
       stateCode,
-      city: city.trim() || "Pune",
-      address: address.trim() || `${city}, ${state}`,
-      gstin: "",
-      pan: "",
-      bankName: "",
-      bankAccount: "",
-      ifsc: "",
-      accountHolderName: "",
+      city: city.trim() || existingProfile.city || "Pune",
+      address: address.trim() || `${city || existingProfile.city || "Pune"}, ${state}`,
+      gstin: cleanGstin,
+      pan: cleanPan,
+      bankName: existingProfile.bankName || "",
+      bankAccount: existingProfile.bankAccount || "",
+      ifsc: existingProfile.ifsc || "",
+      accountHolderName: existingProfile.accountHolderName || "",
       upi: fallbackUpi,
       isOnboarded: true,
     };
