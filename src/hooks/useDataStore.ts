@@ -9,6 +9,7 @@ import {
   saveInvoice,
   deleteInvoice,
   saveCustomer,
+  deleteCustomer,
   addInvoiceEvidence,
   saveN8nConfig,
   saveBusinessProfile,
@@ -67,6 +68,10 @@ export function useDataStore() {
     },
     saveCustomer: (cust: Customer) => {
       saveCustomer(cust);
+      refresh();
+    },
+    deleteCustomer: (id: string) => {
+      deleteCustomer(id);
       refresh();
     },
     addInvoiceEvidence: (invoiceId: string, entry: any) => {

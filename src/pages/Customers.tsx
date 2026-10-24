@@ -2,14 +2,14 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatInr } from "../utils/money";
 import { Language } from "../data/i18n";
-import { Users, AlertTriangle, CheckCircle, Search, ArrowRight, Plus, Edit, ShieldAlert } from "lucide-react";
+import { Users, AlertTriangle, CheckCircle, Search, ArrowRight, Plus, Edit, ShieldAlert, Trash2 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { CustomerModal } from "../components/CustomerModal";
 import { Customer, getCustomerCategory } from "../data/sampleData";
 
 export function Customers({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
-  const { customers, invoices, saveCustomer } = useDataStore();
+  const { customers, invoices, saveCustomer, deleteCustomer } = useDataStore();
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "green" | "yellow" | "red">("all");
@@ -65,6 +65,13 @@ export function Customers({ lang: _lang }: { lang: Language }) {
 
   const handleSaveCustomer = (saved: Customer) => {
     saveCustomer(saved);
+  };
+
+  const handleDeleteCustomer = (c: Customer, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete ${c.name}? This will remove them from your customer list.`)) {
+      deleteCustomer(c.id);
+    }
   };
 
   return (
@@ -275,7 +282,7 @@ export function Customers({ lang: _lang }: { lang: Language }) {
                         )}
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={(e) => handleOpenEditModal(c, e)}
@@ -283,6 +290,14 @@ export function Customers({ lang: _lang }: { lang: Language }) {
                             title="Edit Customer"
                           >
                             <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteCustomer(c, e)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={(e) => {
@@ -310,6 +325,7 @@ export function Customers({ lang: _lang }: { lang: Language }) {
         isOpen={isCustomerModalOpen}
         onClose={() => setIsCustomerModalOpen(false)}
         onSave={handleSaveCustomer}
+        onDelete={deleteCustomer}
         initialCustomer={editingCustomer}
       />
     </div>

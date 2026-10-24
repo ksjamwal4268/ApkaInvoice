@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Plus,
   Edit,
+  Trash2,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { CustomerModal } from "../components/CustomerModal";
@@ -21,7 +22,7 @@ import { Customer, getCustomerCategory } from "../data/sampleData";
 export function CustomerPage({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { customers, invoices: allInvoices, businessProfile, saveCustomer } = useDataStore();
+  const { customers, invoices: allInvoices, businessProfile, saveCustomer, deleteCustomer } = useDataStore();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -57,6 +58,13 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
 
   const handleSaveBuyer = (updated: Customer) => {
     saveCustomer(updated);
+  };
+
+  const handleDeleteCustomer = () => {
+    if (window.confirm(`Are you sure you want to delete ${customer.name}? This will remove them from your customer list.`)) {
+      deleteCustomer(customer.id);
+      navigate("/customers");
+    }
   };
 
   return (
@@ -166,6 +174,16 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
             >
               <Mail className="w-3.5 h-3.5" />
             </a>
+
+            <button
+              type="button"
+              onClick={handleDeleteCustomer}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors tap-target"
+              title="Delete this customer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>Delete Buyer</span>
+            </button>
           </div>
         </div>
 
@@ -301,6 +319,7 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveBuyer}
+        onDelete={handleDeleteCustomer}
         initialCustomer={customer}
       />
     </div>

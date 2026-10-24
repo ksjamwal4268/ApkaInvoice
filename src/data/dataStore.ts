@@ -240,6 +240,13 @@ export function saveCustomer(customer: Customer): void {
   dispatchStoreChange();
 }
 
+export function deleteCustomer(id: CustomerId): void {
+  const custs = getStoredCustomers();
+  const filtered = custs.filter((c) => c.id !== id);
+  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(filtered));
+  dispatchStoreChange();
+}
+
 /**
  * Business Profile Store
  */

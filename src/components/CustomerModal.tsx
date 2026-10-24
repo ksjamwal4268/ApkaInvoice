@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Building2, User, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check } from "lucide-react";
+import { X, Building2, User, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check, Trash2 } from "lucide-react";
 import { Customer } from "../data/sampleData";
 import { validateGstin, INDIAN_STATES } from "../utils/gstin";
 
@@ -7,6 +7,7 @@ interface CustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (customer: Customer) => void;
+  onDelete?: (id: string) => void;
   initialCustomer?: Customer | null;
   suggestedName?: string;
   suggestedGstin?: string;
@@ -18,6 +19,7 @@ export function CustomerModal({
   isOpen,
   onClose,
   onSave,
+  onDelete,
   initialCustomer,
   suggestedName,
   suggestedGstin,
@@ -369,20 +371,38 @@ export function CustomerModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-all"
-            >
-              {initialCustomer ? "Update Buyer" : "Save Buyer Info"}
-            </button>
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+            {initialCustomer && onDelete ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete ${initialCustomer.name}? This will remove them from your customer list.`)) {
+                    onDelete(initialCustomer.id);
+                    onClose();
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Buyer</span>
+              </button>
+            ) : <div />}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-all"
+              >
+                {initialCustomer ? "Update Buyer" : "Save Buyer Info"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
