@@ -6,18 +6,24 @@ export type { Customer, Invoice, EvidenceEntry, CustomerId, InvoiceId };
 export interface BusinessProfile {
   name: string;
   contactPerson?: string;
+  role?: string;
   city: string;
   state: string;
   stateCode: string;
+  pincode?: string;
   gstin: string;
+  pan?: string;
+  businessType?: string;
   address: string;
   email: string;
   phone: string;
   bankName: string;
+  accountHolderName?: string;
   bankAccount: string;
   ifsc: string;
   upi: string;
   isOnboarded?: boolean;
+  syncedAt?: string;
 }
 
 export interface N8nConfig {
@@ -93,14 +99,19 @@ const BUSINESS_KEY = "cc_business_profile_v2";
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   name: "Sharma Packaging",
   contactPerson: "Rohit Sharma",
+  role: "Proprietor",
   city: "Pune",
   state: "Maharashtra",
   stateCode: "27",
+  pincode: "412105",
   gstin: "27AABCS1234Q1ZM",
+  pan: "AABCS1234Q",
+  businessType: "Sole Proprietorship",
   address: "Gut No. 145, Chakan Industrial Area, Pune - 412105, Maharashtra",
   email: "billing@sharmapackaging.in",
   phone: "+91 98765 43210",
   bankName: "HDFC Bank",
+  accountHolderName: "Sharma Packaging",
   bankAccount: "50200045678901",
   ifsc: "HDFC0001234",
   upi: "sharmapackaging@hdfc",

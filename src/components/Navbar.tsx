@@ -71,8 +71,12 @@ export function Navbar() {
 
             {/* User Menu */}
             {user ? (
-              <div className="relative flex items-center gap-2 cursor-pointer">
-                <User className="w-5 h-5 text-slate-500" />
+              <div
+                onClick={() => navigate("/profile")}
+                className="relative flex items-center gap-2 cursor-pointer hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors"
+                title="View & edit Profile"
+              >
+                <User className="w-5 h-5 text-teal-600" />
                 <span className="font-medium text-slate-700">{user.name || "User"}</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </div>

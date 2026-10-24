@@ -8,6 +8,7 @@ import {
 import { Shell } from "./components/Shell";
 import { Language } from "./data/i18n";
 import { Dashboard } from "./pages/Dashboard";
+import { Profile } from "./pages/Profile";
 import { Welcome } from "./pages/Welcome";
 import { Invoices } from "./pages/Invoices";
 import { InvoiceDetail } from "./pages/InvoiceDetail";
@@ -63,6 +64,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Welcome lang={lang} />} />
           <Route path="/welcome" element={<Welcome lang={lang} />} />
+          <Route path="/profile" element={<Profile lang={lang} />} />
           <Route path="/dashboard" element={<Dashboard lang={lang} />} />
           <Route path="/invoices" element={<Invoices lang={lang} />} />
           <Route path="/invoices/:id" element={<InvoiceDetail lang={lang} />} />

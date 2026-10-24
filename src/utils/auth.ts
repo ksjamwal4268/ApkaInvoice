@@ -9,6 +9,7 @@ import {
   User,
 } from "firebase/auth";
 import firebaseConfig from "../firebase.config";
+import { getStoredBusinessProfile, saveBusinessProfile } from "../data/dataStore";
 
 // Initialize Firebase App & Auth
 export const app = initializeApp(firebaseConfig);
@@ -23,6 +24,7 @@ export interface AppUser {
   name: string;
   email: string;
   picture?: string;
+  phone?: string;
 }
 
 export type GoogleUser = AppUser;
@@ -32,6 +34,21 @@ export const signInWithGoogle = () => signInWithPopup(auth, provider);
 
 // Google logout function
 export const signOutUser = () => firebaseSignOut(auth);
+
+// Helper to update current stored user
+export const updateStoredUser = (updates: Partial<AppUser>) => {
+  try {
+    const stored = localStorage.getItem("cc-google-user");
+    const current = stored ? JSON.parse(stored) : { id: "local-user", name: "User", email: "" };
+    const merged = { ...current, ...updates };
+    localStorage.setItem("cc-google-user", JSON.stringify(merged));
+    window.dispatchEvent(new Event("cc-auth-updated"));
+    return merged;
+  } catch (e) {
+    console.warn("Failed to update stored user:", e);
+    return null;
+  }
+};
 
 // Subscribe to auth state changes (for Welcome.tsx and components)
 export const useAuth = () => {
@@ -49,6 +66,25 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const handleAuthUpdated = () => {
+      const stored = localStorage.getItem("cc-google-user");
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored));
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener("cc-auth-updated", handleAuthUpdated);
+    window.addEventListener("storage", handleAuthUpdated);
+    return () => {
+      window.removeEventListener("cc-auth-updated", handleAuthUpdated);
+      window.removeEventListener("storage", handleAuthUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
       if (firebaseUser) {
         const appUser: AppUser = {
@@ -59,6 +95,30 @@ export const useAuth = () => {
         };
         setUser(appUser);
         localStorage.setItem("cc-google-user", JSON.stringify(appUser));
+
+        // Sync with stored business profile
+        try {
+          const currentProf = getStoredBusinessProfile();
+          let needsUpdate = false;
+          const nextProf = { ...currentProf };
+          if (!nextProf.contactPerson || nextProf.contactPerson === "Rohit Sharma") {
+            if (appUser.name && appUser.name !== "Google User") {
+              nextProf.contactPerson = appUser.name;
+              needsUpdate = true;
+            }
+          }
+          if (!nextProf.email || nextProf.email === "billing@sharmapackaging.in") {
+            if (appUser.email) {
+              nextProf.email = appUser.email;
+              needsUpdate = true;
+            }
+          }
+          if (needsUpdate) {
+            saveBusinessProfile(nextProf);
+          }
+        } catch (err) {
+          console.warn("Auto-sync profile on login notice:", err);
+        }
       } else {
         const stored = localStorage.getItem("cc-google-user");
         if (!stored) {
@@ -89,6 +149,7 @@ export const useAuth = () => {
     signIn: signInWithGoogle,
     signOutUser: handleSignOut,
     signOut: handleSignOut,
+    updateUser: updateStoredUser,
   };
 };
 

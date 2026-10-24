@@ -22,6 +22,7 @@ import {
   Percent,
   Banknote,
   Users,
+  User,
   Camera,
   Sparkles,
 } from "lucide-react";
@@ -158,10 +159,18 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
         <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
                 {businessProfile.city}, {businessProfile.state}
               </span>
+              <Link
+                to="/profile"
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/20 text-teal-200 border border-teal-500/30 transition-colors"
+                title="View & edit your user profile, contact info, and payment details"
+              >
+                <User className="w-3 h-3 text-teal-300" />
+                <span>Profile: {businessProfile.contactPerson || "My Profile"}</span>
+              </Link>
               {shortfallWeek ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-ping" />

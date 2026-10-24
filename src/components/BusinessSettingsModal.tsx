@@ -17,6 +17,7 @@ import {
   saveBusinessProfile,
   clearAllData,
 } from "../data/dataStore";
+import { updateStoredUser } from "../utils/auth";
 import { validateGstin, INDIAN_STATES } from "../utils/gstin";
 
 interface BusinessSettingsModalProps {
@@ -58,6 +59,13 @@ export function BusinessSettingsModal({
       return;
     }
     saveBusinessProfile(profile);
+    if (profile.contactPerson || profile.email) {
+      updateStoredUser({
+        name: profile.contactPerson || undefined,
+        email: profile.email || undefined,
+        phone: profile.phone || undefined,
+      });
+    }
     setSaveSuccess(true);
     setTimeout(() => {
       setSaveSuccess(false);

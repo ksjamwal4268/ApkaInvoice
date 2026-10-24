@@ -23,6 +23,7 @@ import {
   Clock,
   Banknote,
   Users,
+  User,
   Settings,
   CheckCircle2,
   Phone,
@@ -271,14 +272,25 @@ export function Welcome({ lang }: WelcomeProps) {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setIsOnboardingOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 font-bold text-xs border border-teal-500/30 transition-colors shrink-0"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Edit Setup</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => navigate("/profile")}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 font-bold text-xs border border-teal-500/30 transition-colors"
+                        title="Open complete user profile page"
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>Profile</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsOnboardingOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs border border-white/15 transition-colors"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Setup</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">

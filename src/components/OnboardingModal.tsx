@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { BusinessProfile, saveBusinessProfile } from "../data/dataStore";
-import { AppUser } from "../utils/auth";
+import { AppUser, updateStoredUser } from "../utils/auth";
 import { validateGstin, INDIAN_STATES, STATE_CODES } from "../utils/gstin";
 
 interface OnboardingModalProps {
@@ -174,6 +174,13 @@ export function OnboardingModal({
     };
 
     saveBusinessProfile(updatedProfile);
+    if (contactPerson.trim() || email.trim()) {
+      updateStoredUser({
+        name: contactPerson.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      });
+    }
     setSuccessSaved(true);
 
     setTimeout(() => {
