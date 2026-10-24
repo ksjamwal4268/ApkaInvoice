@@ -110,7 +110,7 @@ export function Shell({
                 ApkaInvoice
               </span>
               <span className="text-[11px] text-teal-600 dark:text-teal-400 font-medium hidden sm:block">
-                MSME Cash Shortage Forecaster
+                Cash Flow &amp; Dues Forecaster
               </span>
             </div>
           </div>
@@ -304,7 +304,7 @@ export function Shell({
               }`}
             >
               <FileWarning className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>MSME Demand Letters</span>
+              <span>Demand Letters</span>
             </Link>
           </div>
 

@@ -178,7 +178,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
       {/* 3. TRUST BANNER */}
       <div className="trust">
-        <span>100% Indian MSME compliant</span>
+        <span>100% GST &amp; Tax compliant</span>
         <span>CGST, SGST &amp; IGST to the paisa</span>
         <span>WhatsApp &amp; email reminders</span>
         <span>UPI payment links</span>
@@ -306,7 +306,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <div className="sc-item" onClick={() => navigate("/demand-letter")}>
               <div>
                 <h3>Formal demand notices</h3>
-                <p>Printable notices for MSME recovery.</p>
+                <p>Printable notices for formal payment recovery.</p>
               </div>
               <small>Open →</small>
             </div>
