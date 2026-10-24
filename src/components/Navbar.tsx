@@ -26,7 +26,6 @@ export function Navbar() {
     { label: t("navDashboard"), href: "/", icon: User },
     { label: t("navInvoices"), href: "/invoices", icon: FileText },
     { label: t("navPayments"), href: "/payments", icon: CreditCard },
-    { label: t("navCustomers"), href: "/customers", icon: Users },
     { label: t("navForecast"), href: "/forecast", icon: BarChart2 },
     { label: t("navReminders"), href: "/reminders", icon: Clock },
   ];

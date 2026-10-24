@@ -4,12 +4,12 @@
  * Core invariant (must always hold): closing[i] = opening[i] + inflow[i] - outflow[i],
  * and opening[i+1] = closing[i]. The forecast ties out by construction.
  *
- * Disputed invoices are excluded from inflow.
- * What-if: a customer can be simulated to pay X days late, which shifts their
- * expected invoice payment into a later week.
+ * Disputed invoices are excluded from safe inflow.
+ * Inflows dynamically sync from active unpaid invoices in dataStore.
+ * Outflows sync from user-configured operating expenses (rent, payroll, vendors).
  */
 
-import { Paise, fromPaise, add, subtract } from "./money";
+import { Paise, add, subtract } from "./money";
 import { generateWeeks, formatWeekLabel, addDays } from "./date";
 
 export type CustomerId = string;
@@ -46,33 +46,73 @@ export interface WhatIfScenario {
   daysLate: number;
 }
 
-/** Default recurring weekly outflows for Sharma Packaging (Pune) */
-export const DEFAULT_OUTFLOWS: Record<number, { label: string; amount: Paise }> = {
-  0: { label: "Salary", amount: 18000000 }, // ₹1,80,000
-  1: { label: "Weekly suppliers", amount: 8500000 }, // ₹85,000
-  2: { label: "Rent", amount: 6000000 }, // ₹60,000
-  3: { label: "Weekly suppliers", amount: 8500000 },
-  4: { label: "Salary", amount: 18000000 },
-  5: { label: "Weekly suppliers", amount: 8500000 },
-  6: { label: "Rent", amount: 6000000 },
-  7: { label: "Weekly suppliers", amount: 8500000 },
-};
+export interface ForecastSettings {
+  startingBalance: number; // In INR (default: 0 or user custom)
+  monthlyRent: number; // In INR (default: 0)
+  monthlyPayroll: number; // In INR (default: 0)
+  weeklyVendors: number; // In INR (default: 0)
+}
+
+/** Default recurring weekly outflows - empty by default (no fake details) */
+export const DEFAULT_OUTFLOWS: Record<number, { label: string; amount: Paise }> = {};
 
 /**
- * Build the 8-week cash forecast.
+ * Generate weekly outflows based on real user settings
+ */
+export function buildWeeklyOutflowsFromSettings(
+  settings: ForecastSettings
+): Record<number, { label: string; amount: Paise }> {
+  const outflows: Record<number, { label: string; amount: Paise }> = {};
+  const rentPaise = Math.round((settings.monthlyRent || 0) * 100);
+  const payrollPaise = Math.round((settings.monthlyPayroll || 0) * 100);
+  const vendorsPaise = Math.round((settings.weeklyVendors || 0) * 100);
+
+  for (let i = 0; i < 8; i++) {
+    let weekAmount = 0;
+    const labels: string[] = [];
+
+    // Monthly payroll distributed on week 0 and week 4
+    if (payrollPaise > 0 && (i === 0 || i === 4)) {
+      weekAmount += payrollPaise;
+      labels.push("Payroll");
+    }
+    // Monthly rent distributed on week 1 and week 5
+    if (rentPaise > 0 && (i === 1 || i === 5)) {
+      weekAmount += rentPaise;
+      labels.push("Rent");
+    }
+    // Weekly vendors/raw materials
+    if (vendorsPaise > 0) {
+      weekAmount += vendorsPaise;
+      labels.push("Suppliers");
+    }
+
+    if (weekAmount > 0) {
+      outflows[i] = {
+        label: labels.join(" + "),
+        amount: weekAmount,
+      };
+    }
+  }
+
+  return outflows;
+}
+
+/**
+ * Build the 8-week cash forecast from real invoice dataset.
  *
  * @param openingBalance - starting cash in paise
  * @param invoices - all invoices (disputed ones excluded from inflow)
- * @param outflows - optional override of weekly outflows (keyed by week index 0-7)
+ * @param outflows - optional weekly outflows (keyed by week index 0-7)
  * @param whatIf - optional what-if scenario (customer pays X days late)
  */
 export function buildForecast({
-  openingBalance,
+  openingBalance = 0,
   invoices,
   outflows = DEFAULT_OUTFLOWS,
   whatIf,
 }: {
-  openingBalance: Paise;
+  openingBalance?: Paise;
   invoices: Invoice[];
   outflows?: Record<number, { label: string; amount: Paise }>;
   whatIf?: WhatIfScenario;
@@ -81,14 +121,14 @@ export function buildForecast({
   today.setHours(0, 0, 0, 0);
   const weeks = generateWeeks(today, 8);
 
-  // Build per-week inflows from invoices expected to be paid
+  // Build per-week inflows from real invoices expected to be paid
   const weeklyInflow: Paise[] = new Array(8).fill(0);
 
   for (const inv of invoices) {
-    // Skip disputed invoices entirely
-    if (inv.status === "disputed") continue;
-    // Skip already paid
-    if (inv.status === "paid") continue;
+    // Skip disputed invoices
+    if (inv.status === "disputed" || inv.isDisputed) continue;
+    // Skip fully completed/paid invoices
+    if (inv.status === "paid" || inv.outstanding <= 0) continue;
 
     const outstanding = inv.outstanding;
 
@@ -96,16 +136,21 @@ export function buildForecast({
     let expectedDate = new Date(inv.dueDate);
     expectedDate.setHours(0, 0, 0, 0);
 
-    // Apply what-if: this customer pays X days late
+    // Apply what-if simulation: this customer pays X days late
     if (whatIf && whatIf.customerId === inv.customerId && whatIf.daysLate > 0) {
       expectedDate = addDays(expectedDate, whatIf.daysLate);
     }
 
-    // Only count if expected within the 8-week window
-    const weekIndex = weeks.findIndex(
-      (w) =>
-        expectedDate >= w && expectedDate < addDays(w, 7)
-    );
+    // Determine week bucket
+    let weekIndex = -1;
+    if (expectedDate < weeks[0]) {
+      // Overdue invoices are immediate collection targets in Week 0 (Current Week)
+      weekIndex = 0;
+    } else {
+      weekIndex = weeks.findIndex(
+        (w) => expectedDate >= w && expectedDate < addDays(w, 7)
+      );
+    }
 
     if (weekIndex >= 0 && weekIndex < 8) {
       weeklyInflow[weekIndex] = add(weeklyInflow[weekIndex], outstanding);
@@ -147,7 +192,7 @@ export function buildForecast({
       closing,
     });
 
-    // Tie-out: next week's opening = this week's closing
+    // Tie-out invariant: next week's opening = this week's closing
     runningOpening = closing;
   }
 
@@ -160,34 +205,4 @@ export function buildForecast({
     totalInflow,
     totalOutflow,
   };
-}
-
-/** Get a human-readable label for the shortfall week */
-export function shortfallLabel(forecast: ForecastResult): string | null {
-  if (forecast.shortfallWeekIndex === null) return null;
-  const week = forecast.weeks[forecast.shortfallWeekIndex];
-  return `Cash runs short in the week of ${week.weekLabel} (closing balance ${formatInr(week.closing)}).`;
-}
-
-function formatInr(paise: Paise): string {
-  const rupees = Math.abs(fromPaise(paise));
-  const sign = paise < 0 ? "-" : "";
-  const formatted = formatIndianNumber(Math.floor(rupees));
-  return `${sign}₹${formatted}`;
-}
-
-function formatIndianNumber(num: number): string {
-  const n = Math.floor(num);
-  if (n < 1000) return String(n);
-  const last3 = n % 1000;
-  const rest = Math.floor(n / 1000);
-  const restStr = formatIndianLakhs(rest);
-  return `${restStr},${String(last3).padStart(3, "0")}`;
-}
-
-function formatIndianLakhs(num: number): string {
-  if (num < 100) return String(num);
-  const last2 = num % 100;
-  const rest = Math.floor(num / 100);
-  return `${rest},${String(last2).padStart(2, "0")}`;
 }

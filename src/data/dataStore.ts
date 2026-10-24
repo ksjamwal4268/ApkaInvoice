@@ -255,6 +255,38 @@ export function saveBusinessProfile(profile: BusinessProfile): void {
   dispatchStoreChange();
 }
 
+export interface ForecastSettings {
+  startingBalance: number; // in INR
+  monthlyRent: number; // in INR
+  monthlyPayroll: number; // in INR
+  weeklyVendors: number; // in INR
+}
+
+const FORECAST_KEY = "cc_forecast_settings_v2";
+
+export const DEFAULT_FORECAST_SETTINGS: ForecastSettings = {
+  startingBalance: 0,
+  monthlyRent: 0,
+  monthlyPayroll: 0,
+  weeklyVendors: 0,
+};
+
+export function getStoredForecastSettings(): ForecastSettings {
+  if (typeof window === "undefined") return DEFAULT_FORECAST_SETTINGS;
+  try {
+    const raw = localStorage.getItem(FORECAST_KEY);
+    if (!raw) return DEFAULT_FORECAST_SETTINGS;
+    return { ...DEFAULT_FORECAST_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_FORECAST_SETTINGS;
+  }
+}
+
+export function saveForecastSettings(settings: ForecastSettings): void {
+  localStorage.setItem(FORECAST_KEY, JSON.stringify(settings));
+  dispatchStoreChange();
+}
+
 /**
  * Wipe all fake / demo data completely so user starts fresh with real data only
  */

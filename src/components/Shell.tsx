@@ -69,7 +69,6 @@ export function Shell({
       badgeColor: "bg-rose-500 text-white",
     },
     { path: "/forecast", label: "navForecast", icon: TrendingUp },
-    { path: "/customers", label: "navCustomers", icon: Users },
   ];
 
   const isActive = (path: string) => {

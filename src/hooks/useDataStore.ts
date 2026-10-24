@@ -16,6 +16,9 @@ import {
   loadSampleData,
   N8nConfig,
   BusinessProfile,
+  ForecastSettings,
+  getStoredForecastSettings,
+  saveForecastSettings,
 } from "../data/dataStore";
 
 export function useDataStore() {
@@ -23,12 +26,14 @@ export function useDataStore() {
   const [customers, setCustomers] = useState<Customer[]>(getStoredCustomers);
   const [n8nConfig, setN8nConfigState] = useState<N8nConfig>(getN8nConfig);
   const [businessProfile, setBusinessProfileState] = useState<BusinessProfile>(getStoredBusinessProfile);
+  const [forecastSettings, setForecastSettingsState] = useState<ForecastSettings>(getStoredForecastSettings);
 
   const refresh = useCallback(() => {
     setInvoices(getStoredInvoices());
     setCustomers(getStoredCustomers());
     setN8nConfigState(getN8nConfig());
     setBusinessProfileState(getStoredBusinessProfile());
+    setForecastSettingsState(getStoredForecastSettings());
   }, []);
 
   useEffect(() => {
@@ -46,9 +51,14 @@ export function useDataStore() {
     customers,
     n8nConfig,
     businessProfile,
+    forecastSettings,
     refresh,
     saveInvoice: (inv: Invoice) => {
       saveInvoice(inv);
+      refresh();
+    },
+    saveForecastSettings: (cfg: ForecastSettings) => {
+      saveForecastSettings(cfg);
       refresh();
     },
     deleteInvoice: (id: string) => {
