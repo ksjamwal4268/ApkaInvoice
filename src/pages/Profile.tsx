@@ -739,3 +739,4 @@ export function Profile({ lang }: ProfileProps): React.JSX.Element {
     </div>
   );
 }
+
