@@ -271,7 +271,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Sender Contact Details (Used in n8n Reminder Workflow)
+                Sender Contact Details
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 When you click <strong>"Send Reminder"</strong>, this phone number and email will be used as the sender.
