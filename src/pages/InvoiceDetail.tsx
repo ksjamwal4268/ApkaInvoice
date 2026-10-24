@@ -8,7 +8,6 @@ import { Language } from "../data/i18n";
 import {
   Printer,
   AlertOctagon,
-  FileWarning,
   ArrowLeft,
   Building2,
   Edit,
@@ -142,16 +141,6 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
             <Edit className="w-4 h-4 text-teal-600" />
             <span>Edit Invoice</span>
           </Link>
-
-          {invoice.status === "overdue" && invoice.outstanding > 0 && (
-            <Link
-              to={`/demand-letter?invoice=${invoice.id}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors tap-target"
-            >
-              <FileWarning className="w-4 h-4" />
-              <span>Demand Letter</span>
-            </Link>
-          )}
 
           <button
             onClick={() => window.print()}

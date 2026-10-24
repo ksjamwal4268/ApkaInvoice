@@ -303,13 +303,6 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               </div>
               <small>Open →</small>
             </div>
-            <div className="sc-item" onClick={() => navigate("/demand-letter")}>
-              <div>
-                <h3>Formal demand notices</h3>
-                <p>Printable notices for formal payment recovery.</p>
-              </div>
-              <small>Open →</small>
-            </div>
             <div className="sc-item" onClick={handleEnterDashboard}>
               <div>
                 <h3>Main app</h3>
@@ -386,7 +379,6 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           <div>
             <b>Recovery</b>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/invoices")}>Bank reconciliation</button>
-            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/demand-letter")}>Demand notices</button>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/customers")}>Payment grades</button>
           </div>
           <div>

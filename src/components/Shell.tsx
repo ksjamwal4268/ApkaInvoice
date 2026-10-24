@@ -9,7 +9,6 @@ import {
   Menu,
   Plus,
   Building2,
-  FileWarning,
   Zap,
   ArrowRight,
   UserCircle,
@@ -240,16 +239,6 @@ export function Shell({
                 </button>
               ))}
             </nav>
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 text-xs">
-              <Link
-                to="/demand-letter"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-teal-600"
-              >
-                <FileWarning className="w-4 h-4" />
-                <span>Demand Letters</span>
-              </Link>
-            </div>
           </aside>
         </>
       )}
@@ -291,21 +280,6 @@ export function Shell({
                 );
               })}
             </nav>
-          </div>
-
-          {/* Demand Letter Link on Desktop */}
-          <div className="px-3 py-2 border-t border-slate-200/80 dark:border-slate-700/80">
-            <Link
-              to="/demand-letter"
-              className={`w-full flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                location.pathname === "/demand-letter"
-                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60"
-              }`}
-            >
-              <FileWarning className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>Demand Letters</span>
-            </Link>
           </div>
 
           {/* User & Business Profile Footnote in Sidebar (Clickable to /profile) */}
