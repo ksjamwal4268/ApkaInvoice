@@ -69,13 +69,23 @@ export interface Invoice {
   total: Paise;
   amountPaid: Paise;
   outstanding: Paise;
-  status: "paid" | "overdue" | "part-paid" | "due" | "disputed";
+  status: "ready" | "paid" | "overdue" | "part-paid" | "due" | "disputed";
   isDisputed: boolean;
   disputeReason: string | null;
   evidence: EvidenceEntry[];
   billOfSupply: boolean;
   pdfUrl: string | null;
   lastReminderSentAt?: string | null;
+  currency?: string;
+  payerName?: string;
+  rawExtraction?: {
+    status: string;
+    invoice_number: string;
+    payer_name: string;
+    amount: number;
+    currency: string;
+    due_date: string;
+  };
 }
 
 export interface EvidenceEntry {

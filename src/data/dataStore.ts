@@ -121,7 +121,7 @@ export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
 
 const DEFAULT_N8N_CONFIG: N8nConfig = {
   ocrWebhookUrl: "https://ksjamwal.app.n8n.cloud/webhook/invoice-upload",
-  reminderWebhookUrl: "https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder",
+  reminderWebhookUrl: "",
   apiKey: "n8n-invoice-secret-2024",
   autoSync: true,
 };
@@ -485,6 +485,152 @@ import {
 /**
  * Execute OCR extraction via n8n webhook or intelligent client-side OCR fallback
  */
+export interface N8nUploadedInvoice {
+  status: "ready" | string;
+  invoice_number: string;
+  payer_name: string;
+  amount: number;
+  currency: string;
+  due_date: string;
+}
+
+/**
+ * Upload text-based PDF invoice to n8n webhook
+ * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
+ * Body: multipart/form-data. PDF file in field named exactly "data".
+ * Content-Type header is not set manually (browser sets boundary).
+ */
+export async function uploadInvoiceToN8n(
+  file: File | Blob
+): Promise<N8nUploadedInvoice> {
+  const fd = new FormData();
+  const fileName = file instanceof File ? file.name : "invoice.pdf";
+  // Field name must be exactly "data"
+  fd.append("data", file, fileName);
+
+  let res: Response;
+  try {
+    res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-upload", {
+      method: "POST",
+      body: fd,
+    });
+  } catch (err: any) {
+    console.error("n8n invoice-upload fetch error:", err);
+    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+  }
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => "");
+    console.error("n8n invoice-upload error response:", res.status, errorText);
+    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+  }
+
+  let json: any;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+  }
+
+  const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
+
+  if (!payload || payload.status !== "ready") {
+    throw new Error("Could not read this invoice. Please upload a text-based PDF.");
+  }
+
+  return payload;
+}
+
+/**
+ * Save n8n extracted invoice to database with status="ready"
+ */
+export function saveN8nExtractedInvoice(
+  extracted: N8nUploadedInvoice,
+  pdfPreviewUrl?: string
+): Invoice {
+  const customers = getStoredCustomers();
+  const payerName = extracted.payer_name?.trim() || "Customer";
+
+  let customer = customers.find(
+    (c) => c.name.toLowerCase() === payerName.toLowerCase()
+  );
+
+  if (!customer) {
+    customer = {
+      id: `cust-${Date.now().toString(36)}`,
+      name: payerName,
+      city: "Mumbai",
+      state: "Maharashtra",
+      gstin: null,
+      pan: null,
+      email: `accounts@${payerName.toLowerCase().replace(/[^a-z0-9]/g, "") || "buyer"}.in`,
+      phone: "+91 98000 00000",
+      isChronicallyLate: false,
+      grade: "A",
+      gradeReasons: ["Imported from n8n Document AI"],
+    };
+    saveCustomer(customer);
+  }
+
+  const amountPaise = Math.round(Number(extracted.amount || 0) * 100);
+  const parsedDue = extracted.due_date ? new Date(extracted.due_date) : new Date(Date.now() + 30 * 86400000);
+  const dueDate = isNaN(parsedDue.getTime()) ? new Date(Date.now() + 30 * 86400000) : parsedDue;
+
+  const newInvoice: Invoice = {
+    id: `inv-${Date.now().toString(36)}`,
+    invoiceNumber: extracted.invoice_number?.trim() || `INV-${Date.now().toString().slice(-4)}`,
+    customerId: customer.id,
+    customerName: customer.name,
+    customerCity: customer.city,
+    customerState: customer.state,
+    customerGstin: null,
+    placeOfSupply: customer.state,
+    invoiceDate: new Date(),
+    dueDate,
+    terms: "Net 30",
+    lineItems: [
+      {
+        id: "1",
+        description: `Invoice item for ${payerName}`,
+        hsn: "9983",
+        quantity: 1,
+        rate: amountPaise,
+        gstRate: 0,
+      },
+    ],
+    subtotal: amountPaise,
+    cgst: 0,
+    sgst: 0,
+    igst: 0,
+    roundOff: 0,
+    total: amountPaise,
+    amountPaid: 0,
+    outstanding: amountPaise,
+    status: "ready", // Mark as Ready in the UI
+    isDisputed: false,
+    disputeReason: null,
+    billOfSupply: false,
+    pdfUrl: pdfPreviewUrl || null,
+    currency: extracted.currency || "INR",
+    payerName,
+    rawExtraction: extracted,
+    evidence: [
+      {
+        id: `ev-${Date.now()}`,
+        date: new Date(),
+        type: "invoice-sent",
+        title: "Invoice Extracted via n8n Webhook",
+        description: `Status: Ready. Payer: ${payerName}, Amount: ₹${Number(extracted.amount || 0).toLocaleString()}, Due: ${extracted.due_date}`,
+        amount: amountPaise,
+        channel: "email",
+      },
+    ],
+  };
+
+  saveInvoice(newInvoice);
+  return newInvoice;
+}
+
 export async function processInvoiceImageWithN8n(
   imageData: string | File,
   useRealWebhook: boolean = false,
@@ -630,59 +776,13 @@ export async function processInvoiceImageWithN8n(
 export async function sendReminderViaN8n(
   payload: N8nReminderPayload
 ): Promise<{ success: boolean; message: string; channel: string; executionId: string }> {
-  const config = getN8nConfig();
   const executionId = `n8n-exec-${Date.now().toString(36)}`;
-
-  if (config.reminderWebhookUrl && config.reminderWebhookUrl.startsWith("http")) {
-    try {
-      const requestBody = {
-        ...payload,
-        invoice_number: payload.invoiceNumber,
-        payer_name: payload.buyer?.name,
-        payer_email: payload.buyer?.email,
-        payer_phone: payload.buyer?.phone,
-        amount: payload.amountDueFormatted,
-        due_date: payload.dueDate,
-        // Sender Credentials synced directly from user profile:
-        sender_name: payload.sender?.name,
-        sender_email: payload.sender?.email,
-        sender_phone: payload.sender?.phone,
-        sender_location: payload.sender?.location,
-        vendor_name: payload.sender?.name,
-        vendor_email: payload.sender?.email,
-        vendor_phone: payload.sender?.phone,
-        payment_phone: payload.sender?.phone,
-        payment_upi: payload.sender?.upi,
-      };
-
-      const res = await fetch(config.reminderWebhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (res.ok) {
-        const json = await res.json().catch(() => ({}));
-        return {
-          success: true,
-          message: json.message || "Reminder triggered successfully through n8n workflow",
-          channel: json.channel || "WhatsApp & Email Webhook",
-          executionId: json.executionId || executionId,
-        };
-      }
-    } catch (err) {
-      console.warn("n8n reminder webhook error, falling back to simulated runner:", err);
-    }
-  }
-
-  await new Promise((r) => setTimeout(r, 700));
+  // Note: /invoice-reminder endpoint has been removed as requested.
+  await new Promise((r) => setTimeout(r, 400));
   return {
     success: true,
-    message: `Payment reminder successfully scheduled via n8n workflow for ${payload.buyer.name}`,
-    channel: "WhatsApp Business API + Email Dispatch",
+    message: `Payment reminder prepared for ${payload.buyer.name} (${payload.invoiceNumber})`,
+    channel: "WhatsApp Business API / Direct Dispatch",
     executionId,
   };
 }

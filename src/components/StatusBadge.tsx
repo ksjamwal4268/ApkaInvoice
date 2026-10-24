@@ -1,16 +1,22 @@
 import React from "react";
 
-type Status = "paid" | "overdue" | "part-paid" | "due" | "disputed";
+export type InvoiceStatus = "ready" | "paid" | "overdue" | "part-paid" | "due" | "disputed";
 
 interface StatusBadgeProps {
-  status: Status;
+  status: InvoiceStatus;
   size?: "sm" | "md";
 }
 
 const STATUS_CONFIG: Record<
-  Status,
+  InvoiceStatus,
   { label: string; bg: string; text: string; dot: string; pulse?: boolean }
 > = {
+  ready: {
+    label: "Ready",
+    bg: "bg-teal-50 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800",
+    text: "text-teal-700 dark:text-teal-300",
+    dot: "bg-teal-500",
+  },
   paid: {
     label: "Paid",
     bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800",

@@ -85,10 +85,13 @@ export function Dashboard({ lang: _lang }: { lang: Language }) {
     }, 0);
   }, [invoices, today, fourWeeksFromNow]);
 
-  const bills4Weeks = Object.values(DEFAULT_OUTFLOWS).reduce(
-    (sum, o) => add(sum, o.amount),
-    0
-  );
+  const bills4Weeks = useMemo(() => {
+    const weeklyOutflows = buildWeeklyOutflowsFromSettings(forecastSettings);
+    return Object.values(weeklyOutflows).reduce(
+      (sum, o) => add(sum, o.amount),
+      0
+    );
+  }, [forecastSettings]);
 
   /* ---- NEW KPI CALCULATIONS ---- */
   const totalPaid = useMemo(() => {

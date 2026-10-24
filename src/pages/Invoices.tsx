@@ -38,7 +38,7 @@ import {
 } from "../data/dataStore";
 import { Invoice } from "../data/sampleData";
 
-type Filter = "all" | "completed" | "due" | "overdue" | "part-paid" | "disputed";
+type Filter = "all" | "ready" | "completed" | "due" | "overdue" | "part-paid" | "disputed";
 type SortField = "dueDate" | "invoiceNumber" | "total" | "outstanding" | "customerName";
 
 export function Invoices({ lang: _lang }: { lang: Language }) {
@@ -68,7 +68,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
     terms: "Net 30" as PaymentTerms,
     totalInr: 0,
     amountPaidInr: 0,
-    status: "due" as "paid" | "overdue" | "part-paid" | "due" | "disputed",
+    status: "due" as "ready" | "paid" | "overdue" | "part-paid" | "due" | "disputed",
     isDisputed: false,
     disputeReason: "",
   });
@@ -79,6 +79,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const counts = useMemo(() => {
     return {
       all: invoices.length,
+      ready: invoices.filter((i) => i.status === "ready").length,
       completed: invoices.filter((i) => i.status === "paid" || i.outstanding === 0).length,
       due: invoices.filter((i) => i.status === "due" && i.outstanding > 0).length,
       overdue: invoices.filter((i) => i.status === "overdue" && i.outstanding > 0).length,
@@ -99,6 +100,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
   const filtered = useMemo(() => {
     const list = invoices.filter((inv) => {
       const isCompleted = inv.status === "paid" || inv.outstanding === 0;
+      if (filter === "ready" && inv.status !== "ready") return false;
       if (filter === "completed" && !isCompleted) return false;
       if (filter === "due" && (inv.status !== "due" || isCompleted)) return false;
       if (filter === "overdue" && (inv.status !== "overdue" || isCompleted)) return false;
@@ -138,6 +140,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
   const filters: { value: Filter; label: string; count: number }[] = [
     { value: "all", label: "All Dataset", count: counts.all },
+    { value: "ready", label: "Ready", count: counts.ready },
     { value: "completed", label: "Completed (Paid)", count: counts.completed },
     { value: "due", label: "Due (Pending)", count: counts.due },
     { value: "overdue", label: "Overdue", count: counts.overdue },
@@ -1070,8 +1073,9 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Payment Status
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                   {[
+                    { value: "ready", label: "Ready" },
                     { value: "paid", label: "Completed (Paid)" },
                     { value: "due", label: "Due (Pending)" },
                     { value: "overdue", label: "Overdue" },

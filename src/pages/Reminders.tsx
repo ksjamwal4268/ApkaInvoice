@@ -507,7 +507,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-white">
-                Connected n8n Workflow
+                Connected n8n Invoice Automation
               </span>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -515,7 +515,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
               </span>
             </div>
             <p className="text-xs text-slate-300 font-mono mt-0.5 break-all">
-              https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder
+              https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
             </p>
           </div>
         </div>
