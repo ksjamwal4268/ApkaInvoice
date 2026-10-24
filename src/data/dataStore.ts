@@ -917,3 +917,125 @@ export async function sendReminderViaN8n(
 }
 
 export const sendReminderViaRemainder = sendReminderViaN8n;
+
+export interface InvoiceReminderEmailPayload {
+  invoice_number: string;
+  recipient_email: string;
+  recipient_name: string;
+  subject: string;
+  message: string;
+  amount: string;
+  due_date: string;
+  sender: {
+    name: string;
+    email: string;
+  };
+  sender_gmail_token?: string;
+}
+
+export interface InvoiceReminderEmailResponse {
+  ok: boolean;
+  status: "reminder_sent" | "not_found" | "missing_email" | "error";
+  sent_from?: "business_gmail" | "shared_sender";
+  message: string;
+  rawJson?: any;
+}
+
+/**
+ * Dedicated n8n email reminder dispatcher
+ * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email
+ */
+export async function sendInvoiceReminderEmail(
+  payload: InvoiceReminderEmailPayload
+): Promise<InvoiceReminderEmailResponse> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000); // >= 30 seconds
+
+  try {
+    const body: Record<string, any> = {
+      invoice_number: payload.invoice_number ?? "",
+      recipient_email: payload.recipient_email ?? "",
+      recipient_name: payload.recipient_name ?? "",
+      subject: payload.subject ?? "",
+      message: payload.message ?? "",
+      amount: payload.amount ?? "",
+      due_date: payload.due_date ?? "",
+      sender: {
+        name: payload.sender?.name ?? "ApkaInvoice",
+        email: payload.sender?.email ?? "",
+      },
+    };
+
+    if (payload.sender_gmail_token && payload.sender_gmail_token.trim()) {
+      body.sender_gmail_token = payload.sender_gmail_token.trim();
+    }
+
+    const res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      // not JSON
+    }
+
+    if (res.status === 200) {
+      const sentFrom = json?.sent_from === "business_gmail" ? "business_gmail" : "shared_sender";
+      const displayMsg =
+        sentFrom === "shared_sender"
+          ? "Reminder sent (sent from ApkaInvoice's email)"
+          : "Reminder sent";
+
+      return {
+        ok: true,
+        status: "reminder_sent",
+        sent_from: sentFrom,
+        message: displayMsg,
+        rawJson: json,
+      };
+    }
+
+    if (res.status === 404) {
+      return {
+        ok: false,
+        status: "not_found",
+        message: "This invoice isn't saved yet. Please upload it again.",
+        rawJson: json,
+      };
+    }
+
+    if (res.status === 422) {
+      return {
+        ok: false,
+        status: "missing_email",
+        message: "Please enter the payer's email.",
+        rawJson: json,
+      };
+    }
+
+    return {
+      ok: false,
+      status: "error",
+      message: "Couldn't send the reminder. Please try again.",
+      rawJson: json,
+    };
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    console.error("sendInvoiceReminderEmail fetch error:", err);
+    return {
+      ok: false,
+      status: "error",
+      message: "Couldn't send the reminder. Please try again.",
+    };
+  }
+}
+

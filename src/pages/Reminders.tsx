@@ -18,17 +18,24 @@ import {
   CheckSquare,
   Send,
   Bell,
+  MessageSquare,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
-import { formatDate, daysBetween } from "../utils/date";
+import { formatDate, daysBetween, toISODateString } from "../utils/date";
 import { StatusBadge } from "../components/StatusBadge";
+import { sendInvoiceReminderEmail, InvoiceReminderEmailPayload } from "../data/dataStore";
 
 type FilterTab = "all" | "overdue" | "due";
+type ChannelTab = "email" | "whatsapp";
 
 export function Reminders({ lang: _appLang }: { lang: Language }) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { invoices, customers } = useDataStore();
+  const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice } = useDataStore();
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,6 +43,27 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
 
   // Selected Invoice State - NO AUTO-SELECTION by default unless specified in URL search param
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+
+  // Channel Selection: defaults to "email"
+  const [activeChannel, setActiveChannel] = useState<ChannelTab>("email");
+
+  // Email Composer State
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailValidationError, setEmailValidationError] = useState<string | null>(null);
+
+  // WhatsApp State
+  const [whatsappPhone, setWhatsappPhone] = useState("");
+  const [whatsappMessage, setWhatsappMessage] = useState("");
+
+  // Dispatch Status
+  const [isSending, setIsSending] = useState(false);
+  const [dispatchNotice, setDispatchNotice] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
 
   // Sync selected invoice with URL search param if provided
   useEffect(() => {
@@ -47,6 +75,8 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
 
   // Toggle selection on tick box / row click
   const handleToggleSelect = (id: string) => {
+    setDispatchNotice(null);
+    setEmailValidationError(null);
     if (selectedInvoiceId === id) {
       setSelectedInvoiceId("");
       setSearchParams({});
@@ -78,14 +108,200 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
     return Math.max(0, daysBetween(new Date(selectedInvoice.dueDate), new Date()));
   }, [selectedInvoice, isOverdue]);
 
+  // Sync composer fields whenever selected invoice or customer changes
+  useEffect(() => {
+    if (selectedInvoice) {
+      const custName = selectedCustomer?.name ?? selectedInvoice.customerName ?? "";
+      const custEmail = selectedCustomer?.email ?? "";
+      const custPhone = selectedCustomer?.phone ?? "";
+      const invNum = selectedInvoice.invoiceNumber ?? "";
+      const formattedAmt = formatInr(selectedInvoice.outstanding);
+      const bName = businessProfile?.name ?? "ApkaInvoice";
+      const bPhone = businessProfile?.phone ?? "";
+      const bUpi = businessProfile?.upi ?? (bPhone ? `${bPhone.replace(/\D/g, "")}@upi` : "");
+
+      setRecipientName(custName);
+      setRecipientEmail(custEmail);
+      setWhatsappPhone(custPhone);
+      setEmailSubject(`Payment reminder: invoice ${invNum || "(No Number)"}`);
+
+      const defaultMsg = `Dear ${custName || "Customer"},
+
+This is a gentle payment reminder that ${formattedAmt} for invoice ${invNum || "(No Number)"} is ${
+        isOverdue ? `overdue by ${overdueDays} days` : `due on ${formatDate(selectedInvoice.dueDate)}`
+      }.
+
+Invoice Details:
+- Invoice #: ${invNum || "—"}
+- Outstanding Due: ${formattedAmt}
+- Due Date: ${formatDate(selectedInvoice.dueDate)}
+
+Please remit payment at your earliest convenience. Direct phone payment / UPI: ${bUpi || bPhone || "Provided on invoice"}.
+
+If you have already processed this payment, kindly disregard this notice.
+
+Thank you,
+${bName}`;
+
+      setEmailMessage(defaultMsg);
+
+      const defaultWaMsg = `Hello ${custName || "Customer"}, gentle reminder that payment of ${formattedAmt} for invoice ${invNum || "(No Number)"} is ${
+        isOverdue ? "overdue" : "pending"
+      }. Please remit directly to ${bPhone || "our phone"} or UPI: ${bUpi}. Thanks, ${bName}.`;
+
+      setWhatsappMessage(defaultWaMsg);
+      setDispatchNotice(null);
+      setEmailValidationError(null);
+    }
+  }, [selectedInvoice, selectedCustomer, businessProfile, isOverdue, overdueDays]);
+
+  // Email Validation Helper
+  const isValidEmail = (emailStr: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((emailStr ?? "").trim());
+  };
+
+  // Dispatch Email Reminder via n8n Webhook
+  const handleSendEmailReminder = async () => {
+    if (!selectedInvoice) return;
+    setDispatchNotice(null);
+    setEmailValidationError(null);
+
+    const emailClean = (recipientEmail ?? "").trim();
+
+    // Rule: Before sending, if recipient_email is empty, ask user to type payer's email. Validate as email.
+    if (!emailClean) {
+      setEmailValidationError("Please enter the payer's email.");
+      return;
+    }
+
+    if (!isValidEmail(emailClean)) {
+      setEmailValidationError("Please enter a valid email address (e.g. accounts@buyer.com).");
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const senderName = businessProfile?.name ?? "ApkaInvoice";
+      const senderEmail = businessProfile?.email ?? "";
+      const invNum = selectedInvoice.invoiceNumber ?? "";
+      const dueDateFormatted = selectedInvoice.dueDate
+        ? toISODateString(selectedInvoice.dueDate)
+        : "";
+      const formattedAmt = formatInr(selectedInvoice.outstanding);
+
+      // Check for Google OAuth Gmail token if user connected Gmail
+      let senderGmailToken: string | undefined = undefined;
+      try {
+        const storedToken =
+          localStorage.getItem("gmail_access_token") ||
+          localStorage.getItem("cc-gmail-token") ||
+          sessionStorage.getItem("gmail_access_token");
+        if (storedToken && storedToken.trim()) {
+          senderGmailToken = storedToken.trim();
+        }
+      } catch {
+        // ignore
+      }
+
+      const payload: InvoiceReminderEmailPayload = {
+        invoice_number: invNum,
+        recipient_email: emailClean,
+        recipient_name: (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? ""),
+        subject: (emailSubject ?? "").trim() || `Payment reminder: invoice ${invNum}`,
+        message: (emailMessage ?? "").trim(),
+        amount: formattedAmt,
+        due_date: dueDateFormatted,
+        sender: {
+          name: senderName,
+          email: senderEmail,
+        },
+      };
+
+      if (senderGmailToken) {
+        payload.sender_gmail_token = senderGmailToken;
+      }
+
+      // Call dedicated n8n webhook
+      const res = await sendInvoiceReminderEmail(payload);
+
+      if (res.ok) {
+        setDispatchNotice({
+          type: "success",
+          message: res.message, // "Reminder sent" or "Reminder sent (sent from ApkaInvoice's email)"
+        });
+
+        // Record evidence and update last reminder timestamp on invoice
+        try {
+          addInvoiceEvidence(selectedInvoice.id, {
+            id: `ev-${Date.now()}`,
+            date: new Date(),
+            type: "reminder",
+            title: "Email Reminder Sent",
+            description: `Sent to ${emailClean} via n8n (${res.sent_from ?? "shared_sender"})`,
+            amount: selectedInvoice.outstanding,
+            channel: "email",
+          });
+
+          const updatedInvoice = {
+            ...selectedInvoice,
+            lastReminderSentAt: new Date().toISOString(),
+          };
+          saveInvoice(updatedInvoice);
+        } catch (e) {
+          console.warn("Evidence recording notice:", e);
+        }
+      } else {
+        setDispatchNotice({
+          type: res.status === "missing_email" ? "warning" : "error",
+          message: res.message,
+        });
+      }
+    } catch (err: any) {
+      console.error("Email reminder error:", err);
+      setDispatchNotice({
+        type: "error",
+        message: "Couldn't send the reminder. Please try again.",
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // WhatsApp Send helper
+  const handleOpenWhatsApp = () => {
+    if (!selectedInvoice) return;
+    const phoneClean = (whatsappPhone ?? "").replace(/\D/g, "");
+    if (!phoneClean) {
+      alert("Please enter a valid phone number for WhatsApp.");
+      return;
+    }
+    const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(whatsappMessage ?? "")}`;
+    window.open(url, "_blank");
+
+    try {
+      addInvoiceEvidence(selectedInvoice.id, {
+        id: `ev-${Date.now()}`,
+        date: new Date(),
+        type: "reminder",
+        title: "WhatsApp Reminder Prepared",
+        description: `Opened WhatsApp for ${phoneClean}`,
+        amount: selectedInvoice.outstanding,
+        channel: "whatsapp",
+      });
+    } catch (e) {
+      // ignore
+    }
+  };
+
   // Filtered invoices for the selector table
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
-      const q = searchQuery.toLowerCase().trim();
+      const q = (searchQuery ?? "").toLowerCase().trim();
       const matchesSearch =
         !q ||
-        (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(q)) ||
-        (inv.customerName && inv.customerName.toLowerCase().includes(q));
+        ((inv.invoiceNumber ?? "").toLowerCase().includes(q)) ||
+        ((inv.customerName ?? "").toLowerCase().includes(q));
 
       if (!matchesSearch) return false;
 
@@ -122,7 +338,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
   );
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-in fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
         <div>
@@ -135,7 +351,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Tick an invoice checkbox below or click <strong>Send Reminder</strong> on any invoice to begin.
+            Tick an invoice below or click <strong>Send Reminder</strong> to choose WhatsApp or Email dispatch.
           </p>
         </div>
 
@@ -150,18 +366,19 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
         )}
       </div>
 
-      {/* Selected Invoice Banner (If an invoice is chosen via tick box or side button) */}
+      {/* Selected Invoice Workspace Banner */}
       {selectedInvoice ? (
-        <div className="p-5 rounded-2xl border border-teal-500/40 bg-teal-50/60 dark:bg-teal-950/20 shadow-xs space-y-4 animate-in fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-teal-200 dark:border-teal-900/60">
+        <div className="rounded-2xl border border-teal-500/40 bg-white dark:bg-slate-850 shadow-sm overflow-hidden space-y-0 animate-in fade-in slide-in-from-top-2">
+          {/* Top Summary Bar */}
+          <div className="p-5 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-teal-600 text-white shadow-xs">
+              <div className="p-2.5 rounded-xl bg-teal-600 text-white shadow-xs shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">
-                    Selected for Reminder
+                    Active Invoice Selected
                   </span>
                   <span
                     className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
@@ -193,7 +410,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
               <button
                 type="button"
                 onClick={() => handleToggleSelect(selectedInvoice.id)}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline"
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline cursor-pointer"
                 title="Deselect invoice"
               >
                 Clear
@@ -201,19 +418,229 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-              <span>Buyer: <strong>{selectedCustomer?.name || selectedInvoice.customerName}</strong></span>
+          {/* Channel Selector Header */}
+          <div className="p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Choose Reminder Channel
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Select whether to send this payment reminder via <strong>Email</strong> or <strong>WhatsApp</strong>.
+                </p>
+              </div>
+
+              {/* 2 Options: Email & WhatsApp */}
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveChannel("email");
+                    setDispatchNotice(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeChannel === "email"
+                      ? "bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Email (n8n Webhook)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveChannel("whatsapp");
+                    setDispatchNotice(null);
+                  }}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeChannel === "whatsapp"
+                      ? "bg-[#25D366] text-white shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-              <span>Phone: <strong>{selectedCustomer?.phone || "Not provided"}</strong></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-              <span>Email: <strong>{selectedCustomer?.email || "Not provided"}</strong></span>
-            </div>
+
+            {/* Response / Feedback Banner */}
+            {dispatchNotice && (
+              <div
+                className={`p-4 rounded-xl border flex items-start gap-3 animate-in fade-in ${
+                  dispatchNotice.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
+                    : dispatchNotice.type === "warning"
+                    ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200"
+                    : "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200"
+                }`}
+              >
+                {dispatchNotice.type === "success" ? (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="text-xs font-bold">{dispatchNotice.message}</p>
+                </div>
+              </div>
+            )}
+
+            {/* CHANNEL 1: EMAIL DISPATCH WORKFLOW */}
+            {activeChannel === "email" && (
+              <div className="space-y-4 pt-1 animate-in fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Recipient Email Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-teal-600" />
+                      Recipient Email (Payer) *
+                    </label>
+                    <input
+                      type="email"
+                      value={recipientEmail}
+                      onChange={(e) => {
+                        setRecipientEmail(e.target.value);
+                        if (emailValidationError) setEmailValidationError(null);
+                      }}
+                      placeholder="e.g. accounts@buyer.com"
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:ring-2 ${
+                        emailValidationError
+                          ? "border-rose-500 bg-rose-50/20 focus:ring-rose-500"
+                          : "border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-teal-500"
+                      }`}
+                    />
+                    {emailValidationError && (
+                      <p className="mt-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{emailValidationError}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Recipient Name Input */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                      <User className="w-3.5 h-3.5 text-teal-600" />
+                      Recipient Name (Payer)
+                    </label>
+                    <input
+                      type="text"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                      placeholder="e.g. Acme Corporation"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Email Subject */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Email Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    placeholder="Payment reminder: invoice..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                {/* Message Body */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Plain-Text Reminder Message
+                  </label>
+                  <textarea
+                    rows={7}
+                    value={emailMessage}
+                    onChange={(e) => setEmailMessage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                {/* Sender Identity Preview & Dispatch Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+                    <p className="flex items-center gap-1.5 font-medium">
+                      <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                      <span>
+                        Sender: <strong>{businessProfile?.name ?? "ApkaInvoice"}</strong> ({businessProfile?.email || "4268.kulvardhan.7a@gmail.com"})
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Dispatches securely through n8n cloud webhook.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSendEmailReminder}
+                    disabled={isSending}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+                  >
+                    {isSending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Sending Email...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Send Email Reminder</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* CHANNEL 2: WHATSAPP DISPATCH */}
+            {activeChannel === "whatsapp" && (
+              <div className="space-y-4 pt-1 animate-in fade-in">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5 text-[#25D366]" />
+                    Recipient WhatsApp / Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={whatsappPhone}
+                    onChange={(e) => setWhatsappPhone(e.target.value)}
+                    placeholder="+91 98200 12345"
+                    className="w-full sm:w-80 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    WhatsApp Message Preview
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={whatsappMessage}
+                    onChange={(e) => setWhatsappMessage(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#25D366]"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenWhatsApp}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Open in WhatsApp</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -264,7 +691,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => setFilterTab("all")}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               filterTab === "all"
                 ? "bg-teal-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
@@ -275,7 +702,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => setFilterTab("overdue")}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               filterTab === "overdue"
                 ? "bg-rose-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
@@ -286,7 +713,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => setFilterTab("due")}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
               filterTab === "due"
                 ? "bg-amber-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
@@ -362,7 +789,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                             e.stopPropagation();
                             handleToggleSelect(inv.id);
                           }}
-                          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                          className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-colors cursor-pointer"
                           title={isSelected ? "Click to untick" : "Click to tick invoice"}
                         >
                           {isSelected ? (
@@ -435,7 +862,7 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
                         <button
                           type="button"
                           onClick={() => handleToggleSelect(inv.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
                             isSelected
                               ? "bg-teal-600 text-white shadow-xs"
                               : "border border-teal-600/30 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-600 hover:text-white"

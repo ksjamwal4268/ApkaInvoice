@@ -105,16 +105,20 @@ export function Dashboard({ lang }: { lang: Language }) {
         return invDate >= weekStart && invDate <= weekEnd;
       });
       const invoiceCount = weekInvoices.length;
-      const paymentReceived = weekInvoices.filter((inv) => inv.status === "paid" || inv.status === "disputed")
-        .reduce((sum, inv) => add(sum, inv.total), 0);
-      const expected = weekInvoices.reduce((sum, inv) => add(sum, inv.total), 0);
-      const outstanding = weekInvoices.filter((inv) => inv.status !== "paid" && inv.status !== "disputed")
+      const paymentReceived = weekInvoices
+        .filter((inv) => inv.status === "paid")
+        .reduce((sum, inv) => add(sum, inv.amountPaid), 0);
+      const expectedTotal = weekInvoices.reduce((sum, inv) => add(sum, inv.total), 0);
+      const outstanding = weekInvoices
+        .filter((inv) => inv.status !== "paid" && inv.status !== "disputed")
         .reduce((sum, inv) => add(sum, inv.outstanding), 0);
+      // Format: "Week N:M/D" for clarity
+      const label = `${i + 1}:${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
       result.push({
-        label: weekStart.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+        label,
         invoiceCount,
         paymentReceived,
-        expectedTotal: expected,
+        expectedTotal,
         outstanding,
       });
     }
