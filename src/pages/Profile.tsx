@@ -188,7 +188,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
             <div>
               <p className="text-sm font-bold">Profile Details Saved & Synced Successfully!</p>
               <p className="text-xs text-emerald-700 dark:text-emerald-300">
-                Whenever you press <strong>"Send Reminder"</strong>, this phone number ({phone || "set below"}) and email ({email}) will automatically be synced and used in the n8n workflow.
+                Whenever you press <strong>"Send Reminder"</strong>, this phone number ({phone || "set below"}) and email ({email}) will automatically be synced and used when sending reminders.
               </p>
             </div>
           </div>

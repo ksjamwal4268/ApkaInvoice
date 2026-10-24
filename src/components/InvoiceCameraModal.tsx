@@ -52,7 +52,7 @@ export function InvoiceCameraModal({
   // Loading, Extraction & Result States
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSeconds, setUploadSeconds] = useState(0);
-  const [processingStatus, setProcessingStatus] = useState<string>("Uploading invoice to n8n webhook...");
+  const [processingStatus, setProcessingStatus] = useState<string>("Reading invoice…");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastUploadedFile, setLastUploadedFile] = useState<File | Blob | null>(null);
   const [extractedInvoice, setExtractedInvoice] = useState<N8nUploadedInvoice | null>(null);
@@ -74,7 +74,7 @@ export function InvoiceCameraModal({
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<any>(null);
 
-  // Timer for loading state (up to 60s)
+  // Timer for loading state (up to 90s)
   useEffect(() => {
     if (isUploading) {
       setUploadSeconds(0);
@@ -137,12 +137,12 @@ export function InvoiceCameraModal({
 
   const handleApplyInvoice = (inv: N8nUploadedInvoice, previewUrl?: string) => {
     setExtractedInvoice(inv);
-    setEditInvoiceNumber((inv.invoice_number ?? "").trim());
-    setEditPayerName((inv.payer_name ?? "").trim());
-    setEditPayerEmail((inv.payer_email ?? "").trim());
-    setEditPayerPhone((inv.payer_phone ?? "").trim());
+    setEditInvoiceNumber(((inv.invoice_number ?? "") as string).trim());
+    setEditPayerName(((inv.payer_name ?? "") as string).trim());
+    setEditPayerEmail(((inv.payer_email ?? "") as string).trim());
+    setEditPayerPhone(((inv.payer_phone ?? "") as string).trim());
     setEditAmount(inv.amount != null ? Number(inv.amount) : 0);
-    setEditDueDate((inv.due_date ?? "").trim());
+    setEditDueDate(((inv.due_date ?? "") as string).trim());
 
     const saved = saveN8nExtractedInvoice(
       inv,
@@ -155,16 +155,25 @@ export function InvoiceCameraModal({
   };
 
   /**
-   * Main upload execution to n8n Document AI webhook:
+   * Main upload execution:
    * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
    * Body: multipart/form-data. File in field named "data".
-   * 60s timeout for photo reading.
+   * 90s timeout. Max ~10 MB file size.
    */
   const processFile = async (file: File | Blob, isCameraCapture: boolean = false) => {
+    // Send exactly one request per upload click (disable button while uploading)
+    if (isUploading) return;
+
+    // Check ~10 MB file limit
+    if (file && (file as any).size && (file as any).size > 10 * 1024 * 1024) {
+      setUploadError("Could not read this invoice. Please upload a clear photo or PDF under 10 MB.");
+      setActiveTab("review");
+      return;
+    }
+
     const isFileInstance = file instanceof File;
     const name = isFileInstance ? (file?.name ?? "") : (isCameraCapture ? "camera-capture.jpg" : "invoice-document.jpg");
-    const mimeType = (file?.type ?? "").toLowerCase();
-    const isPdf = mimeType === "application/pdf" || (name ?? "").toLowerCase().endsWith(".pdf");
+    const mimeType = ((file?.type ?? "") as string).toLowerCase();
     const isImage = mimeType.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|bmp|heic)$/i.test(name ?? "") || isCameraCapture;
 
     setFileName(name);
@@ -173,11 +182,7 @@ export function InvoiceCameraModal({
     setExtractedInvoice(null);
     setStoredInvoice(null);
     setIsUploading(true);
-    setProcessingStatus(
-      isImage
-        ? "Uploading invoice photo to n8n webhook... Photos take longer to analyze (up to 60s)."
-        : "Uploading PDF to n8n webhook... Extracting details."
-    );
+    setProcessingStatus("Reading invoice…");
     setActiveTab("review");
     stopCamera();
 
@@ -198,27 +203,26 @@ export function InvoiceCameraModal({
     }
 
     try {
-      // Direct call to n8n webhook with file appended in field "data"
+      // Direct call with file appended in field "data"
       const result = await uploadInvoiceToN8n(file);
 
-      if (result && (result.status ?? "").toLowerCase() === "ready") {
-        // Requirement 3: Show the extracted values in editable fields so the user can type or correct
-        // invoice_number, payer_email, payer_phone and due_date before saving.
+      if (result && ((result.status ?? "") as string).toLowerCase() === "ready") {
+        // Show extracted values in EDITABLE fields so user can check and fix them before saving
         setExtractedInvoice(result);
-        setEditInvoiceNumber((result.invoice_number ?? "").trim());
-        setEditPayerName((result.payer_name ?? "").trim());
-        setEditPayerEmail((result.payer_email ?? "").trim());
-        setEditPayerPhone((result.payer_phone ?? "").trim());
+        setEditInvoiceNumber(((result.invoice_number ?? "") as string).trim());
+        setEditPayerName(((result.payer_name ?? "") as string).trim());
+        setEditPayerEmail(((result.payer_email ?? "") as string).trim());
+        setEditPayerPhone(((result.payer_phone ?? "") as string).trim());
         setEditAmount(result.amount != null ? Number(result.amount) : 0);
-        setEditDueDate((result.due_date ?? "").trim());
+        setEditDueDate(((result.due_date ?? "") as string).trim());
         setActiveTab("review");
         return;
       }
 
       throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
     } catch (err: any) {
-      console.error("n8n invoice extraction failed:", err);
-      // As requested: "If the response is not ok or status is not 'ready', show: 'Could not read this invoice. Please upload a clear photo or PDF.'"
+      console.error("Invoice extraction failed:", err);
+      // On any non-200 status, timeout, or network error show:
       setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
     } finally {
       setIsUploading(false);
@@ -381,7 +385,7 @@ export function InvoiceCameraModal({
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Upload a bill photo (JPG, PNG) or PDF document to extract invoice details via n8n Document AI.
+                Upload a bill photo (JPG, PNG) or PDF document to extract invoice details automatically.
               </p>
             </div>
           </div>
@@ -505,7 +509,7 @@ export function InvoiceCameraModal({
               >
                 {/* Option 1: Upload Photo / Image */}
                 <div
-                  onClick={() => photoInputRef.current?.click()}
+                  onClick={() => !isUploading && photoInputRef.current?.click()}
                   className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-lg cursor-pointer transition-all group flex flex-col justify-between"
                 >
                   <div>
@@ -519,12 +523,13 @@ export function InvoiceCameraModal({
                       </span>
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                      Upload invoice photos from your gallery, camera roll, or device. Dispatches directly to n8n webhook.
+                      Upload invoice photos from your gallery, camera roll, or device. Analyzed automatically using AI.
                     </p>
                   </div>
                   <button
                     type="button"
-                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
+                    disabled={isUploading}
+                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
                   >
                     <ImageIcon className="w-4 h-4" />
                     <span>Choose Photo (JPG / PNG)</span>
@@ -533,7 +538,7 @@ export function InvoiceCameraModal({
 
                 {/* Option 2: Upload PDF */}
                 <div
-                  onClick={() => pdfInputRef.current?.click()}
+                  onClick={() => !isUploading && pdfInputRef.current?.click()}
                   className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-lg cursor-pointer transition-all group flex flex-col justify-between"
                 >
                   <div>
@@ -547,12 +552,13 @@ export function InvoiceCameraModal({
                       </span>
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                      Digital invoices, text-based PDF bills, and invoices downloaded from accounting software.
+                      Digital bills, invoices from accounting software, or scanned PDF documents.
                     </p>
                   </div>
                   <button
                     type="button"
-                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
+                    disabled={isUploading}
+                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
                   >
                     <FileText className="w-4 h-4" />
                     <span>Choose PDF File</span>
@@ -569,19 +575,21 @@ export function InvoiceCameraModal({
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
+                    disabled={isUploading}
                     onClick={() => mobileCameraInputRef.current?.click()}
-                    className="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold transition-colors cursor-pointer flex items-center gap-1"
+                    className="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold transition-colors cursor-pointer flex items-center gap-1"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>Take Photo</span>
                   </button>
                   <button
                     type="button"
+                    disabled={isUploading}
                     onClick={() => {
                       setActiveTab("camera");
                       startCamera();
                     }}
-                    className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
                   >
                     Webcam
                   </button>
@@ -593,7 +601,7 @@ export function InvoiceCameraModal({
           {/* 2. DEDICATED PHOTO VIEW */}
           {activeTab === "photo" && (
             <div
-              onClick={() => photoInputRef.current?.click()}
+              onClick={() => !isUploading && photoInputRef.current?.click()}
               className="border-2 border-dashed border-teal-300 dark:border-teal-700 hover:border-teal-500 rounded-2xl p-10 text-center cursor-pointer bg-teal-50/20 dark:bg-teal-950/10 hover:bg-teal-50/40 transition-all group"
             >
               <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-xs">
@@ -603,11 +611,12 @@ export function InvoiceCameraModal({
                 Click or Drop Your Bill Photo Here
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Accepts JPG, JPEG, PNG, WEBP. Dispatches to n8n webhook. Extraction can take up to 60 seconds.
+                Accepts JPG, JPEG, PNG, WEBP or HEIC up to 10 MB. Fast automated extraction.
               </p>
               <button
                 type="button"
-                className="mt-4 px-6 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition-colors pointer-events-none"
+                disabled={isUploading}
+                className="mt-4 px-6 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 disabled:opacity-50 shadow-xs transition-colors pointer-events-none"
               >
                 Select Photo (JPG / PNG)
               </button>
@@ -617,7 +626,7 @@ export function InvoiceCameraModal({
           {/* 3. DEDICATED PDF VIEW */}
           {activeTab === "pdf" && (
             <div
-              onClick={() => pdfInputRef.current?.click()}
+              onClick={() => !isUploading && pdfInputRef.current?.click()}
               className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 rounded-2xl p-10 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-800/30 hover:bg-teal-50/20 transition-all group"
             >
               <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-xs">
@@ -627,11 +636,12 @@ export function InvoiceCameraModal({
                 Click or Drop Your PDF Invoice Here
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Dispatches PDF to n8n webhook workflow for instant extraction and Ready status.
+                Accepts any PDF invoice up to 10 MB for instant automated extraction.
               </p>
               <button
                 type="button"
-                className="mt-4 px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold hover:bg-slate-800 shadow-xs transition-colors pointer-events-none"
+                disabled={isUploading}
+                className="mt-4 px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold hover:bg-slate-800 disabled:opacity-50 shadow-xs transition-colors pointer-events-none"
               >
                 Select PDF Document
               </button>
@@ -679,11 +689,12 @@ export function InvoiceCameraModal({
                 <div className="flex items-center justify-center gap-4 pt-2">
                   <button
                     type="button"
+                    disabled={isUploading}
                     onClick={captureSnapshot}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md transition-all tap-target cursor-pointer"
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all tap-target cursor-pointer"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Capture & Send to n8n</span>
+                    <span>Capture & Read Invoice</span>
                   </button>
                 </div>
               )}
@@ -755,13 +766,13 @@ export function InvoiceCameraModal({
           {/* 5. REVIEW & EXTRACTION RESULT VIEW */}
           {activeTab === "review" && (
             <div className="space-y-4">
-              {/* LOADING STATE - ALLOW UP TO 60 SECONDS */}
+              {/* LOADING STATE - 90 SECONDS TIMEOUT */}
               {isUploading && (
                 <div className="p-8 sm:p-10 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-center space-y-4">
                   <div className="w-14 h-14 rounded-full border-4 border-teal-600 border-t-transparent animate-spin mx-auto" />
                   <div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Extracting Invoice Details
+                      Reading invoice…
                     </h3>
                     <p className="text-xs text-teal-600 dark:text-teal-400 font-medium mt-1">
                       {processingStatus}
@@ -771,11 +782,11 @@ export function InvoiceCameraModal({
                     <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="bg-teal-600 h-1.5 rounded-full transition-all duration-1000"
-                        style={{ width: `${Math.min(100, Math.max(5, (uploadSeconds / 60) * 100))}%` }}
+                        style={{ width: `${Math.min(100, Math.max(5, (uploadSeconds / 90) * 100))}%` }}
                       />
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Elapsed: {uploadSeconds}s / 60s timeout. Photos take longer than PDFs to process.
+                      Elapsed: {uploadSeconds}s / 90s timeout. Processing invoice details…
                     </p>
                   </div>
                 </div>
@@ -789,7 +800,7 @@ export function InvoiceCameraModal({
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200">
-                      Extraction Failed
+                      Upload Unsuccessful
                     </h3>
                     <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 max-w-md mx-auto font-medium">
                       {uploadError}
@@ -819,16 +830,6 @@ export function InvoiceCameraModal({
                       <FileText className="w-3.5 h-3.5" />
                       <span>Upload PDF Document</span>
                     </button>
-                    {lastUploadedFile && (
-                      <button
-                        type="button"
-                        onClick={runLocalOcrFallback}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Run In-Browser OCR Scanner</span>
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -872,13 +873,13 @@ export function InvoiceCameraModal({
                     </div>
                   )}
 
-                  {/* Notice: "Photo reading can get a value wrong" */}
+                  {/* Notice: Always ask for payer's email and phone */}
                   <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
                     <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold">Check & Edit Extracted Values</p>
                       <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
-                        Photo reading and Document AI can get a value wrong or leave fields blank. Please verify or correct the invoice number, payer email, phone, and due date before saving.
+                        Please check the extracted values and enter the payer's email and phone (they are often missing from photos and bills).
                       </p>
                     </div>
                   </div>

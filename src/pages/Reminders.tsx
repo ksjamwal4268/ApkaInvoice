@@ -511,7 +511,7 @@ ${bName}`;
                   }`}
                 >
                   <Mail className="w-3.5 h-3.5" />
-                  <span>Email (n8n Webhook)</span>
+                  <span>Email Reminder</span>
                 </button>
 
                 <button
@@ -640,7 +640,7 @@ ${bName}`;
                       </span>
                     </p>
                     <p className="text-[11px] text-slate-400">
-                      Dispatches securely through n8n cloud webhook.
+                      Dispatches securely through cloud email automation.
                     </p>
                   </div>
 

@@ -75,7 +75,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
         }).catch(() => null);
         clearTimeout(timeoutId);
       }
-      setTestOcrResult("Connected! n8n OCR webhook is reachable.");
+      setTestOcrResult("Connected! Cloud OCR webhook is reachable.");
     } catch {
       setTestOcrResult("Reachable or simulation fallback active.");
     } finally {
@@ -101,7 +101,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
         }).catch(() => null);
         clearTimeout(timeoutId);
       }
-      setTestReminderResult("Connected! n8n Reminder webhook is active.");
+      setTestReminderResult("Connected! Cloud Reminder webhook is active.");
     } catch {
       setTestReminderResult("Reachable or simulation fallback active.");
     } finally {
@@ -120,13 +120,13 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                n8n Workflow Automation Hub
+                Cloud Automation & AI Hub
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300">
                   Active
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Connect your self-hosted or cloud n8n workflows for Camera OCR & Automated Buyer Reminders
+                Cloud-connected intelligent workflows for Camera OCR & Automated Buyer Reminders
               </p>
             </div>
           </div>
@@ -146,13 +146,13 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
               <Zap className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <p className="font-bold text-teal-950 dark:text-teal-200">
-                  How ApkaInvoice connects with n8n:
+                  How ApkaInvoice connects with Cloud Automation:
                 </p>
                 <p className="text-teal-800 dark:text-teal-300 leading-relaxed">
-                  <strong>1. Camera / File OCR:</strong> When an invoice is scanned or uploaded, ApkaInvoice sends the frame to your n8n OCR webhook to extract line items, taxes, and buyer details.
+                  <strong>1. Camera & Document AI:</strong> When an invoice is scanned or uploaded, ApkaInvoice dispatches it to the cloud OCR engine to extract amounts, taxes, and buyer details.
                 </p>
                 <p className="text-teal-800 dark:text-teal-300 leading-relaxed">
-                  <strong>2. Buyer Payment Reminders:</strong> When you approve a reminder, clicking "Send via n8n" dispatches the structured payload to your WhatsApp Business or Email workflow node.
+                  <strong>2. Buyer Payment Reminders:</strong> When you send a reminder, it dispatches the structured reminder directly through the automated email/WhatsApp workflow.
                 </p>
               </div>
             </div>
@@ -178,7 +178,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
                 type="url"
                 value={config.ocrWebhookUrl}
                 onChange={(e) => setConfig({ ...config, ocrWebhookUrl: e.target.value })}
-                placeholder="https://your-n8n.com/webhook/invoice-ocr"
+                placeholder="https://your-cloud-api.com/webhook/invoice-upload"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -212,7 +212,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
                 type="url"
                 value={config.reminderWebhookUrl}
                 onChange={(e) => setConfig({ ...config, reminderWebhookUrl: e.target.value })}
-                placeholder="https://your-n8n.com/webhook/payment-reminder"
+                placeholder="https://your-cloud-api.com/webhook/invoice-reminder-email"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -235,11 +235,11 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
               type="text"
               value={config.apiKey}
               onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-              placeholder="e.g. n8n_token_xyz"
+              placeholder="e.g. auth_token_xyz"
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Sent as <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700">X-API-KEY</code> header for authenticated n8n webhooks.
+              Sent as <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-700">X-API-KEY</code> header for authenticated webhooks.
             </p>
           </div>
 
@@ -247,7 +247,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Sample JSON Payload for n8n Webhook Node
+                Sample JSON Payload for Webhook Node
               </span>
               <button
                 type="button"

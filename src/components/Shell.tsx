@@ -146,15 +146,15 @@ export function Shell({
 
         {/* Right Actions */}
         <div className="flex items-center gap-2.5">
-          {/* n8n Automation Status Pill */}
+          {/* Cloud Automation Status Pill */}
           <button
             type="button"
             onClick={() => setN8nModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors shadow-2xs"
-            title="n8n Workflow Automation Hub (Camera OCR & Buyer Reminders)"
+            title="Cloud Automation Hub (Camera OCR & Smart Reminders)"
           >
             <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-            <span className="hidden sm:inline">n8n Workflow</span>
+            <span className="hidden sm:inline">Cloud Automation</span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </button>
 

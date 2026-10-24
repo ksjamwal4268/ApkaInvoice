@@ -513,22 +513,22 @@ export interface N8nUploadedInvoice {
 }
 
 /**
- * Upload text-based PDF invoice to n8n webhook
+ * Upload photo or PDF invoice to Cloud AI webhook
  * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
- * Body: multipart/form-data. PDF file in field named exactly "data".
+ * Body: multipart/form-data. File in field named "data".
  * Content-Type header is not set manually (browser sets boundary).
+ * 90-second timeout.
  */
 export async function uploadInvoiceToN8n(
   file: File | Blob
 ): Promise<N8nUploadedInvoice> {
   const fd = new FormData();
-  const fileName = (file instanceof File ? (file?.name ?? "") : "") || "invoice_document";
-  // Field name is exactly "data", file appended once
-  fd.append("data", file, fileName);
+  // Append the file under the field name "data"
+  fd.append("data", file);
 
   const controller = new AbortController();
-  // Photos take longer than PDFs, allow up to 60 seconds before timing out
-  const timeoutId = setTimeout(() => controller.abort(), 60000);
+  // 90-second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
 
   let res: Response;
   try {
@@ -539,7 +539,7 @@ export async function uploadInvoiceToN8n(
     });
   } catch (err: any) {
     clearTimeout(timeoutId);
-    console.error("n8n invoice-upload fetch error:", err);
+    console.error("invoice-upload fetch error:", err);
     throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   } finally {
     clearTimeout(timeoutId);
@@ -547,7 +547,7 @@ export async function uploadInvoiceToN8n(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => "");
-    console.error("n8n invoice-upload error response:", res.status, errorText);
+    console.error("invoice-upload error response:", res.status, errorText);
     throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
 
@@ -560,8 +560,9 @@ export async function uploadInvoiceToN8n(
 
   const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
 
+  // Treat EVERY field as optional: any can be empty, null, or missing
   if (!payload || (payload.status ?? "").toLowerCase() !== "ready") {
-    console.warn("n8n response not ready:", payload);
+    console.warn("Upload response not ready:", payload);
     throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
 

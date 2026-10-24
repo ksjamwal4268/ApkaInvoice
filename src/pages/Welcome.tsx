@@ -159,7 +159,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <div className="b b3"></div>
         <h1 className="d">Your cash flow should be working harder than you are.</h1>
         <p>
-          Welcome back, {businessName}. ApkaInvoice predicts cash shortfalls 8 weeks ahead, reads bills from a photo, and chases dues in English, Hindi and Marathi.
+          Welcome back, {businessName}. Apka Invoice predicts cash shortfalls 8 weeks ahead, reads bills from a photo, and chases dues in English, Hindi and Marathi.
         </p>
         <div className="row">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
@@ -221,7 +221,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       <section className="blk pink" id="live">
         <div className="wrap">
           <div className="hd">
-            <h2 className="d">You slept 8 hours.<br />Apka didn’t.</h2>
+            <h2 className="d">You slept 8 hours.<br />Apka Invoice didn't.</h2>
             <p>Your live portfolio, updated as bills are scanned and payments land.</p>
           </div>
           <div className="stats">
@@ -400,7 +400,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             )}
           </div>
         </div>
-        <p className="cp">© 2026 ApkaInvoice. Built for Indian manufacturing and trading businesses.</p>
+        <p className="cp">© 2026 Apka Invoice. Built for Indian manufacturing and trading businesses.</p>
       </footer>
 
       {/* Invoice Camera / OCR Modal */}
