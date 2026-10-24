@@ -424,37 +424,61 @@
 }
 
 .welcome-page .cfg {
-  margin: 60px auto 0;
+  margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  align-items: start;
+  gap: 48px;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 44px 48px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
 
 .welcome-page .cfg h2 {
-  font-size: clamp(34px, 4vw, 52px);
+  font-size: clamp(32px, 4vw, 56px);
+  line-height: 1.05;
   color: var(--ink);
+  margin: 0;
 }
 
 .welcome-page .cfg ul {
   list-style: none;
   padding: 0;
+  margin: 0;
   border-top: 1px solid var(--line);
 }
 
 .welcome-page .cfg li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 14px;
-  gap: 12px;
-  flex-wrap: wrap;
+  font-size: 13.5px;
+  gap: 16px;
   color: var(--ink);
+}
+
+.welcome-page .cfg li b {
+  font-weight: 600;
+  color: #111;
+  white-space: nowrap;
 }
 
 .welcome-page .cfg li span {
   color: var(--mut);
+  text-align: right;
+  word-break: break-word;
+}
+
+@media (max-width: 880px) {
+  .welcome-page .cfg {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 32px 24px;
+  }
 }
 
 .welcome-page .cta {

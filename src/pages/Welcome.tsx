@@ -425,7 +425,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </section>
 
       {/* 8. AUTOMATION SETUP SECTION */}
-      <section className="wrap" id="setup">
+      <section className="wrap my-16 sm:my-24" id="setup">
         <CometCard className="w-full">
           <div className="cfg">
             <h2 className="d">
