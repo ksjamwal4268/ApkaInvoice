@@ -14,7 +14,6 @@ import {
   UserCircle,
   User,
 } from "lucide-react";
-import { LanguageSwitch } from "./LanguageSwitch";
 import { t, Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
 import { useAuth } from "../utils/auth";
@@ -25,16 +24,12 @@ interface ShellProps {
   children: React.ReactNode;
   lang: Language;
   onLangChange: (lang: Language) => void;
-  dark: boolean;
-  onToggleDark: () => void;
 }
 
 export function Shell({
   children,
   lang,
   onLangChange,
-  dark,
-  onToggleDark,
 }: ShellProps): React.JSX.Element {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [n8nModalOpen, setN8nModalOpen] = useState(false);
@@ -164,13 +159,6 @@ export function Shell({
             <Plus className="w-3.5 h-3.5" />
             <span>New Invoice</span>
           </Link>
-
-          <LanguageSwitch
-            lang={lang}
-            onChange={onLangChange}
-            dark={dark}
-            onToggleDark={onToggleDark}
-          />
         </div>
       </header>
 

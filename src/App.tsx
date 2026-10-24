@@ -22,20 +22,16 @@ import { Forecast } from "./pages/Forecast";
 
 export default function App() {
   const [lang, setLang] = useState<Language>("en");
-  const [dark, setDark] = useState(false);
 
   useEffect(() => {
+    // Always enforce clean white / light mode
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.add("light");
+    localStorage.removeItem("cc-dark");
+
     const savedLang = localStorage.getItem("cc-lang") as Language;
     if (savedLang && (savedLang === "en" || savedLang === "hi" || savedLang === "mr")) {
       setLang(savedLang);
-    }
-    const savedDark = localStorage.getItem("cc-dark");
-    if (savedDark !== null) {
-      setDark(savedDark === "true");
-      if (savedDark === "true") {
-        document.documentElement.classList.add("dark");
-        document.documentElement.classList.remove("light");
-      }
     }
   }, []);
 
@@ -44,22 +40,9 @@ export default function App() {
     localStorage.setItem("cc-lang", next);
   };
 
-  const onToggleDark = () => {
-    const next = !dark;
-    setDark(next);
-    localStorage.setItem("cc-dark", String(next));
-    if (next) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light");
-    }
-  };
-
   return (
     <Router>
-      <Shell lang={lang} onLangChange={onLangChange} dark={dark} onToggleDark={onToggleDark}>
+      <Shell lang={lang} onLangChange={onLangChange}>
         <Routes>
           <Route path="/" element={<Welcome lang={lang} />} />
           <Route path="/welcome" element={<Welcome lang={lang} />} />
