@@ -7,6 +7,7 @@ import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { OnboardingModal } from "../components/OnboardingModal";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
+import { CometCard } from "@/components/ui/comet-card";
 import "./Welcome.css";
 
 interface WelcomeProps {
@@ -190,30 +191,36 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <h2 className="d">Your invoices went out.<br />Then the money stopped.</h2>
         <p className="sub">Three steps to keep working capital moving, without a collections team.</p>
         <div className="g3">
-          <div
-            className="cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => setIsCameraModalOpen(true)}
-          >
-            <div className="ic">1</div>
-            <h3>Scan or upload bills</h3>
-            <p>Snap a photo or upload a PDF. Line items, CGST/SGST and paise math are filled in for you.</p>
-          </div>
-          <div
-            className="cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => navigate("/invoices")}
-          >
-            <div className="ic">2</div>
-            <h3>Track real-time invoices</h3>
-            <p>See billed, received and open balances with no guesswork.</p>
-          </div>
-          <div
-            className="cursor-pointer hover:opacity-90 transition-opacity"
-            onClick={() => navigate("/reminders")}
-          >
-            <div className="ic">3</div>
-            <h3>Send automated reminders</h3>
-            <p>A 4-stage reminder ladder in English, Hindi and Marathi. You approve every WhatsApp and email before it goes.</p>
-          </div>
+          <CometCard className="h-full">
+            <div
+              className="g3-card cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => setIsCameraModalOpen(true)}
+            >
+              <div className="ic">1</div>
+              <h3>Scan or upload bills</h3>
+              <p>Snap a photo or upload a PDF. Line items, CGST/SGST and paise math are filled in for you.</p>
+            </div>
+          </CometCard>
+          <CometCard className="h-full">
+            <div
+              className="g3-card cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => navigate("/invoices")}
+            >
+              <div className="ic">2</div>
+              <h3>Track real-time invoices</h3>
+              <p>See billed, received and open balances with no guesswork.</p>
+            </div>
+          </CometCard>
+          <CometCard className="h-full">
+            <div
+              className="g3-card cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => navigate("/reminders")}
+            >
+              <div className="ic">3</div>
+              <h3>Send automated reminders</h3>
+              <p>A 4-stage reminder ladder in English, Hindi and Marathi. You approve every WhatsApp and email before it goes.</p>
+            </div>
+          </CometCard>
         </div>
       </section>
 
@@ -225,26 +232,34 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <p>Your live portfolio, updated as bills are scanned and payments land.</p>
           </div>
           <div className="stats">
-            <div className="st">
-              <small>Money owed</small>
-              <b>{moneyOwed > 0 ? formatInr(moneyOwed) : "₹5,310"}</b>
-              <i>Open across all customers</i>
-            </div>
-            <div className="st">
-              <small>Overdue</small>
-              <b>{overdueAmount > 0 ? formatInr(overdueAmount) : "₹0"}</b>
-              <i>{overdueAmount > 0 ? "Requires action" : "Nothing late right now"}</i>
-            </div>
-            <div className="st">
-              <small>Expected in 4 weeks</small>
-              <b>{expected4Weeks > 0 ? formatInr(expected4Weeks) : "₹0"}</b>
-              <i>{expected4Weeks > 0 ? "Scheduled customer dues" : "No payments scheduled"}</i>
-            </div>
-            <div className="st">
-              <small>Bills due in 4 weeks</small>
-              <b>{bills4Weeks > 0 ? formatInr(bills4Weeks) : "₹0"}</b>
-              <i>Nothing to pay soon</i>
-            </div>
+            <CometCard className="h-full">
+              <div className="st">
+                <small>Money owed</small>
+                <b>{moneyOwed > 0 ? formatInr(moneyOwed) : "₹5,310"}</b>
+                <i>Open across all customers</i>
+              </div>
+            </CometCard>
+            <CometCard className="h-full">
+              <div className="st">
+                <small>Overdue</small>
+                <b>{overdueAmount > 0 ? formatInr(overdueAmount) : "₹0"}</b>
+                <i>{overdueAmount > 0 ? "Requires action" : "Nothing late right now"}</i>
+              </div>
+            </CometCard>
+            <CometCard className="h-full">
+              <div className="st">
+                <small>Expected in 4 weeks</small>
+                <b>{expected4Weeks > 0 ? formatInr(expected4Weeks) : "₹0"}</b>
+                <i>{expected4Weeks > 0 ? "Scheduled customer dues" : "No payments scheduled"}</i>
+              </div>
+            </CometCard>
+            <CometCard className="h-full">
+              <div className="st">
+                <small>Bills due in 4 weeks</small>
+                <b>{bills4Weeks > 0 ? formatInr(bills4Weeks) : "₹0"}</b>
+                <i>Nothing to pay soon</i>
+              </div>
+            </CometCard>
           </div>
         </div>
       </section>
@@ -255,28 +270,34 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           <h2 className="d" style={{ textAlign: "center", margin: "0 auto 40px" }}>
             An accountant that never sleeps
           </h2>
-          <div className="feed">
-            <div className="fi">
-              <div>
-                <b>Bill scanned</b><br />
-                <span>Line items and GST split read from your photo. Ready to review.</span>
+          <div className="feed space-y-3">
+            <CometCard>
+              <div className="fi">
+                <div>
+                  <b>Bill scanned</b><br />
+                  <span>Line items and GST split read from your photo. Ready to review.</span>
+                </div>
+                <em>02:14 AM</em>
               </div>
-              <em>02:14 AM</em>
-            </div>
-            <div className="fi">
-              <div>
-                <b>Reminder drafted</b><br />
-                <span>Stage 2 message in Hindi is waiting for your approval.</span>
+            </CometCard>
+            <CometCard>
+              <div className="fi">
+                <div>
+                  <b>Reminder drafted</b><br />
+                  <span>Stage 2 message in Hindi is waiting for your approval.</span>
+                </div>
+                <em>03:40 AM</em>
               </div>
-              <em>03:40 AM</em>
-            </div>
-            <div className="fi">
-              <div>
-                <b>Payment matched</b><br />
-                <span>Bank credit tied to its invoice. TDS 194C flagged.</span>
+            </CometCard>
+            <CometCard>
+              <div className="fi">
+                <div>
+                  <b>Payment matched</b><br />
+                  <span>Bank credit tied to its invoice. TDS 194C flagged.</span>
+                </div>
+                <em>06:05 AM</em>
               </div>
-              <em>06:05 AM</em>
-            </div>
+            </CometCard>
           </div>
         </div>
       </section>
@@ -289,75 +310,87 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <p>Each one works from the invoices you already have.</p>
           </div>
           <div className="sc">
-            <div className="sc-item" onClick={() => navigate("/invoices")}>
-              <div>
-                <h3>Bank reconciliation</h3>
-                <p>Matches credits to invoices and detects TDS 194C/J automatically.</p>
+            <CometCard className="sc-card">
+              <div className="sc-item" onClick={() => navigate("/invoices")}>
+                <div>
+                  <h3>Bank reconciliation</h3>
+                  <p>Matches credits to invoices and detects TDS 194C/J automatically.</p>
+                </div>
+                <small>Open →</small>
               </div>
-              <small>Open →</small>
-            </div>
-            <div className="sc-item" onClick={() => navigate("/customers")}>
-              <div>
-                <h3>Customer discipline</h3>
-                <p>Payment grades A, B and C show who pays on time.</p>
+            </CometCard>
+            <CometCard className="sc-card">
+              <div className="sc-item" onClick={() => navigate("/customers")}>
+                <div>
+                  <h3>Customer discipline</h3>
+                  <p>Payment grades A, B and C show who pays on time.</p>
+                </div>
+                <small>Open →</small>
               </div>
-              <small>Open →</small>
-            </div>
-            <div className="sc-item" onClick={handleEnterDashboard}>
-              <div>
-                <h3>Main app</h3>
-                <p>Open the full dashboard with every invoice and forecast.</p>
+            </CometCard>
+            <CometCard className="sc-card">
+              <div className="sc-item" onClick={handleEnterDashboard}>
+                <div>
+                  <h3>Main app</h3>
+                  <p>Open the full dashboard with every invoice and forecast.</p>
+                </div>
+                <small>Enter →</small>
               </div>
-              <small>Enter →</small>
-            </div>
+            </CometCard>
           </div>
         </div>
       </section>
 
       {/* 8. AUTOMATION SETUP SECTION */}
       <section className="wrap" id="setup">
-        <div className="cfg">
-          <h2 className="d">
-            Automation is configured for {businessProfile.name ? `${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}` : "Sharma Packaging Enterprises, Pune"}.
-          </h2>
-          <div>
-            <ul>
-              <li>
-                <b>WhatsApp &amp; payments</b>
-                <span>{businessProfile.phone || "9906639590"}</span>
-              </li>
-              <li>
-                <b>Email</b>
-                <span>{businessProfile.email || "arnavgos09@gmail.com"}</span>
-              </li>
-              <li>
-                <b>UPI</b>
-                <span>{businessProfile.upi || "sharmapackaging@hdfc"}</span>
-              </li>
-              <li>
-                <b>Signed in as</b>
-                <span>{user?.email || "billing@sharmapackaging.in"}</span>
-              </li>
-            </ul>
-            <p style={{ marginTop: "18px", display: "flex", gap: "8px" }}>
-              <button type="button" className="btn" onClick={() => navigate("/profile")}>
-                Profile
-              </button>
-              <button type="button" className="btn o" onClick={() => setIsOnboardingOpen(true)}>
-                Setup
-              </button>
-            </p>
+        <CometCard className="w-full">
+          <div className="cfg">
+            <h2 className="d">
+              Automation is configured for {businessProfile.name ? `${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}` : "Sharma Packaging Enterprises, Pune"}.
+            </h2>
+            <div>
+              <ul>
+                <li>
+                  <b>WhatsApp &amp; payments</b>
+                  <span>{businessProfile.phone || "9906639590"}</span>
+                </li>
+                <li>
+                  <b>Email</b>
+                  <span>{businessProfile.email || "arnavgos09@gmail.com"}</span>
+                </li>
+                <li>
+                  <b>UPI</b>
+                  <span>{businessProfile.upi || "sharmapackaging@hdfc"}</span>
+                </li>
+                <li>
+                  <b>Signed in as</b>
+                  <span>{user?.email || "billing@sharmapackaging.in"}</span>
+                </li>
+              </ul>
+              <p style={{ marginTop: "18px", display: "flex", gap: "8px" }}>
+                <button type="button" className="btn" onClick={() => navigate("/profile")}>
+                  Profile
+                </button>
+                <button type="button" className="btn o" onClick={() => setIsOnboardingOpen(true)}>
+                  Setup
+                </button>
+              </p>
+            </div>
           </div>
-        </div>
+        </CometCard>
       </section>
 
       {/* 9. BOTTOM CTA */}
-      <section className="cta wrap">
-        <h2 className="d">Stop chasing<br />payments.</h2>
-        <p>Upload one bill and see your cash forecast in about a minute.</p>
-        <button type="button" className="btn" onClick={() => setIsCameraModalOpen(true)}>
-          Upload bill (photo or PDF)
-        </button>
+      <section className="wrap">
+        <CometCard className="w-full">
+          <div className="cta" style={{ margin: 0 }}>
+            <h2 className="d">Stop chasing<br />payments.</h2>
+            <p>Upload one bill and see your cash forecast in about a minute.</p>
+            <button type="button" className="btn" onClick={() => setIsCameraModalOpen(true)}>
+              Upload bill (photo or PDF)
+            </button>
+          </div>
+        </CometCard>
       </section>
 
       {/* 10. FOOTER */}

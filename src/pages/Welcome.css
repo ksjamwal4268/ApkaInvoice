@@ -214,14 +214,20 @@
 .welcome-page .g3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--line);
+  gap: 18px;
+  background: transparent;
+  border: none;
+}
+
+.welcome-page .g3-card {
+  background: var(--card);
+  padding: 26px 24px 30px;
+  border-radius: 16px;
   border: 1px solid var(--line);
+  height: 100%;
 }
 
 .welcome-page .g3 > div {
-  background: var(--card);
-  padding: 26px 24px 30px;
   transition: background 0.15s ease;
 }
 
@@ -297,10 +303,10 @@
 
 .welcome-page .st {
   background: #fff;
-  border-radius: 6px;
+  border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
   color: #111;
+  height: 100%;
 }
 
 .welcome-page .st small {
@@ -369,24 +375,28 @@
 
 .welcome-page .sc {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   overflow-x: auto;
-  padding-bottom: 10px;
+  padding: 10px 4px 24px;
   scrollbar-width: thin;
+}
+
+.welcome-page .sc .sc-card {
+  flex: 0 0 280px;
+  min-height: 200px;
 }
 
 .welcome-page .sc a,
 .welcome-page .sc .sc-item {
-  flex: 0 0 270px;
   background: #fff;
-  border-radius: 6px;
+  border-radius: 16px;
   padding: 22px;
-  min-height: 190px;
+  min-height: 200px;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   color: #111;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
 }
 
