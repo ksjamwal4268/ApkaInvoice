@@ -84,46 +84,120 @@ export function Dashboard({ lang }: { lang: Language }) {
 
   interface KpiPoint {
     label: string;
+    dateRange: string;
     invoiceCount: number;
     paymentReceived: number;
     expectedTotal: number;
     outstanding: number;
   }
 
+  const [graphTimeframe, setGraphTimeframe] = useState<"weekly" | "monthly">("weekly");
+
+  const anchorDate = useMemo(() => {
+    if (!invoices || invoices.length === 0) return today;
+    const validTimes = invoices
+      .map((i) => new Date(i.invoiceDate || i.dueDate || Date.now()).getTime())
+      .filter((t) => !isNaN(t));
+    if (validTimes.length === 0) return today;
+    const maxTime = Math.max(...validTimes);
+    // If the latest invoice is within 60 days of today, anchor to today
+    if (Math.abs(today.getTime() - maxTime) < 60 * 24 * 60 * 60 * 1000) {
+      return today;
+    }
+    return new Date(maxTime);
+  }, [invoices, today]);
+
   const kpiData = useMemo((): KpiPoint[] => {
     const result: KpiPoint[] = [];
-    const currentDate = new Date(today);
-    for (let i = 5; i >= 0; i--) {
-      const weekStart = new Date(currentDate);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (i * 7));
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-      const weekInvoices = invoices.filter((inv) => {
-        const invDate = new Date(inv.invoiceDate);
-        return invDate >= weekStart && invDate <= weekEnd;
-      });
-      const invoiceCount = weekInvoices.length;
-      const paymentReceived = weekInvoices
-        .filter((inv) => inv.status === "paid")
-        .reduce((sum, inv) => add(sum, inv.amountPaid), 0);
-      const expectedTotal = weekInvoices.reduce((sum, inv) => add(sum, inv.total), 0);
-      const outstanding = weekInvoices
-        .filter((inv) => inv.status !== "paid" && inv.status !== "disputed")
-        .reduce((sum, inv) => add(sum, inv.outstanding), 0);
-      // Format: "Week N:M/D" for clarity
-      const label = `${i + 1}:${weekStart.getMonth() + 1}/${weekStart.getDate()}`;
-      result.push({
-        label,
-        invoiceCount,
-        paymentReceived,
-        expectedTotal,
-        outstanding,
-      });
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    if (graphTimeframe === "monthly") {
+      for (let i = 5; i >= 0; i--) {
+        const mStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1, 0, 0, 0, 0);
+        const mEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
+
+        const mInvoices = invoices.filter((inv) => {
+          const invDate = new Date(inv.invoiceDate || inv.dueDate);
+          return invDate >= mStart && invDate <= mEnd;
+        });
+
+        const invoiceCount = mInvoices.length;
+        const paymentReceivedPaise = mInvoices
+          .filter((inv) => (inv.status ?? "").toLowerCase() === "paid")
+          .reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+
+        const expectedTotalPaise = mInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+
+        const outstandingPaise = mInvoices
+          .filter((inv) => (inv.status ?? "").toLowerCase() !== "paid" && !inv.isDisputed)
+          .reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
+
+        const label = `${monthNames[mStart.getMonth()]} '${String(mStart.getFullYear()).slice(-2)}`;
+        const dateRange = `${monthNames[mStart.getMonth()]} ${mStart.getFullYear()}`;
+
+        result.push({
+          label,
+          dateRange,
+          invoiceCount,
+          paymentReceived: Math.round(paymentReceivedPaise / 100),
+          expectedTotal: Math.round(expectedTotalPaise / 100),
+          outstanding: Math.round(outstandingPaise / 100),
+        });
+      }
+    } else {
+      // Weekly timeframe: 6 chronological weeks ending at anchorDate
+      for (let i = 5; i >= 0; i--) {
+        const weekStart = new Date(anchorDate);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (i * 7));
+        weekStart.setHours(0, 0, 0, 0);
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const weekInvoices = invoices.filter((inv) => {
+          const invDate = new Date(inv.invoiceDate || inv.dueDate);
+          return invDate >= weekStart && invDate <= weekEnd;
+        });
+
+        const invoiceCount = weekInvoices.length;
+        const paymentReceivedPaise = weekInvoices
+          .filter((inv) => (inv.status ?? "").toLowerCase() === "paid")
+          .reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+
+        const expectedTotalPaise = weekInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+
+        const outstandingPaise = weekInvoices
+          .filter((inv) => (inv.status ?? "").toLowerCase() !== "paid" && !inv.isDisputed)
+          .reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
+
+        const label = `${String(weekStart.getDate()).padStart(2, "0")} ${monthNames[weekStart.getMonth()]}`;
+        const dateRange = `${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} – ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`;
+
+        result.push({
+          label,
+          dateRange,
+          invoiceCount,
+          paymentReceived: Math.round(paymentReceivedPaise / 100),
+          expectedTotal: Math.round(expectedTotalPaise / 100),
+          outstanding: Math.round(outstandingPaise / 100),
+        });
+      }
     }
+
     return result;
-  }, [invoices, today]);
+  }, [invoices, anchorDate, graphTimeframe]);
+
+  const graphSummary = useMemo(() => {
+    const totalBilled = kpiData.reduce((acc, p) => acc + p.expectedTotal, 0);
+    const totalCollected = kpiData.reduce((acc, p) => acc + p.paymentReceived, 0);
+    const totalOutstanding = kpiData.reduce((acc, p) => acc + p.outstanding, 0);
+    return {
+      totalBilled,
+      totalCollected,
+      totalOutstanding,
+    };
+  }, [kpiData]);
 
   interface RedInvoice {
     invoice: typeof invoices[number];
@@ -297,48 +371,187 @@ export function Dashboard({ lang }: { lang: Language }) {
         </div>
       )}
 
-      {/* Weekly Billing & Collections Activity Graph */}
+      {/* Weekly / Monthly Billing & Collections Activity Graph */}
       <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
         <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Weekly Billing & Collections Activity</span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  Billing & Collections Activity
+                </h2>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
-                  Real Dataset
+                  {graphTimeframe === "weekly" ? "Weekly Trend" : "Monthly Trend"}
                 </span>
-              </h2>
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Tracks actual invoices recorded, payments received, and outstanding dues across the last 6 weeks.
+                Tracks actual invoices billed, payments received, and pending dues ({graphTimeframe === "weekly" ? "last 6 active weeks" : "last 6 months"}).
               </p>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                Received
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Timeframe Switcher */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-0.5 rounded-xl text-xs">
+                <button
+                  type="button"
+                  onClick={() => setGraphTimeframe("weekly")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    graphTimeframe === "weekly"
+                      ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Weekly (6 Wks)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGraphTimeframe("monthly")}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    graphTimeframe === "monthly"
+                      ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-2xs font-bold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Monthly (6 Mos)
+                </button>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  Received
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  Expected
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  Outstanding
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar for Selected Window */}
+          <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-750 text-xs">
+            <div>
+              <span className="text-slate-400 block text-[11px]">Period Total Billed</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                {formatInr(graphSummary.totalBilled * 100)}
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                Expected
+            </div>
+            <div>
+              <span className="text-emerald-600/80 dark:text-emerald-400/80 block text-[11px]">Period Received</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                {formatInr(graphSummary.totalCollected * 100)}
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                Outstanding
+            </div>
+            <div>
+              <span className="text-rose-600/80 dark:text-rose-400/80 block text-[11px]">Period Outstanding</span>
+              <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">
+                {formatInr(graphSummary.totalOutstanding * 100)}
               </span>
             </div>
           </div>
 
           <div className="h-[280px] w-full flex-grow">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={kpiData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.2} />
-                <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
-                <Tooltip />
-                <Line type="monotone" dataKey="paymentReceived" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Payments Received" />
-                <Line type="monotone" dataKey="expectedTotal" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Expected Total" />
-                <Line type="monotone" dataKey="outstanding" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Outstanding" />
+              <LineChart data={kpiData} margin={{ top: 10, right: 15, left: -5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b8" opacity={0.15} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: "#cbd5e1" }}
+                />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={{ stroke: "#cbd5e1" }}
+                  tickFormatter={(val: number) => {
+                    if (val === 0) return "₹0";
+                    if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+                    if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+                    if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`;
+                    return `₹${val}`;
+                  }}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    const pt = payload[0]?.payload;
+                    return (
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md p-3.5 shadow-xl text-xs space-y-2 min-w-[210px]">
+                        <div className="pb-1.5 border-b border-slate-100 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between">
+                          <span>{pt?.dateRange || label}</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            {pt?.invoiceCount ?? 0} {pt?.invoiceCount === 1 ? "invoice" : "invoices"}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 font-medium">
+                          <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              Received:
+                            </span>
+                            <span className="font-bold tabular-nums">
+                              {formatInr((pt?.paymentReceived || 0) * 100)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-amber-600 dark:text-amber-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              Expected Total:
+                            </span>
+                            <span className="font-bold tabular-nums">
+                              {formatInr((pt?.expectedTotal || 0) * 100)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-rose-600 dark:text-rose-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-rose-500" />
+                              Outstanding:
+                            </span>
+                            <span className="font-bold tabular-nums">
+                              {formatInr((pt?.outstanding || 0) * 100)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="paymentReceived"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  dot={{ r: 3.5, strokeWidth: 1.5, fill: "#10b981" }}
+                  activeDot={{ r: 5 }}
+                  name="Payments Received"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expectedTotal"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={{ r: 3.5, strokeWidth: 1.5, fill: "#f59e0b" }}
+                  activeDot={{ r: 5 }}
+                  name="Expected Total"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="outstanding"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ r: 3.5, strokeWidth: 1.5, fill: "#ef4444" }}
+                  activeDot={{ r: 5 }}
+                  name="Outstanding"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
