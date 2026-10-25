@@ -400,7 +400,23 @@ export function OnboardingModal({
                 <span>Location & Tax Details</span>
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="mb-3">
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                    GSTIN (Optional — auto-detects State)
+                  </label>
+                  <input
+                    type="text"
+                    value={gstin}
+                    onChange={(e) => handleGstinChange(e.target.value)}
+                    placeholder="e.g. 27AABCS1234Q1ZM"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white uppercase font-mono text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  />
+                  {gstinError && (
+                    <p className="text-[11px] text-rose-500 mt-1">{gstinError}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     State (Place of Supply)

@@ -46,7 +46,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [_authError, setAuthError] = useState<string | null>(null);
 
 
   const today = useMemo(() => {
@@ -73,7 +73,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
   const overdueInvoices = useMemo(() => {
     return invoices.filter(isInvoiceOverdue);
-  }, [invoices, today]);
+  }, [invoices, isInvoiceOverdue]);
 
   const overdueAmount = useMemo(() => {
     return overdueInvoices.reduce((sum: number, inv: any) => sum + (inv?.outstanding || 0), 0);
@@ -97,7 +97,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       }
       return sum;
     }, 0);
-  }, [invoices, fourWeeksFromNow, today]);
+  }, [invoices, fourWeeksFromNow, isInvoiceOverdue]);
 
   const handleGoogleSignIn = async () => {
     setAuthError(null);
@@ -760,7 +760,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       <InvoiceCameraModal
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
-        onInvoiceStored={(stored) => {
+        onInvoiceStored={(_stored) => {
           setIsCameraModalOpen(false);
           navigate("/invoices");
         }}

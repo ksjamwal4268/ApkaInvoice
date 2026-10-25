@@ -316,10 +316,6 @@ ${bName}`;
 
   // Dispatch Email Reminder via n8n Webhook
   const handleSendEmailReminder = async () => {
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
     if (!selectedInvoice) return;
     if (isSending) return;
 
@@ -359,10 +355,6 @@ ${bName}`;
 
   // WhatsApp automated reminder via src/api/n8n.js
   const handleSendWhatsAppReminder = async () => {
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
     if (!selectedInvoice || isSendingWhatsApp) return;
 
     const rawPhone = (whatsappPhone ?? "").trim();
@@ -462,10 +454,6 @@ ${bName}`;
 
   // WhatsApp Send helper / Fallback
   const handleOpenWhatsApp = () => {
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
     if (!selectedInvoice) return;
     const phoneClean = (whatsappPhone ?? "").replace(/\D/g, "");
     if (!phoneClean) {

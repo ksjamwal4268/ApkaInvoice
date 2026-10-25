@@ -94,13 +94,39 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [scannedImagePreview, setScannedImagePreview] = useState<string | null>(null);
   const [ocrBadge, setOcrBadge] = useState<string | null>(null);
-  const [isUploadingDirect, setIsUploadingDirect] = useState(false);
-
   // Modals state
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleCustomerChange = useCallback((id: string) => {
+    setCustomerId(id);
+    const selected = customers.find(
+      (c) => c.id === id || (c.name && c.name.toLowerCase() === id.toLowerCase())
+    );
+    if (selected) {
+      setGstin(selected.gstin || "");
+      if (selected.state) {
+        const found = INDIAN_STATES.find(
+          (s) => s.state.toLowerCase() === selected.state.toLowerCase()
+        );
+        setPlaceOfSupply(found ? found.state : selected.state);
+      }
+      setBuyerPhone(selected.phone || "");
+      setBuyerEmail(selected.email || "");
+      setGstinError(
+        selected.gstin && validateGstin(selected.gstin)
+          ? null
+          : selected.gstin
+          ? "Invalid GSTIN format"
+          : null
+      );
+    } else {
+      setGstin("");
+      setBuyerPhone("");
+      setBuyerEmail("");
+      setGstinError(null);
+    }
+  }, [customers]);
 
   // Sync sender info from business profile whenever it updates or loads
   useEffect(() => {
@@ -160,7 +186,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         handleCustomerChange(custParam);
       }
     }
-  }, [isEditing, routeInvoiceId, invoices, customers, searchParams, businessProfile.state]);
+  }, [isEditing, routeInvoiceId, invoices, customers, searchParams, businessProfile.state, handleCustomerChange]);
 
   // Callback from Camera / OCR modal
   const handleApplyExtractedData = useCallback(
@@ -308,42 +334,11 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   // When fromUpload is true, do not recalculate total from line items or add tax on top.
   // We use uploadAmount directly as total.
   const subtotal = fromUpload && uploadAmount !== null ? toPaise(uploadAmount) : calculatedSubtotal;
-  const totalGst = fromUpload && uploadAmount !== null ? 0 : calculatedGst;
   const roundOff = fromUpload && uploadAmount !== null ? 0 : (roundedTotal - rawTotal);
   const grandTotal = fromUpload && uploadAmount !== null ? toPaise(uploadAmount) : roundedTotal;
   const cgstVal = fromUpload && uploadAmount !== null ? 0 : (isSameState ? cgst : 0);
   const sgstVal = fromUpload && uploadAmount !== null ? 0 : (isSameState ? sgst : 0);
   const igstVal = fromUpload && uploadAmount !== null ? 0 : (!isSameState ? igst : 0);
-
-  const handleCustomerChange = useCallback((id: string) => {
-    setCustomerId(id);
-    const selected = customers.find(
-      (c) => c.id === id || (c.name && c.name.toLowerCase() === id.toLowerCase())
-    );
-    if (selected) {
-      setGstin(selected.gstin || "");
-      if (selected.state) {
-        const found = INDIAN_STATES.find(
-          (s) => s.state.toLowerCase() === selected.state.toLowerCase()
-        );
-        setPlaceOfSupply(found ? found.state : selected.state);
-      }
-      setBuyerPhone(selected.phone || "");
-      setBuyerEmail(selected.email || "");
-      setGstinError(
-        selected.gstin && validateGstin(selected.gstin)
-          ? null
-          : selected.gstin
-          ? "Invalid GSTIN format"
-          : null
-      );
-    } else {
-      setGstin("");
-      setBuyerPhone("");
-      setBuyerEmail("");
-      setGstinError(null);
-    }
-  }, [customers]);
 
   const handleGstinChange = (val: string) => {
     const upper = val.toUpperCase().trim();
@@ -479,10 +474,6 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   };
 
   const handleSave = () => {
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
     if (!customerId) {
       alert("Please select or add a buyer before saving.");
       return;
@@ -1132,6 +1123,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             <button
               type="button"
               onClick={() => {
+                setFromUpload(false);
                 const nextId = String(lineItems.length + 1);
                 setLineItems([
                   ...lineItems,

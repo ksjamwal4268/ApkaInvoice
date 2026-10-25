@@ -1,7 +1,7 @@
 import { Customer, Invoice, INVOICES, CUSTOMERS, EvidenceEntry, CustomerId, InvoiceId } from "./sampleData";
 import { Paise, toPaise } from "../utils/money";
 import { db, isCloudAvailable, markCloudBlocked } from "../firebaseApp";
-import { doc, getDoc, setDoc, collection, addDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, addDoc } from "firebase/firestore";
 import { uploadInvoice, sendEmailReminder, sendWhatsAppReminder } from "../api/n8n.js";
 
 export type { Customer, Invoice, EvidenceEntry, CustomerId, InvoiceId };
@@ -107,7 +107,9 @@ export function getActiveUserId(): string {
       const parsed = JSON.parse(raw);
       if (parsed?.id) return parsed.id;
     }
-  } catch {}
+  } catch (_err) {
+    // fallback to guest
+  }
   return "guest";
 }
 
@@ -358,16 +360,7 @@ export function getStoredInvoices(): Invoice[] {
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Only filter out legacy hardcoded sample invoices (inv-001 through inv-010) — NEVER clear or overwrite real user invoices
-    const cleanInvoices = parsed.filter(
-      (inv: any) =>
-        !/^inv-00[1-9]$|^inv-010$/.test(inv?.id ?? "") &&
-        !inv?.invoiceNumber?.startsWith("SP/24-25/")
-    );
-    if (cleanInvoices.length !== parsed.length) {
-      localStorage.setItem(key, JSON.stringify(cleanInvoices));
-    }
-    return cleanInvoices.map(reviveInvoice);
+    return parsed.map(reviveInvoice);
   } catch (e) {
     console.error("Failed to parse invoices from storage", e);
     return [];
@@ -440,7 +433,9 @@ export function addInvoiceEvidence(invoiceId: InvoiceId, entry: EvidenceEntry): 
     if (uid && uid !== "guest" && isCloudAvailable()) {
       try {
         setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch(() => markCloudBlocked());
-      } catch {}
+      } catch (_err) {
+        // ignore
+      }
     }
   }
 }
@@ -551,7 +546,9 @@ export function getStoredBusinessProfile(): BusinessProfile {
             raw = legacyRaw;
             localStorage.setItem(key, legacyRaw);
           }
-        } catch {}
+        } catch (_err) {
+          // ignore
+        }
       }
     }
 
@@ -672,33 +669,6 @@ export function saveN8nConfig(cfg: N8nConfig): void {
   dispatchStoreChange();
 }
 
-// Sample presets for OCR parser testing when n8n webhook is not yet set
-const SAMPLE_OCR_PRESETS: ExtractedInvoiceData[] = [
-  {
-    invoiceNumber: "INV-2025-001",
-    buyerName: "Apex Logistics India",
-    buyerGstin: "27AAACA9876P1ZV",
-    buyerCity: "Pune",
-    buyerState: "Maharashtra",
-    buyerPhone: "+91 98220 12345",
-    buyerEmail: "procurement@apexlogistics.in",
-    invoiceDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-    terms: "Net 30",
-    lineItems: [
-      { id: "1", description: "Corrugated Carton Boxes 7-Ply Heavy Duty (500x400x300mm)", hsn: "4819", quantity: 350, rate: 68, gstRate: 18 },
-      { id: "2", description: "Self-Adhesive BOPP Packaging Tape (Brown, 72mm x 65m)", hsn: "3919", quantity: 50, rate: 125, gstRate: 18 },
-    ],
-    subtotal: 30050,
-    totalGst: 5409,
-    grandTotal: 35459,
-    isNewBuyer: true,
-    confidenceScore: 98.4,
-  },
-];
-
-let presetCycle = 0;
-
 export function dataUrlToBlob(dataUrl: string): Blob {
   const arr = dataUrl.split(",");
   const mimeMatch = arr[0].match(/:(.*?);/);
@@ -748,12 +718,8 @@ export function storeExtractedInvoice(
     saveCustomer(customer);
   }
 
-  const isIntraState = Boolean(
-    extracted?.buyerState && profile?.state && extracted.buyerState.trim().toLowerCase() === profile.state.trim().toLowerCase()
-  );
   const grandTotalPaise = Math.round((extracted.grandTotal || 0) * 100);
   const subtotalPaise = grandTotalPaise;
-  const totalGstPaise = 0;
   const cgstPaise = 0;
   const sgstPaise = 0;
   const igstPaise = 0;

@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { X, Building2, User, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check, Trash2 } from "lucide-react";
+import { X, Building2, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check, Trash2 } from "lucide-react";
 import { Customer } from "../data/sampleData";
 import { validateGstin, INDIAN_STATES } from "../utils/gstin";
-import { useAuth } from "../utils/auth";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -27,7 +26,6 @@ export function CustomerModal({
   suggestedState,
   suggestedCity,
 }: CustomerModalProps): React.JSX.Element | null {
-  const { user, signInWithGoogle } = useAuth();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -36,9 +34,7 @@ export function CustomerModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [isChronicallyLate, setIsChronicallyLate] = useState(false);
-  const [grade, setGrade] = useState<"A" | "B" | "C">("B");
   const [paymentCategory, setPaymentCategory] = useState<"green" | "yellow" | "red">("green");
-  const [reason, setReason] = useState("");
   const [gstinError, setGstinError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,10 +47,8 @@ export function CustomerModal({
       setEmail(initialCustomer.email);
       setPhone(initialCustomer.phone);
       setIsChronicallyLate(initialCustomer.isChronicallyLate);
-      setGrade(initialCustomer.grade);
       const cat = initialCustomer.paymentCategory || (initialCustomer.grade === "A" ? "green" : initialCustomer.grade === "C" ? "red" : "yellow");
       setPaymentCategory(cat);
-      setReason(initialCustomer.gradeReasons?.[0] || "");
     } else {
       setName(suggestedName || "");
       setCity(suggestedCity || "");
@@ -69,9 +63,7 @@ export function CustomerModal({
       setEmail("");
       setPhone("+91 ");
       setIsChronicallyLate(false);
-      setGrade("A");
       setPaymentCategory("green");
-      setReason("New buyer registered");
     }
   }, [initialCustomer, suggestedName, suggestedGstin, suggestedState, suggestedCity, isOpen]);
 
@@ -97,10 +89,6 @@ export function CustomerModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
     if (!name.trim()) {
       alert("Customer / Buyer name is required.");
       return;
@@ -317,7 +305,6 @@ export function CustomerModal({
                   key={item.cat}
                   onClick={() => {
                     setPaymentCategory(item.cat);
-                    setGrade(item.grade);
                     setIsChronicallyLate(item.cat === "red");
                   }}
                   className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${

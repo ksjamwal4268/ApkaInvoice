@@ -22,6 +22,7 @@ export const CometCard = ({
   const targetPos = useRef({ x: 0, y: 0 });
   const currentPos = useRef({ x: 0, y: 0 });
   const rafId = useRef<number | null>(null);
+  const animateRef = useRef<() => void>(() => {});
 
   const [cardStyle, setCardStyle] = useState({
     transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) translate3d(0px, 0px, 0px) scale3d(1, 1, 1)",
@@ -60,11 +61,15 @@ export const CometCard = ({
       Math.abs(targetPos.current.y - curY) < 0.001;
 
     if (!isSettled || isHovered) {
-      rafId.current = requestAnimationFrame(animate);
+      rafId.current = requestAnimationFrame(() => animateRef.current());
     } else {
       rafId.current = null;
     }
   }, [rotateDepth, translateDepth, isHovered]);
+
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -81,14 +86,14 @@ export const CometCard = ({
     targetPos.current = { x: xPct, y: yPct };
 
     if (!rafId.current) {
-      rafId.current = requestAnimationFrame(animate);
+      rafId.current = requestAnimationFrame(() => animateRef.current());
     }
   };
 
   const handleMouseEnter = () => {
     setIsHovered(true);
     if (!rafId.current) {
-      rafId.current = requestAnimationFrame(animate);
+      rafId.current = requestAnimationFrame(() => animateRef.current());
     }
   };
 
@@ -96,7 +101,7 @@ export const CometCard = ({
     setIsHovered(false);
     targetPos.current = { x: 0, y: 0 };
     if (!rafId.current) {
-      rafId.current = requestAnimationFrame(animate);
+      rafId.current = requestAnimationFrame(() => animateRef.current());
     }
   };
 

@@ -55,7 +55,7 @@ export function InvoiceCameraModal({
   const [uploadSeconds, setUploadSeconds] = useState(0);
   const [processingStatus, setProcessingStatus] = useState<string>("Reading invoice…");
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [lastUploadedFile, setLastUploadedFile] = useState<File | Blob | null>(null);
+  const [_lastUploadedFile, setLastUploadedFile] = useState<File | Blob | null>(null);
   const [extractedInvoice, setExtractedInvoice] = useState<N8nUploadedInvoice | null>(null);
   const [storedInvoice, setStoredInvoice] = useState<Invoice | null>(null);
 
@@ -348,6 +348,7 @@ export function InvoiceCameraModal({
       stopCamera();
     }
     return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialFile, initialTab]);
 
   const handleSaveEditedInvoice = (e: React.FormEvent) => {

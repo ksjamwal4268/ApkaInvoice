@@ -104,13 +104,11 @@ export function Forecast({ lang: _lang }: { lang: Language }) {
         expectedDate = addDays(expectedDate, whatIf.daysLate);
       }
 
-      let weekIdx = -1;
       const weekStarts = forecast.weeks.map((w) => new Date(w.weekStart));
-      if (expectedDate < weekStarts[0]) {
-        weekIdx = 0; // Overdue belongs to current week
-      } else {
-        weekIdx = weekStarts.findIndex((ws) => expectedDate >= ws && expectedDate < addDays(ws, 7));
-      }
+      const weekIdx =
+        expectedDate < weekStarts[0]
+          ? 0 // Overdue belongs to current week
+          : weekStarts.findIndex((ws) => expectedDate >= ws && expectedDate < addDays(ws, 7));
 
       if (weekIdx >= 0 && weekIdx < 8) {
         map[weekIdx].push(inv);

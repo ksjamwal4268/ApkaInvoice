@@ -144,15 +144,10 @@ export function buildForecast({
     }
 
     // Determine week bucket
-    let weekIndex = -1;
-    if (expectedDate < weeks[0]) {
-      // Overdue invoices are immediate collection targets in Week 0 (Current Week)
-      weekIndex = 0;
-    } else {
-      weekIndex = weeks.findIndex(
-        (w) => expectedDate >= w && expectedDate < addDays(w, 7)
-      );
-    }
+    const weekIndex =
+      expectedDate < weeks[0]
+        ? 0 // Overdue invoices are immediate collection targets in Week 0 (Current Week)
+        : weeks.findIndex((w) => expectedDate >= w && expectedDate < addDays(w, 7));
 
     if (weekIndex >= 0 && weekIndex < 8) {
       weeklyInflow[weekIndex] = add(weeklyInflow[weekIndex], outstanding);

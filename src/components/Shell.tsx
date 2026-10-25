@@ -7,6 +7,8 @@ import {
   MessageCircle,
   Users,
   Plus,
+  TrendingUp,
+  Settings,
   Menu,
 } from "lucide-react";
 import { Language } from "../data/i18n";
@@ -65,6 +67,11 @@ export function Shell({
       icon: <MessageCircle className="w-5 h-5 shrink-0 text-slate-700" />,
       badge: overdueCount > 0 ? `${overdueCount}` : undefined,
       badgeColor: "bg-rose-500 text-white",
+    },
+    {
+      label: "Cash Forecast",
+      href: "/forecast",
+      icon: <TrendingUp className="w-5 h-5 shrink-0 text-slate-700" />,
     },
     {
       label: "Customers",
@@ -149,7 +156,15 @@ export function Shell({
             </button>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBusinessModalOpen(true)}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-teal-600 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              title="Company Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
             <Link
               to="/invoices/create"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition-colors tap-target"

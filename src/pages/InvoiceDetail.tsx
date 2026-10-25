@@ -150,6 +150,32 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
             <Printer className="w-4 h-4 text-slate-500" />
             <span>Print / PDF</span>
           </button>
+
+
+
+          {/* Dispute Action Button */}
+          <Link
+            to={`/dispute/${invoice.id}`}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors tap-target ${
+              invoice.isDisputed
+                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100"
+                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+            }`}
+          >
+            <AlertOctagon className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>{invoice.isDisputed ? "Dispute Active" : "Log Dispute"}</span>
+          </Link>
+
+          {/* Legal Demand Notice (for overdue invoices) */}
+          {invoice.status === "overdue" && invoice.outstanding > 0 && !invoice.isDisputed && (
+            <Link
+              to={`/demand-letter?invoice=${invoice.id}`}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors tap-target"
+            >
+              <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <span>Legal Demand Letter</span>
+            </Link>
+          )}
         </div>
       </div>
 

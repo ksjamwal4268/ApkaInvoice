@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
@@ -55,20 +55,20 @@ export function Dashboard({ lang }: { lang: Language }) {
     }, 0);
   }, [invoices]);
 
-  const isInvoiceOverdue = (inv: any) => {
+  const isInvoiceOverdue = useCallback((inv: any) => {
     if (!inv || inv.status === "paid" || inv.status === "disputed") return false;
     if ((inv.outstanding || 0) <= 0) return false;
     if ((inv.status ?? "").toLowerCase() === "overdue") return true;
     if (!inv.dueDate) return false;
     const due = new Date(inv.dueDate);
     return due < today;
-  };
+  }, [today]);
 
   const overdueInvoices = useMemo(() => {
     return invoices
       .filter(isInvoiceOverdue)
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-  }, [invoices, today]);
+  }, [invoices, isInvoiceOverdue]);
 
   const overdueAmount = useMemo(() => {
     return overdueInvoices.reduce((sum, inv) => sum + (inv.outstanding || 0), 0);

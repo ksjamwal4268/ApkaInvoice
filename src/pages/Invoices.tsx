@@ -338,10 +338,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => {
-              if (!user) {
-                signInWithGoogle();
-                return;
-              }
               setModalInitialFile(null);
               setIsCameraModalOpen(true);
             }}
@@ -519,10 +515,6 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
               <button
                 type="button"
                 onClick={() => {
-                  if (!user) {
-                    signInWithGoogle();
-                    return;
-                  }
                   setIsCameraModalOpen(true);
                 }}
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-xs cursor-pointer"

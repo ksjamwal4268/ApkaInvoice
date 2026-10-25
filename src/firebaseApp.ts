@@ -24,7 +24,9 @@ export function markCloudBlocked(): void {
   try {
     localStorage.setItem("cc_firestore_blocked", "true");
     disableNetwork(db).catch(() => {});
-  } catch {}
+  } catch (_err) {
+    // ignore
+  }
 }
 
 if (typeof window !== "undefined") {
