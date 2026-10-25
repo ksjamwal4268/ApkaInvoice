@@ -30,6 +30,7 @@ export interface Customer {
   name: string;
   city: string;
   state: string;
+  address?: string;
   gstin: string | null;
   pan: string | null;
   email: string;

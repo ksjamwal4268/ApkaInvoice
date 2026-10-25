@@ -27,7 +27,7 @@ import { useDataStore } from "../hooks/useDataStore";
 import { useAuth } from "../utils/auth";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CustomerModal } from "../components/CustomerModal";
-import { ExtractedInvoiceData, processInvoiceImageWithN8n, getStoredBusinessProfile } from "../data/dataStore";
+import { ExtractedInvoiceData, uploadInvoiceToN8n, getStoredBusinessProfile } from "../data/dataStore";
 import { Customer, getCustomerCategory } from "../data/sampleData";
 import { INDIAN_STATES } from "../utils/gstin";
 
@@ -156,30 +156,35 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
   // Callback from Camera / OCR modal
   const handleApplyExtractedData = useCallback(
-    (data: ExtractedInvoiceData, imagePreviewUrl?: string) => {
+    (data: any, imagePreviewUrl?: string) => {
       if (imagePreviewUrl) {
         setScannedImagePreview(imagePreviewUrl);
       }
-      setOcrBadge(`Auto-Extracted from Invoice Document (${data.confidenceScore}% confidence)`);
+      setOcrBadge(`Auto-Extracted from Invoice Document`);
 
-      const bName = (data?.buyerName ?? "").trim();
-      const bGstin = (data?.buyerGstin ?? "").trim().toUpperCase();
+      const bName = (data?.payer_name ?? data?.buyerName ?? "").trim();
+      const bGstin = (data?.payer_gstin ?? data?.buyerGstin ?? "").trim().toUpperCase();
+      const bEmail = (data?.payer_email ?? data?.buyerEmail ?? "").trim();
+      const bPhone = (data?.payer_phone ?? data?.buyerPhone ?? "").trim();
+      const bAddress = (data?.payer_address ?? data?.buyerAddress ?? "").trim();
+
       let matchedCustomer = customers.find(
         (c) =>
           Boolean(c && (c.name ?? "").toLowerCase() === (bName ?? "").toLowerCase()) ||
           Boolean(bGstin && c && (c.gstin ?? "").toUpperCase() === bGstin)
       );
 
-      if (!matchedCustomer && data.buyerName) {
+      if (!matchedCustomer && bName) {
         const newCust: Customer = {
           id: `cust-${Date.now().toString(36)}`,
-          name: data.buyerName,
-          city: data.buyerCity || "",
-          state: data.buyerState || "",
-          gstin: data.buyerGstin || null,
-          pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
-          email: data.buyerEmail || "",
-          phone: data.buyerPhone || "",
+          name: bName,
+          city: bAddress ? (bAddress.split(",")[0] ?? "").trim() : (data?.buyerCity || ""),
+          state: data?.buyerState || "",
+          address: bAddress,
+          gstin: bGstin || null,
+          pan: bGstin && bGstin.length >= 12 ? bGstin.substring(2, 12) : null,
+          email: bEmail || "",
+          phone: bPhone || "",
           isChronicallyLate: false,
           grade: "A",
           gradeReasons: ["Registered via Invoice Document Scanner"],
@@ -190,31 +195,52 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
       if (matchedCustomer) {
         setCustomerId(matchedCustomer.id);
-        setGstin(data.buyerGstin || matchedCustomer.gstin || "");
-        setPlaceOfSupply(data.buyerState || matchedCustomer.state || "");
-        setBuyerPhone(data.buyerPhone || matchedCustomer.phone || "");
-        setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
+        setGstin(bGstin || matchedCustomer.gstin || "");
+        setPlaceOfSupply(matchedCustomer.state || (bAddress ? (bAddress.split(",").slice(-2)[0] ?? "").trim() : ""));
+        setBuyerPhone(bPhone || matchedCustomer.phone || "");
+        setBuyerEmail(bEmail || matchedCustomer.email || "");
       }
 
-      setInvoiceNumber((data.invoiceNumber ?? "").trim());
-      if (data.terms) {
-        setTerms(data.terms as PaymentTerms);
-      }
-      if (data.invoiceDate) {
-        setInvoiceDate(data.invoiceDate);
+      const invNum = (data?.invoice_number ?? data?.invoiceNumber ?? "").trim();
+      // Ensure never putting a GSTIN into invoice number
+      const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(invNum);
+      if (invNum && !isGstinPattern) {
+        setInvoiceNumber(invNum);
+      } else if (data?.id) {
+        setInvoiceNumber(`INV-${data.id}`);
       }
 
-      if (data.lineItems && data.lineItems.length > 0) {
-        setLineItems(
-          data.lineItems.map((item, idx) => ({
-            id: String(idx + 1),
-            description: item.description,
-            hsn: item.hsn,
-            quantity: item.quantity,
-            rate: item.rate,
-            gstRate: item.gstRate,
-          }))
-        );
+      const invDate = (data?.invoice_date ?? data?.invoiceDate ?? "").trim();
+      if (invDate) {
+        setInvoiceDate(invDate);
+      }
+
+      const dueDate = (data?.due_date ?? data?.dueDate ?? "").trim();
+      if (dueDate && invDate) {
+        const d1 = new Date(invDate);
+        const d2 = new Date(dueDate);
+        const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
+        if (diffDays <= 15) setTerms("Net 15");
+        else if (diffDays <= 30) setTerms("Net 30");
+        else setTerms("Net 45");
+      }
+
+      const rawAmount = data?.amount !== undefined ? data.amount : data?.grandTotal;
+      if (rawAmount !== undefined && rawAmount !== null && rawAmount !== "") {
+        const amt = Number(rawAmount) || 0;
+        if (amt > 0) {
+          const baseRate = Math.round(amt * 0.82);
+          setLineItems([
+            {
+              id: "1",
+              description: `Goods / Services from ${(data?.vendor_name ?? "").trim() || "Vendor"}`,
+              hsn: "9983",
+              quantity: 1,
+              rate: baseRate,
+              gstRate: 18,
+            },
+          ]);
+        }
       }
     },
     [customers, saveCustomer]
@@ -294,25 +320,25 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   };
 
   // Direct file upload from the page
-  const handleDirectFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
+
     setIsUploadingDirect(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      setScannedImagePreview(base64);
-      try {
-        const res = await processInvoiceImageWithN8n(base64, true);
-        handleApplyExtractedData(res.data, base64);
-      } catch (err) {
-        console.error("Direct file extraction error:", err);
-      } finally {
-        setIsUploadingDirect(false);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const res = await uploadInvoiceToN8n(file);
+      handleApplyExtractedData(res);
+    } catch (err: any) {
+      alert("Could not read this invoice. Please upload a clear photo or PDF.");
+    } finally {
+      setIsUploadingDirect(false);
+      e.target.value = "";
+    }
   };
 
   const handleSaveBuyerModal = (newBuyer: Customer) => {

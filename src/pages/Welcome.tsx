@@ -274,7 +274,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <span>WhatsApp &amp; email reminders</span>
         <span>UPI payment links</span>
         <span>Instant bill photo OCR</span>
-        <span>Real-time payment tracking</span>
+        <span>Maintain &amp; manage invoice dues</span>
       </div>
 
       {/* 4. HOW IT WORKS SECTION */}
@@ -304,8 +304,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               onClick={() => navigate("/invoices")}
             >
               <div className="ic">2</div>
-              <h3>Track real-time invoices</h3>
-              <p>See billed, received and open balances with no guesswork.</p>
+              <h3>Maintain &amp; view invoices</h3>
+              <p>Keep a clear record of all your invoices, due dates, and balances in one place.</p>
             </div>
           </CometCard>
           <CometCard className="h-full">
@@ -375,9 +375,9 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                 </CometCard>
                 <CometCard className="h-full">
                   <div className="st">
-                    <small>Receivables tracking</small>
-                    <b>Real-Time</b>
-                    <i>Tracks invoice dues and overdue days</i>
+                    <small>Invoice management</small>
+                    <b>Organized</b>
+                    <i>Maintain invoice dues and stay informed</i>
                   </div>
                 </CometCard>
                 <CometCard className="h-full">
@@ -463,7 +463,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                   <FileText className="w-5 h-5 text-neutral-800" />
                 </div>
                 <h3>Invoice Ledger</h3>
-                <p>Track payment status, record settlements, and monitor outstanding buyer balances in real time.</p>
+                <p>Maintain all your invoices, view due dates, and keep a clear overview of pending dues.</p>
               </div>
             </CometCard>
             <CometCard className="sc-card">

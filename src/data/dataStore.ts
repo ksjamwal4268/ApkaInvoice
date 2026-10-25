@@ -520,26 +520,24 @@ export function storeExtractedInvoice(
   return newInvoice;
 }
 
-import {
-  recognizeInvoiceWithTesseract,
-  parseInvoiceText,
-  extractTextFromPdfDataUrl,
-} from "../utils/ocrParser";
-
 /**
- * Execute OCR extraction via n8n webhook or intelligent client-side OCR fallback
+ * Execute OCR extraction via n8n webhook
  */
 export interface N8nUploadedInvoice {
-  id?: string | null;
-  status?: string | null;
+  status: string;
+  id: number | string;
   invoice_number?: string | null;
+  invoice_date?: string | null;
+  due_date?: string | null;
   vendor_name?: string | null;
+  vendor_gstin?: string | null;
   payer_name?: string | null;
+  payer_gstin?: string | null;
+  payer_address?: string | null;
   payer_email?: string | null;
   payer_phone?: string | null;
   amount?: number | string | null;
   currency?: string | null;
-  due_date?: string | null;
   raw_text?: string | null;
 }
 
@@ -591,8 +589,7 @@ export async function uploadInvoiceToN8n(
 
   const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
 
-  // Treat EVERY field as optional: any can be empty, null, or missing
-  if (!payload || (payload.status ?? "").toLowerCase() !== "ready") {
+  if (!payload || ((payload.status ?? "") as string).toLowerCase() !== "ready") {
     console.warn("Upload response not ready:", payload);
     throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
   }
@@ -612,27 +609,34 @@ export function saveN8nExtractedInvoice(
   const payerName = (extracted?.payer_name ?? "").trim() || "Customer";
   const payerEmail = (extracted?.payer_email ?? "").trim();
   const payerPhone = (extracted?.payer_phone ?? "").trim();
+  const payerGstin = (extracted?.payer_gstin ?? "").trim().toUpperCase() || null;
+  const payerAddress = (extracted?.payer_address ?? "").trim();
 
-  let customer = customers.find(
-    (c) => Boolean(c && (c?.name ?? "").toLowerCase() === (payerName ?? "").toLowerCase())
+  let customer: Customer;
+  const existingCust = customers.find(
+    (c) =>
+      Boolean(c && (c?.name ?? "").toLowerCase() === (payerName ?? "").toLowerCase()) ||
+      Boolean(payerGstin && c && (c?.gstin ?? "").toUpperCase() === payerGstin)
   );
 
-  if (!customer) {
+  if (!existingCust) {
     customer = {
       id: `cust-${Date.now().toString(36)}`,
       name: payerName,
-      city: "",
+      city: payerAddress ? (payerAddress.split(",")[0] ?? "").trim() : "",
       state: "",
-      gstin: null,
-      pan: null,
+      address: payerAddress,
+      gstin: payerGstin,
+      pan: payerGstin && payerGstin.length >= 12 ? payerGstin.substring(2, 12) : null,
       email: payerEmail || "",
       phone: payerPhone || "",
       isChronicallyLate: false,
       grade: "A",
-      gradeReasons: ["Imported from Document AI"],
+      gradeReasons: ["Imported from Invoice Document"],
     };
     saveCustomer(customer);
   } else {
+    customer = { ...existingCust };
     let updatedCust = false;
     if (payerEmail && !customer.email) {
       customer.email = payerEmail;
@@ -640,6 +644,14 @@ export function saveN8nExtractedInvoice(
     }
     if (payerPhone && !customer.phone) {
       customer.phone = payerPhone;
+      updatedCust = true;
+    }
+    if (payerGstin && !customer.gstin) {
+      customer.gstin = payerGstin;
+      updatedCust = true;
+    }
+    if (payerAddress && !customer.address) {
+      customer.address = payerAddress;
       updatedCust = true;
     }
     if (updatedCust) {
@@ -652,60 +664,84 @@ export function saveN8nExtractedInvoice(
       ? extracted.amount
       : parseFloat(String(extracted?.amount ?? "0")) || 0;
   const amountPaise = Math.round(numericAmount * 100);
-  const parsedDue = extracted?.due_date ? new Date(extracted.due_date) : new Date(Date.now() + 30 * 86400000);
-  const dueDate = isNaN(parsedDue.getTime()) ? new Date(Date.now() + 30 * 86400000) : parsedDue;
 
-  // Requirement 4: Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
-  const targetId = existingInvoiceId || extracted?.id || `inv-${Date.now().toString(36)}`;
+  let dueDate: Date;
+  if ((extracted?.due_date ?? "").trim()) {
+    const parsed = new Date((extracted.due_date ?? "").trim());
+    dueDate = isNaN(parsed.getTime()) ? new Date(Date.now() + 30 * 86400000) : parsed;
+  } else {
+    dueDate = new Date(Date.now() + 30 * 86400000);
+  }
 
-  // Keep invoice number empty if not extracted
-  const safeInvoiceNumber = (extracted?.invoice_number ?? "").trim();
+  let invoiceDate: Date;
+  if ((extracted?.invoice_date ?? "").trim()) {
+    const parsed = new Date((extracted.invoice_date ?? "").trim());
+    invoiceDate = isNaN(parsed.getTime()) ? new Date() : parsed;
+  } else {
+    invoiceDate = new Date();
+  }
+
+  const targetId = existingInvoiceId || (extracted?.id ? String(extracted.id) : `inv-${Date.now().toString(36)}`);
+
+  // Rule 1 & Rule 6: Never put a GSTIN into the invoice number field.
+  // If invoice_number is "", let user type it or use "INV-" + id.
+  let safeInvoiceNumber = (extracted?.invoice_number ?? "").trim();
+  const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(safeInvoiceNumber);
+  if (isGstinPattern) {
+    safeInvoiceNumber = extracted?.id ? `INV-${extracted.id}` : "";
+  } else if (!safeInvoiceNumber && extracted?.id) {
+    safeInvoiceNumber = `INV-${extracted.id}`;
+  }
+
+  const subtotalPaise = Math.round(amountPaise * 0.82);
+  const gstPaise = amountPaise - subtotalPaise;
+  const cgstPaise = Math.round(gstPaise / 2);
+  const sgstPaise = gstPaise - cgstPaise;
+
+  const vendorName = (extracted?.vendor_name ?? "").trim() || "Vendor";
 
   const newInvoice: Invoice = {
     id: targetId,
     invoiceNumber: safeInvoiceNumber,
-    customerId: customer?.id || `cust-${Date.now().toString(36)}`,
-    customerName: customer?.name || payerName,
-    customerCity: customer?.city || "",
-    customerState: customer?.state || "",
-    customerGstin: customer?.gstin || null,
-    placeOfSupply: customer?.state || "",
-    invoiceDate: new Date(),
+    customerId: customer.id,
+    customerName: customer.name || payerName,
+    customerCity: customer.city || "",
+    customerState: customer.state || "",
+    customerGstin: customer.gstin || payerGstin || null,
+    placeOfSupply: customer.state || "",
+    invoiceDate,
     dueDate,
     terms: "Net 30",
     lineItems: [
       {
         id: "1",
-        description: `Invoice item for ${payerName}`,
+        description: `Goods / Services from ${vendorName}`,
         hsn: "9983",
         quantity: 1,
-        rate: amountPaise,
-        gstRate: 0,
+        rate: subtotalPaise,
+        gstRate: 18,
       },
     ],
-    subtotal: amountPaise,
-    cgst: 0,
-    sgst: 0,
+    subtotal: subtotalPaise,
+    cgst: cgstPaise,
+    sgst: sgstPaise,
     igst: 0,
     roundOff: 0,
     total: amountPaise,
     amountPaid: 0,
     outstanding: amountPaise,
-    status: "ready", // Mark as Ready in the UI
+    status: "due",
     isDisputed: false,
     disputeReason: null,
     billOfSupply: false,
     pdfUrl: pdfPreviewUrl || null,
-    currency: extracted?.currency || "INR",
-    payerName,
-    rawExtraction: extracted,
     evidence: [
       {
         id: `ev-${Date.now()}`,
         date: new Date(),
         type: "invoice-sent",
-        title: "Invoice Extracted & Verified",
-        description: `Status: Ready. Payer: ${payerName}, Amount: ₹${numericAmount.toLocaleString()}, Due: ${extracted?.due_date || "Net 30"}`,
+        title: "Invoice Extracted from Document",
+        description: `Imported via Document AI. Vendor: ${vendorName}.`,
         amount: amountPaise,
         channel: "email",
       },
@@ -717,142 +753,56 @@ export function saveN8nExtractedInvoice(
 }
 
 export async function processInvoiceImageWithN8n(
-  imageData: string | File,
-  useRealWebhook: boolean = false,
-  extraParams?: {
-    payerEmail?: string;
-    payerPhone?: string;
-    fileName?: string;
-    ocrEngine?: "auto" | "browser" | "n8n";
-    onProgress?: (step: string) => void;
-  }
+  imageData: string | File
 ): Promise<{
   data: ExtractedInvoiceData;
-  source: "n8n_live" | "ocr_tesseract" | "n8n_simulated";
-  rawText?: string;
+  source: "n8n_live";
 }> {
-  const config = getN8nConfig();
-  const engine = extraParams?.ocrEngine || "auto";
-
-  // Step 1: Try n8n cloud webhook (only if engine is not explicitly set to browser-only)
-  if (engine !== "browser" && useRealWebhook && config.ocrWebhookUrl && config.ocrWebhookUrl.startsWith("http")) {
-    try {
-      extraParams?.onProgress?.("Uploading to n8n Document AI Webhook...");
-      const formData = new FormData();
-      if (typeof imageData === "string") {
-        if (imageData.startsWith("data:")) {
-          const blob = dataUrlToBlob(imageData);
-          const ext = blob.type.includes("pdf") ? "pdf" : "jpg";
-          formData.append("data", blob, extraParams?.fileName || `invoice.${ext}`);
-          formData.append("file", blob, extraParams?.fileName || `invoice.${ext}`);
-        } else {
-          formData.append("data", imageData);
-          formData.append("imageBase64", imageData);
-        }
-      } else {
-        const name = (imageData as File).name || (imageData.type.includes("pdf") ? "invoice.pdf" : "invoice.jpg");
-        formData.append("data", imageData, name);
-        formData.append("file", imageData, name);
-      }
-      if (extraParams?.payerEmail) {
-        formData.append("payer_email", extraParams.payerEmail);
-      }
-      if (extraParams?.payerPhone) {
-        formData.append("payer_phone", extraParams.payerPhone);
-      }
-      formData.append("timestamp", new Date().toISOString());
-
-      const res = await fetch(config.ocrWebhookUrl, {
-        method: "POST",
-        headers: config.apiKey ? { "X-API-KEY": config.apiKey } : undefined,
-        body: formData,
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const payload = Array.isArray(json) ? json[0] : json;
-        if (payload && (payload.invoiceNumber || payload.invoice_number || payload.amount || payload.grandTotal)) {
-          const grandTotal = Number(payload.amount || payload.grandTotal || 0);
-          const subtotal = Number(payload.subtotal || (grandTotal > 0 ? grandTotal * 0.82 : 0));
-          const totalGst = Number(payload.totalGst || payload.total_gst || (grandTotal > 0 ? grandTotal * 0.18 : 0));
-
-          const normalized: ExtractedInvoiceData = {
-            invoiceNumber: payload.invoice_number || payload.invoiceNumber || "",
-            buyerName: payload.payer_name || payload.buyerName || "Customer",
-            buyerGstin: payload.payer_gstin || payload.buyerGstin || "",
-            buyerCity: payload.payer_city || payload.buyerCity || "",
-            buyerState: payload.payer_state || payload.buyerState || "",
-            buyerPhone: payload.payer_phone || payload.buyerPhone || extraParams?.payerPhone || "",
-            buyerEmail: payload.payer_email || payload.buyerEmail || extraParams?.payerEmail || "",
-            invoiceDate: payload.invoice_date || payload.invoiceDate || new Date().toISOString().split("T")[0],
-            dueDate: payload.due_date || payload.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-            terms: payload.terms || "Net 30",
-            lineItems: payload.lineItems || payload.line_items || [
-              {
-                id: "1",
-                description: payload.description || "General Goods / Services",
-                hsn: payload.hsn || "9983",
-                quantity: 1,
-                rate: grandTotal,
-                gstRate: 18,
-              },
-            ],
-            subtotal,
-            totalGst,
-            grandTotal,
-            isNewBuyer: true,
-            confidenceScore: payload.confidenceScore || 98.0,
-          };
-          return { data: normalized, source: "n8n_live" };
-        }
-      } else {
-        extraParams?.onProgress?.("n8n cloud returned error. Switched to in-browser Neural OCR...");
-      }
-    } catch (err) {
-      console.warn("n8n live webhook unavailable or returned error, initiating neural OCR fallback:", err);
-      extraParams?.onProgress?.("n8n cloud unavailable. Switched to in-browser Neural OCR...");
+  let file: File | Blob;
+  if (typeof imageData === "string") {
+    if (imageData.startsWith("data:")) {
+      file = dataUrlToBlob(imageData);
+    } else {
+      file = new Blob([imageData], { type: "text/plain" });
     }
+  } else {
+    file = imageData;
   }
 
-  // Step 2: Client-side Neural OCR using Tesseract (reads actual photo text!)
-  try {
-    extraParams?.onProgress?.("Neural Engine: Reading invoice text, GSTIN & totals...");
-    let rawText = "";
+  const result = await uploadInvoiceToN8n(file);
+  const numericAmount =
+    typeof result.amount === "number" ? result.amount : parseFloat(String(result.amount ?? "0")) || 0;
+  const subtotal = Math.round(numericAmount * 0.82);
+  const gst = numericAmount - subtotal;
 
-    // If PDF, attempt to extract embedded text stream first
-    if (typeof imageData === "string" && imageData.startsWith("data:application/pdf")) {
-      rawText = extractTextFromPdfDataUrl(imageData);
-    }
-
-    if (!rawText || rawText.trim().length < 15) {
-      rawText = await recognizeInvoiceWithTesseract(imageData, (status) => {
-        extraParams?.onProgress?.(status);
-      });
-    }
-
-    if (rawText && rawText.trim().length > 15) {
-      const parsed = parseInvoiceText(rawText, extraParams);
-      return {
-        data: parsed,
-        source: "ocr_tesseract",
-        rawText,
-      };
-    }
-  } catch (ocrErr) {
-    console.warn("Neural OCR failed, falling back to simulated parser:", ocrErr);
-  }
-
-  // Step 3: Intelligent preset fallback if image is completely unreadable
-  await new Promise((r) => setTimeout(r, 600));
-  const preset = SAMPLE_OCR_PRESETS[presetCycle % SAMPLE_OCR_PRESETS.length];
-  presetCycle++;
-  return {
-    data: {
-      ...preset,
-      invoiceDate: new Date().toISOString().split("T")[0],
-    },
-    source: "n8n_simulated",
+  const normalized: ExtractedInvoiceData = {
+    invoiceNumber: (result.invoice_number ?? "").trim(),
+    buyerName: (result.payer_name ?? "").trim() || "Customer",
+    buyerGstin: (result.payer_gstin ?? "").trim().toUpperCase(),
+    buyerCity: (result.payer_address ?? "").split(",")[0]?.trim() || "",
+    buyerState: "",
+    buyerPhone: (result.payer_phone ?? "").trim(),
+    buyerEmail: (result.payer_email ?? "").trim(),
+    invoiceDate: (result.invoice_date ?? "").trim() || new Date().toISOString().split("T")[0],
+    dueDate: (result.due_date ?? "").trim() || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+    terms: "Net 30",
+    lineItems: [
+      {
+        id: "1",
+        description: `Goods / Services from ${(result.vendor_name ?? "").trim() || "Vendor"}`,
+        hsn: "9983",
+        quantity: 1,
+        rate: subtotal,
+        gstRate: 18,
+      },
+    ],
+    subtotal,
+    totalGst: gst,
+    grandTotal: numericAmount,
+    confidenceScore: 98.0,
   };
+
+  return { data: normalized, source: "n8n_live" };
 }
 
 /**

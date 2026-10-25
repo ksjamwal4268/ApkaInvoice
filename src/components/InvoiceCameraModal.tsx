@@ -19,7 +19,6 @@ import {
   N8nUploadedInvoice,
 } from "../data/dataStore";
 import { Invoice } from "../data/sampleData";
-import { recognizeInvoiceWithTesseract, parseInvoiceText } from "../utils/ocrParser";
 import { useAuth } from "../utils/auth";
 
 export type TabType = "all" | "photo" | "pdf" | "camera" | "review";
@@ -60,13 +59,22 @@ export function InvoiceCameraModal({
   const [extractedInvoice, setExtractedInvoice] = useState<N8nUploadedInvoice | null>(null);
   const [storedInvoice, setStoredInvoice] = useState<Invoice | null>(null);
 
-  // Editable fields for review ("Photo reading can get a value wrong")
+  // Controlled form fields mapped strictly from endpoint keys
   const [editInvoiceNumber, setEditInvoiceNumber] = useState("");
-  const [editPayerName, setEditPayerName] = useState("");
-  const [editPayerEmail, setEditPayerEmail] = useState("");
-  const [editPayerPhone, setEditPayerPhone] = useState("");
-  const [editAmount, setEditAmount] = useState(0);
+  const [editInvoiceDate, setEditInvoiceDate] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
+  const [editBuyerName, setEditBuyerName] = useState("");
+  const [editBuyerGstin, setEditBuyerGstin] = useState("");
+  const [editBuyerAddress, setEditBuyerAddress] = useState("");
+  const [editBuyerEmail, setEditBuyerEmail] = useState("");
+  const [editBuyerPhone, setEditBuyerPhone] = useState("");
+  const [editSellerName, setEditSellerName] = useState("");
+  const [editSellerGstin, setEditSellerGstin] = useState("");
+  const [editAmount, setEditAmount] = useState<number | string>("");
+  const [editCurrency, setEditCurrency] = useState("INR");
+
+  const isBuyerEmailMissing = !(editBuyerEmail ?? "").trim();
+  const isBuyerPhoneMissing = !(editBuyerPhone ?? "").trim();
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
@@ -127,11 +135,17 @@ export function InvoiceCameraModal({
     setExtractedInvoice(null);
     setStoredInvoice(null);
     setEditInvoiceNumber("");
-    setEditPayerName("");
-    setEditPayerEmail("");
-    setEditPayerPhone("");
-    setEditAmount(0);
+    setEditInvoiceDate("");
     setEditDueDate("");
+    setEditBuyerName("");
+    setEditBuyerGstin("");
+    setEditBuyerAddress("");
+    setEditBuyerEmail("");
+    setEditBuyerPhone("");
+    setEditSellerName("");
+    setEditSellerGstin("");
+    setEditAmount("");
+    setEditCurrency("INR");
     setUploadError(null);
     setIsUploading(false);
     setActiveTab(initialTab || "all");
@@ -143,17 +157,10 @@ export function InvoiceCameraModal({
       return;
     }
     setExtractedInvoice(inv);
-    setEditInvoiceNumber(((inv.invoice_number ?? "") as string).trim());
-    setEditPayerName(((inv.payer_name ?? "") as string).trim());
-    setEditPayerEmail(((inv.payer_email ?? "") as string).trim());
-    setEditPayerPhone(((inv.payer_phone ?? "") as string).trim());
-    setEditAmount(inv.amount != null ? Number(inv.amount) : 0);
-    setEditDueDate(((inv.due_date ?? "") as string).trim());
-
     const saved = saveN8nExtractedInvoice(
       inv,
       previewUrl || capturedPreview || fileName,
-      inv.id || storedInvoice?.id
+      inv.id ? String(inv.id) : storedInvoice?.id
     );
     setStoredInvoice(saved);
     onInvoiceStored?.(saved);
@@ -164,19 +171,19 @@ export function InvoiceCameraModal({
    * Main upload execution:
    * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
    * Body: multipart/form-data. File in field named "data".
-   * 90s timeout. Max ~10 MB file size.
+   * 90s timeout. One request per click.
    */
   const processFile = async (file: File | Blob, isCameraCapture: boolean = false) => {
     if (!user) {
       signInWithGoogle();
       return;
     }
-    // Send exactly one request per upload click (disable button while uploading)
+    // Rule 7: One request per click (disable button while uploading)
     if (isUploading) return;
 
     // Check ~10 MB file limit
     if (file && (file as any).size && (file as any).size > 10 * 1024 * 1024) {
-      setUploadError("Could not read this invoice. Please upload a clear photo or PDF under 10 MB.");
+      setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
       setActiveTab("review");
       return;
     }
@@ -192,115 +199,109 @@ export function InvoiceCameraModal({
     setExtractedInvoice(null);
     setStoredInvoice(null);
     setIsUploading(true);
+    // Rule 7: Show "Reading invoice…" while waiting
     setProcessingStatus("Reading invoice…");
     setActiveTab("review");
     stopCamera();
 
-    // 1. Immediately read image data URL for instant preview
-    let previewDataUrl = "";
-    if (isImage) {
-      if (isFileInstance) {
-        previewDataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string) || "");
-          reader.onerror = () => resolve("");
-          reader.readAsDataURL(file);
-        });
-        setCapturedPreview(previewDataUrl);
-      }
-    } else {
+    // Immediately read image data URL for preview
+    if (isImage && isFileInstance) {
+      const previewDataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string) || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+      });
+      setCapturedPreview(previewDataUrl);
+    } else if (!isImage) {
       setCapturedPreview(null);
     }
 
     try {
-      // Direct call with file appended in field "data"
       const result = await uploadInvoiceToN8n(file);
 
+      // Rule 2: Fill form fields AFTER the response arrives (set state from response)
+      // Rule 5: Guard every string call: (value ?? "").toLowerCase(), (value ?? "").trim()
       if (result && ((result.status ?? "") as string).toLowerCase() === "ready") {
-        // Show extracted values in EDITABLE fields so user can check and fix them before saving
         setExtractedInvoice(result);
-        setEditInvoiceNumber(((result.invoice_number ?? "") as string).trim());
-        setEditPayerName(((result.payer_name ?? "") as string).trim());
-        setEditPayerEmail(((result.payer_email ?? "") as string).trim());
-        setEditPayerPhone(((result.payer_phone ?? "") as string).trim());
-        setEditAmount(result.amount != null ? Number(result.amount) : 0);
-        setEditDueDate(((result.due_date ?? "") as string).trim());
+
+        // Rule 1 & Rule 6: Never put a GSTIN into the invoice number field.
+        // If invoice_number is "", show an empty field and let user type (or use "INV-" + id)
+        const respInvNum = (result.invoice_number ?? "").trim();
+        const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(respInvNum);
+        if (respInvNum && !isGstinPattern) {
+          setEditInvoiceNumber(respInvNum);
+        } else if (!editInvoiceNumber.trim()) {
+          setEditInvoiceNumber(result.id ? `INV-${result.id}` : "");
+        }
+
+        // Rule 1 & 3: Only overwrite if response value is non-empty; keep what user typed otherwise
+        const respInvDate = (result.invoice_date ?? "").trim();
+        if (respInvDate) {
+          setEditInvoiceDate(respInvDate);
+        }
+
+        const respDueDate = (result.due_date ?? "").trim();
+        if (respDueDate) {
+          setEditDueDate(respDueDate);
+        }
+
+        const respBuyerName = (result.payer_name ?? "").trim();
+        if (respBuyerName) {
+          setEditBuyerName(respBuyerName);
+        }
+
+        const respBuyerGstin = (result.payer_gstin ?? "").trim().toUpperCase();
+        if (respBuyerGstin) {
+          setEditBuyerGstin(respBuyerGstin);
+        }
+
+        const respBuyerAddress = (result.payer_address ?? "").trim();
+        if (respBuyerAddress) {
+          setEditBuyerAddress(respBuyerAddress);
+        }
+
+        const respBuyerEmail = (result.payer_email ?? "").trim();
+        if (respBuyerEmail) {
+          setEditBuyerEmail(respBuyerEmail);
+        }
+
+        const respBuyerPhone = (result.payer_phone ?? "").trim();
+        if (respBuyerPhone) {
+          setEditBuyerPhone(respBuyerPhone);
+        }
+
+        const respSellerName = (result.vendor_name ?? "").trim();
+        if (respSellerName) {
+          setEditSellerName(respSellerName);
+        }
+
+        const respSellerGstin = (result.vendor_gstin ?? "").trim().toUpperCase();
+        if (respSellerGstin) {
+          setEditSellerGstin(respSellerGstin);
+        }
+
+        if (result.amount !== undefined && result.amount !== null && String(result.amount).trim() !== "") {
+          const parsed = typeof result.amount === "number" ? result.amount : parseFloat(String(result.amount));
+          if (!isNaN(parsed)) {
+            setEditAmount(parsed);
+          }
+        }
+
+        const respCurrency = (result.currency ?? "").trim();
+        if (respCurrency) {
+          setEditCurrency(respCurrency);
+        }
+
         setActiveTab("review");
         return;
       }
 
+      // Rule 8: On non-200 / timeout show: "Could not read this invoice. Please upload a clear photo or PDF."
       throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
     } catch (err: any) {
       console.error("Invoice extraction failed:", err);
-      // On any non-200 status, timeout, or network error show:
-      setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  /**
-   * Optional in-browser fallback if n8n returned error in workflow
-   */
-  const runLocalOcrFallback = async () => {
-    if (!lastUploadedFile) return;
-    setIsUploading(true);
-    setUploadError(null);
-    setProcessingStatus("In-Browser Scanner: Analyzing image layout, contrast & numbers...");
-
-    try {
-      const isFileInstance = lastUploadedFile instanceof File;
-      const name = isFileInstance ? (lastUploadedFile?.name ?? "") : "invoice.jpg";
-      const fileToScan = lastUploadedFile instanceof File ? lastUploadedFile : new File([lastUploadedFile], name, { type: "image/jpeg" });
-      
-      let ocrText = "";
-      try {
-        const ocrPromise = recognizeInvoiceWithTesseract(fileToScan, (msg) => {
-          setProcessingStatus(`Optical Scanner: ${msg}`);
-        });
-        const timeoutPromise = new Promise<string>((res) => setTimeout(() => res(""), 4000));
-        ocrText = await Promise.race([ocrPromise, timeoutPromise]);
-      } catch (e) {
-        console.warn("Client OCR timeout:", e);
-      }
-
-      let inv: N8nUploadedInvoice;
-      if (ocrText && ocrText.trim().length > 15) {
-        const parsed = parseInvoiceText(ocrText);
-        inv = {
-          id: `local-${Date.now().toString(36)}`,
-          status: "ready",
-          invoice_number: parsed.invoiceNumber,
-          payer_name: parsed.buyerName || "Customer",
-          payer_email: parsed.buyerEmail || null,
-          payer_phone: parsed.buyerPhone || null,
-          amount: parsed.grandTotal || 25000,
-          currency: "INR",
-          due_date: parsed.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-          raw_text: ocrText,
-        };
-      } else {
-        inv = {
-          id: `local-${Date.now().toString(36)}`,
-          status: "ready",
-          invoice_number: "",
-          payer_name: "Customer",
-          payer_email: null,
-          payer_phone: null,
-          amount: 18500,
-          currency: "INR",
-          due_date: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-          raw_text: null,
-        };
-      }
-      setExtractedInvoice(inv);
-      setEditInvoiceNumber((inv.invoice_number ?? "").trim());
-      setEditPayerName((inv.payer_name ?? "").trim());
-      setEditPayerEmail((inv.payer_email ?? "").trim());
-      setEditPayerPhone((inv.payer_phone ?? "").trim());
-      setEditAmount(inv.amount != null ? Number(inv.amount) : 0);
-      setEditDueDate((inv.due_date ?? "").trim());
-    } catch (e: any) {
+      // Rule 8: Exactly show this error string
       setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
     } finally {
       setIsUploading(false);
@@ -327,22 +328,42 @@ export function InvoiceCameraModal({
     e.preventDefault();
     if (!extractedInvoice) return;
 
-    // Don't rely on invoice_number to find or identify an invoice if it is empty. Use the response "id" field instead.
-    const invoiceId = extractedInvoice.id || storedInvoice?.id || `inv-${Date.now().toString(36)}`;
-    const finalInvoiceNumber = editInvoiceNumber.trim();
+    const emailClean = (editBuyerEmail ?? "").trim();
+    const phoneClean = (editBuyerPhone ?? "").trim();
 
+    // Rule 4: If payer_email or payer_phone is "", highlight the field and ask user to enter it before saving (reminders need them)
+    if (!emailClean || !phoneClean) {
+      const missingList: string[] = [];
+      if (!emailClean) missingList.push("Buyer Email");
+      if (!phoneClean) missingList.push("Buyer Phone");
+      const confirmSave = window.confirm(
+        `Please enter ${missingList.join(" and ")} before saving (reminders need them).\n\nDo you want to enter them now? Click Cancel to enter them, or OK to save anyway.`
+      );
+      if (!confirmSave) {
+        return;
+      }
+    }
+
+    const invoiceId = extractedInvoice.id ? String(extractedInvoice.id) : storedInvoice?.id || `inv-${Date.now().toString(36)}`;
+    const finalInvoiceNumber = (editInvoiceNumber ?? "").trim() || (extractedInvoice.id ? `INV-${extractedInvoice.id}` : "");
+
+    // Rule 9: When saving and when sending reminders, send the edited values the user confirmed:
+    // recipient_email = Buyer Email, recipient_phone = Buyer Phone
     const updatedInv: N8nUploadedInvoice = {
       id: invoiceId,
       status: "ready",
       invoice_number: finalInvoiceNumber,
-      vendor_name: extractedInvoice.vendor_name ?? null,
-      payer_name: editPayerName.trim() || "Customer",
-      payer_email: editPayerEmail.trim() || null,
-      payer_phone: editPayerPhone.trim() || null,
-      amount: editAmount > 0 ? editAmount : 0,
-      currency: extractedInvoice.currency || "INR",
-      due_date: editDueDate || new Date().toISOString().split("T")[0],
-      raw_text: extractedInvoice.raw_text ?? null,
+      invoice_date: (editInvoiceDate ?? "").trim(),
+      due_date: (editDueDate ?? "").trim(),
+      payer_name: (editBuyerName ?? "").trim() || "Customer",
+      payer_gstin: (editBuyerGstin ?? "").trim().toUpperCase(),
+      payer_address: (editBuyerAddress ?? "").trim(),
+      payer_email: emailClean,
+      payer_phone: phoneClean,
+      vendor_name: (editSellerName ?? "").trim(),
+      vendor_gstin: (editSellerGstin ?? "").trim().toUpperCase(),
+      amount: editAmount !== "" ? Number(editAmount) : 0,
+      currency: (editCurrency ?? "").trim() || "INR",
     };
 
     handleApplyInvoice(updatedInv, capturedPreview || fileName);
@@ -883,101 +904,253 @@ export function InvoiceCameraModal({
                     </div>
                   )}
 
-                  {/* Notice: Always ask for payer's email and phone */}
-                  <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
-                    <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold">Check & Edit Extracted Values</p>
-                      <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
-                        Please check the extracted values and enter the payer's email and phone (they are often missing from photos and bills).
-                      </p>
+                  {/* Notice: Always ask for payer's email and phone if missing */}
+                  {(isBuyerEmailMissing || isBuyerPhoneMissing) ? (
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
+                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Missing contact details for payment reminders</p>
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                          Please enter the buyer's {isBuyerEmailMissing && isBuyerPhoneMissing ? "email and phone" : isBuyerEmailMissing ? "email address" : "phone number"} before saving. Automated reminders need them.
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-start gap-2 p-3 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 text-teal-900 dark:text-teal-200 text-xs">
+                      <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Check & Edit Extracted Values</p>
+                        <p className="text-[11px] text-teal-800 dark:text-teal-300 mt-0.5">
+                          All fields are editable. Review values below and save when ready.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Review / Verification Form with editable fields */}
+                  {/* Review / Verification Form with controlled editable fields */}
                   <form onSubmit={handleSaveEditedInvoice} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                      {/* 1. Invoice Number */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Invoice Number
-                        </label>
-                        <input
-                          type="text"
-                          value={editInvoiceNumber}
-                          onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                          placeholder="e.g. INV-2026-001"
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
-                        />
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4 text-xs">
+                      {/* Section 1: Invoice Details */}
+                      <div>
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                          1. Invoice Details
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {/* Invoice Number */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Invoice Number
+                            </label>
+                            <input
+                              type="text"
+                              value={editInvoiceNumber}
+                              onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                              placeholder="e.g. GST-3525-26"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Invoice Date */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Invoice Date
+                            </label>
+                            <input
+                              type="date"
+                              value={editInvoiceDate}
+                              onChange={(e) => setEditInvoiceDate(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Due Date */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Due Date
+                            </label>
+                            <input
+                              type="date"
+                              value={editDueDate}
+                              onChange={(e) => setEditDueDate(e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Amount */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Amount
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
+                              placeholder="0.00"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-teal-600 dark:text-teal-400 bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Currency */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Currency
+                            </label>
+                            <input
+                              type="text"
+                              value={editCurrency}
+                              onChange={(e) => setEditCurrency(e.target.value)}
+                              placeholder="INR"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {/* 2. Payer Name */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Payer / Customer Name
-                        </label>
-                        <input
-                          type="text"
-                          value={editPayerName}
-                          onChange={(e) => setEditPayerName(e.target.value)}
-                          placeholder="e.g. Acme Corporation"
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
-                        />
+                      {/* Section 2: Buyer / Payer Details */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                          2. Buyer Details (Payer)
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Buyer Name */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Buyer Name
+                            </label>
+                            <input
+                              type="text"
+                              value={editBuyerName}
+                              onChange={(e) => setEditBuyerName(e.target.value)}
+                              placeholder="e.g. Shiv Engineering"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Buyer GSTIN */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Buyer GSTIN
+                            </label>
+                            <input
+                              type="text"
+                              value={editBuyerGstin}
+                              onChange={(e) => setEditBuyerGstin(e.target.value.toUpperCase())}
+                              placeholder="e.g. 32AABBA7890B1ZB"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Buyer Email - Highlighted if empty */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                Buyer Email
+                              </label>
+                              {isBuyerEmailMissing && (
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                  Required for reminders
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="email"
+                              value={editBuyerEmail}
+                              onChange={(e) => setEditBuyerEmail(e.target.value)}
+                              placeholder="e.g. accounts@shiveng.in"
+                              className={`w-full px-3 py-1.5 rounded-lg border font-medium text-slate-900 dark:text-white outline-none transition-all ${
+                                isBuyerEmailMissing
+                                  ? "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 focus:border-amber-500 ring-2 ring-amber-300/40"
+                                  : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500"
+                              }`}
+                            />
+                            {isBuyerEmailMissing && (
+                              <p className="text-[10.5px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                                Please enter buyer email before saving
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Buyer Phone - Highlighted if empty */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                Buyer Phone (WhatsApp)
+                              </label>
+                              {isBuyerPhoneMissing && (
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                  Required for reminders
+                                </span>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              value={editBuyerPhone}
+                              onChange={(e) => setEditBuyerPhone(e.target.value)}
+                              placeholder="e.g. 9878789878"
+                              className={`w-full px-3 py-1.5 rounded-lg border font-medium text-slate-900 dark:text-white outline-none transition-all ${
+                                isBuyerPhoneMissing
+                                  ? "border-amber-400 bg-amber-50/40 dark:bg-amber-950/20 focus:border-amber-500 ring-2 ring-amber-300/40"
+                                  : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500"
+                              }`}
+                            />
+                            {isBuyerPhoneMissing && (
+                              <p className="text-[10.5px] font-semibold text-amber-600 dark:text-amber-400 mt-0.5">
+                                Please enter buyer phone before saving
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Buyer Address */}
+                          <div className="sm:col-span-2 space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Buyer Address
+                            </label>
+                            <input
+                              type="text"
+                              value={editBuyerAddress}
+                              onChange={(e) => setEditBuyerAddress(e.target.value)}
+                              placeholder="e.g. Sumel Business Park 7, Kochi, Kerala - 380023"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {/* 3. Payer Email */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Payer Email
-                        </label>
-                        <input
-                          type="email"
-                          value={editPayerEmail}
-                          onChange={(e) => setEditPayerEmail(e.target.value)}
-                          placeholder="e.g. accounts@acme.in"
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
-                        />
-                      </div>
+                      {/* Section 3: Seller / Vendor Details */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                          3. Seller Details (Vendor)
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Seller Name */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Seller Name
+                            </label>
+                            <input
+                              type="text"
+                              value={editSellerName}
+                              onChange={(e) => setEditSellerName(e.target.value)}
+                              placeholder="e.g. Gujarat Freight Tools"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
 
-                      {/* 4. Payer Phone */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Payer Phone / WhatsApp
-                        </label>
-                        <input
-                          type="text"
-                          value={editPayerPhone}
-                          onChange={(e) => setEditPayerPhone(e.target.value)}
-                          placeholder="e.g. +91 98000 00000"
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
-                        />
-                      </div>
-
-                      {/* 5. Amount */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Total Amount (₹)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editAmount}
-                          onChange={(e) => setEditAmount(parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-bold font-mono text-teal-600 dark:text-teal-400 bg-slate-50 dark:bg-slate-900"
-                        />
-                      </div>
-
-                      {/* 6. Due Date */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                          Due Date
-                        </label>
-                        <input
-                          type="date"
-                          value={editDueDate}
-                          onChange={(e) => setEditDueDate(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900"
-                        />
+                          {/* Seller GSTIN */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Seller GSTIN
+                            </label>
+                            <input
+                              type="text"
+                              value={editSellerGstin}
+                              onChange={(e) => setEditSellerGstin(e.target.value.toUpperCase())}
+                              placeholder="e.g. 27CORPP3939N1ZQ"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-mono text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
