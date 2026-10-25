@@ -64,47 +64,103 @@ export async function uploadInvoice(file) {
   };
 }
 
-export async function sendEmailReminder({ invoiceNumber, recipientEmail, recipientName, subject, message, amount, dueDate, sender }) {
-  const email = s(recipientEmail).trim();
-  if (!email) return { ok: false, needEmail: true, message: "Please enter the buyer's email." };
+export async function sendEmailReminder(args = {}) {
+  const email = s(args.recipientEmail || args.email || args.recipient_email).trim();
+  if (!email || !email.includes("@")) {
+    return { ok: false, needEmail: true, error: "Please enter the buyer's email.", message: "Please enter the buyer's email." };
+  }
+
+  const invoiceNumber = s(args.invoiceNumber || args.invoice_number);
+  const recipientName = s(args.recipientName || args.buyerName || args.recipient_name);
+  const amount = s(args.amount || args.amountText || args.total);
+  const dueDate = s(args.dueDate || args.due_date);
+
+  const senderName = s(args.sender?.name || args.senderName || "ApkaInvoice");
+  const senderEmail = s(args.sender?.email || args.senderEmail);
+
+  const subject = s(args.subject || `Payment reminder: invoice ${invoiceNumber || "(No Number)"}`);
+  const message = s(args.message) || `Hello ${recipientName || "there"},\n\nThis is a payment reminder for invoice ${invoiceNumber || ""} in the amount of ${amount}${dueDate ? " due on " + dueDate : ""}.\n\nThank you,\n${senderName}`;
+
+  const payload = {
+    invoice_number: invoiceNumber,
+    recipient_email: email,
+    recipient_name: recipientName,
+    subject,
+    message,
+    amount,
+    due_date: dueDate,
+    sender: { name: senderName, email: senderEmail },
+  };
+
+  const gmailToken = args.gmailToken || args.sender_gmail_token;
+  if (gmailToken) {
+    payload.sender_gmail_token = gmailToken;
+  }
+
+  console.log("n8n sendEmailReminder sending:", payload);
+
   const r = await postWithTimeout(`${BASE}/invoice-reminder-email`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      invoice_number: s(invoiceNumber),
-      recipient_email: email,
-      recipient_name: s(recipientName),
-      subject: s(subject),
-      message: s(message),
-      amount: s(amount),
-      due_date: s(dueDate),
-      sender: sender || {},
-    }),
-  }, 30000);
-  if (r.ok && r.data?.status === "reminder_sent") return { ok: true, message: `Email sent to ${email}` };
-  if (r.status === 404 || r.status === 422) return { ok: false, needEmail: true, message: "Please check the buyer's email." };
-  return { ok: false, message: "Could not send the email. Please try again." };
+    body: JSON.stringify(payload),
+  }, 35000);
+
+  console.log("n8n sendEmailReminder response:", r);
+
+  if (r.ok || r.data?.status === "reminder_sent" || r.data?.status === "success" || r.data?.sent) {
+    const sentFrom = r.data?.sent_from === "business_gmail" ? "business_gmail" : "shared_sender";
+    const msg = r.data?.message || (sentFrom === "shared_sender" ? `Reminder sent to ${email} (via ApkaInvoice)` : `Email sent to ${email}`);
+    return { ok: true, status: "reminder_sent", message: msg, error: undefined, data: r.data };
+  }
+
+  if (r.status === 422) {
+    return { ok: false, needEmail: true, error: "Please check the buyer's email.", message: "Please check the buyer's email." };
+  }
+
+  if (r.status === 404) {
+    return { ok: false, needEmail: false, error: "Invoice not found on reminder service. Please check details and try again.", message: "Invoice not found on reminder service." };
+  }
+
+  const errMsg = r.data?.error || r.data?.message || "Could not send the email. Please try again.";
+  return { ok: false, needEmail: false, error: errMsg, message: errMsg };
 }
 
-export async function sendWhatsAppReminder({ invoiceNumber, recipientPhone, recipientName, amount, dueDate, sender, message }) {
-  const phone = normalizePhone(recipientPhone);
-  if (!phone) return { ok: false, message: "Please enter the buyer's phone number." };
+export async function sendWhatsAppReminder(args = {}) {
+  const phoneInput = args.recipientPhone || args.phone || args.recipient_phone;
+  const phone = normalizePhone(phoneInput);
+  if (!phone || phone.length < 10) {
+    return { ok: false, needPhone: true, message: "Please enter the buyer's phone number.", error: "Please enter the buyer's phone number." };
+  }
+
+  const invoiceNumber = s(args.invoiceNumber || args.invoice_number);
+  const recipientName = s(args.recipientName || args.buyerName || args.recipient_name);
+  const amount = s(args.amount || args.amountText || args.total);
+  const dueDate = s(args.dueDate || args.due_date);
+  const senderName = s(args.sender?.name || args.senderName || "ApkaInvoice");
+  const senderEmail = s(args.sender?.email || args.senderEmail);
+
+  const text = s(args.message) ||
+    `Hello ${recipientName || "there"}, this is a reminder from ${senderName} that invoice ${invoiceNumber} for ${amount} is due${dueDate ? " on " + dueDate : ""}. Thank you.`;
+  const fallbackUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+
   const r = await postWithTimeout(`${BASE}/invoice-reminder-whatsapp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      invoice_number: s(invoiceNumber),
+      invoice_number: invoiceNumber,
       recipient_phone: phone,
-      recipient_name: s(recipientName),
-      amount: s(amount),
-      due_date: s(dueDate),
-      sender: sender || {},
+      recipient_name: recipientName,
+      amount,
+      due_date: dueDate,
+      sender: { name: senderName, email: senderEmail },
+      message: text,
     }),
   }, 20000);
-  if (r.ok && r.data?.status === "reminder_sent") return { ok: true, message: "WhatsApp reminder sent" };
-  const text = s(message) ||
-    `Hello ${s(recipientName) || "there"}, this is a reminder that invoice ${s(invoiceNumber)} for ${s(amount)} is due${dueDate ? " on " + s(dueDate) : ""}. Thank you.`;
-  const fallbackUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+
+  if (r.ok || r.data?.status === "reminder_sent" || r.data?.status === "success" || r.data?.sent) {
+    return { ok: true, message: "WhatsApp reminder sent", fallbackUrl, fallbackLink: fallbackUrl };
+  }
+
   return {
     ok: false,
     fallbackUrl,

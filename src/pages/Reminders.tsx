@@ -239,12 +239,19 @@ ${bName}`;
       }
 
       // Call dedicated n8n helper in src/api/n8n.js
+      const buyerName = (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? "");
       const res = await sendEmailReminder({
         invoiceNumber: invNum,
+        recipientEmail: emailClean,
         email: emailClean,
-        buyerName: (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? ""),
+        recipientName: buyerName,
+        buyerName: buyerName,
+        subject: emailSubject,
+        message: emailMessage,
+        amount: formattedAmt,
         amountText: formattedAmt,
         dueDate: dueDateFormatted,
+        sender: { name: senderName, email: senderEmail },
         senderName,
         senderEmail,
         gmailToken: senderGmailToken,
@@ -320,8 +327,7 @@ ${bName}`;
     if (isSending) return;
 
     // 1. When the button is clicked, get the payer's email from the invoice/buyer record:
-    // (buyer?.email ?? invoice?.payer_email ?? '').trim()
-    const recordEmail = ((selectedCustomer?.email ?? (selectedInvoice as any)?.payer_email ?? "") as string).trim();
+    const recordEmail = ((selectedCustomer?.email ?? (selectedInvoice as any)?.payerEmail ?? (selectedInvoice as any)?.payer_email ?? "") as string).trim();
     const effectiveEmail = ((recipientEmail ?? "").trim() || recordEmail).trim();
 
     if (!effectiveEmail || !isValidEmail(effectiveEmail)) {
