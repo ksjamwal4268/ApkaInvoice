@@ -46,6 +46,21 @@ export const signInWithGoogle = async () => {
 };
 
 // Google logout function
+// Guest login function (log in without Google)
+export const signInAsGuest = () => {
+  const currentProf = getStoredBusinessProfile();
+  const guestUser: AppUser = {
+    id: "guest",
+    name: (currentProf.name && currentProf.name !== "OG Enterprises" && currentProf.name !== "Sharma Packaging") ? currentProf.name : "Guest User",
+    email: currentProf.email || "guest@apkainvoice.in",
+    phone: currentProf.phone || "",
+  };
+  localStorage.setItem("cc-google-user", JSON.stringify(guestUser));
+  window.dispatchEvent(new Event("cc-auth-updated"));
+  window.dispatchEvent(new Event("cc-store-updated"));
+  return guestUser;
+};
+
 export const signOutUser = () => firebaseSignOut(auth);
 
 // Helper to update current stored user
@@ -187,6 +202,7 @@ export const useAuth = () => {
     isLoading: loading,
     signInWithGoogle,
     signIn: signInWithGoogle,
+    signInAsGuest,
     signOutUser: handleSignOut,
     signOut: handleSignOut,
     updateUser: updateStoredUser,

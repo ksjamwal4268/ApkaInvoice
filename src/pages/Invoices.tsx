@@ -45,7 +45,7 @@ type SortField = "dueDate" | "invoiceNumber" | "total" | "outstanding" | "custom
 export function Invoices({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
   const { user, signInWithGoogle } = useAuth();
-  const { invoices, customers, businessProfile, saveInvoice, saveCustomer, deleteInvoice, loadSampleData, refresh } =
+  const { invoices, customers, businessProfile, saveInvoice, saveCustomer, deleteInvoice, refresh } =
     useDataStore();
 
   const [filter, setFilter] = useState<Filter>("all");
@@ -525,21 +525,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
 
 
-              {invoices.length === 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    loadSampleData();
-                    refresh();
-                    setToastMessage("Demo dataset loaded successfully!");
-                    setTimeout(() => setToastMessage(null), 4000);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-semibold hover:bg-slate-100 transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Load Sample Dataset</span>
-                </button>
-              )}
+              
             </div>
           </div>
         ) : (

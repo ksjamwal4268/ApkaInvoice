@@ -40,7 +40,12 @@ interface WelcomeProps {
 
 export function Welcome({ lang: _lang }: WelcomeProps) {
   const navigate = useNavigate();
-  const { user, loading, signInWithGoogle, signOutUser } = useAuth();
+  const { user, loading, signInWithGoogle, signInAsGuest, signOutUser } = useAuth();
+
+  const handleGuestLogin = () => {
+    signInAsGuest();
+    navigate("/dashboard");
+  };
   const { invoices, businessProfile } = useDataStore();
 
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
