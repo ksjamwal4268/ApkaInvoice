@@ -423,18 +423,37 @@ ${bName}`;
         };
         saveInvoice(updatedInvoice);
       } else {
-        if (res.fallbackLink) {
-          setWaFallbackLink(res.fallbackLink);
+        const fallback =
+          res.fallbackLink ||
+          `https://wa.me/${rawPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+            whatsappMessage ?? ""
+          )}`;
+        setWaFallbackLink(fallback);
+        try {
+          window.open(fallback, "_blank");
+        } catch (e) {
+          console.warn("Auto popup blocked:", e);
         }
         setDispatchNotice({
-          type: res.fallbackLink ? "warning" : "error",
-          message: res.error || "Couldn't send automatically. Tap 'Open WhatsApp' to send it yourself.",
+          type: "warning",
+          message:
+            res.error ||
+            "Couldn't send automatically. Tap 'Open WhatsApp' below to send it yourself.",
         });
       }
     } catch (err: any) {
+      const fallback = `https://wa.me/${rawPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+        whatsappMessage ?? ""
+      )}`;
+      setWaFallbackLink(fallback);
+      try {
+        window.open(fallback, "_blank");
+      } catch (e) {
+        console.warn("Auto popup blocked:", e);
+      }
       setDispatchNotice({
-        type: "error",
-        message: "Couldn't send automatically. Tap 'Open WhatsApp' to send it yourself.",
+        type: "warning",
+        message: "Couldn't send automatically. Tap 'Open WhatsApp' below to send it yourself.",
       });
     } finally {
       setIsSendingWhatsApp(false);
@@ -667,8 +686,21 @@ ${bName}`;
                 ) : (
                   <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 )}
-                <div>
+                <div className="flex-1">
                   <p className="text-xs font-bold">{dispatchNotice.message}</p>
+                  {waFallbackLink && activeChannel === "whatsapp" && (
+                    <div className="mt-2.5">
+                      <a
+                        href={waFallbackLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold shadow-xs transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Open WhatsApp Now ↗</span>
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -831,27 +863,38 @@ ${bName}`;
                     </p>
                   </div>
 
-                  <HoverBorderGradient
-                    as="button"
-                    type="button"
-                    onClick={handleSendWhatsAppReminder}
-                    disabled={isSendingWhatsApp}
-                    containerClassName="rounded-xl self-start sm:self-auto"
-                    glowColor="#25D366"
-                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-[inherit] bg-[#254e58] hover:bg-[#112d32] disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
-                  >
-                    {isSendingWhatsApp ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Sending Reminder...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 text-[#88bdbc]" />
-                        <span>Send Reminder</span>
-                      </>
-                    )}
-                  </HoverBorderGradient>
+                  <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={handleOpenWhatsApp}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs font-bold shadow-2xs transition-colors cursor-pointer tap-target"
+                    >
+                      <MessageSquare className="w-4 h-4 text-[#25D366]" />
+                      <span>Open WhatsApp</span>
+                    </button>
+
+                    <HoverBorderGradient
+                      as="button"
+                      type="button"
+                      onClick={handleSendWhatsAppReminder}
+                      disabled={isSendingWhatsApp}
+                      containerClassName="rounded-xl"
+                      glowColor="#25D366"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-[inherit] bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      {isSendingWhatsApp ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Sending Reminder...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 text-teal-200" />
+                          <span>Send Reminder</span>
+                        </>
+                      )}
+                    </HoverBorderGradient>
+                  </div>
                 </div>
               </div>
             )}
