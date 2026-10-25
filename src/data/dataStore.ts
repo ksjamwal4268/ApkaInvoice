@@ -1,7 +1,8 @@
 import { Customer, Invoice, INVOICES, CUSTOMERS, EvidenceEntry, CustomerId, InvoiceId } from "./sampleData";
 import { Paise } from "../utils/money";
 import { db } from "../firebaseApp";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, addDoc, getDocs } from "firebase/firestore";
+import { uploadInvoice, sendEmailReminder, sendWhatsAppReminder } from "../api/n8n.js";
 
 export type { Customer, Invoice, EvidenceEntry, CustomerId, InvoiceId };
 
@@ -132,16 +133,15 @@ export function getForecastKey(): string {
 
 const N8N_CONFIG_KEY = "cc_n8n_config_v1";
 
-function cleanForFirestore(obj: any): any {
-  if (obj === null || obj === undefined) return null;
+export function cleanForFirestore(obj: any): any {
+  if (obj === undefined) return "";
+  if (obj === null) return "";
   if (Array.isArray(obj)) return obj.map(cleanForFirestore);
   if (obj instanceof Date) return obj.toISOString();
   if (typeof obj === "object") {
     const res: Record<string, any> = {};
     for (const [k, v] of Object.entries(obj)) {
-      if (v !== undefined) {
-        res[k] = cleanForFirestore(v);
-      }
+      res[k] = cleanForFirestore(v === undefined ? "" : v);
     }
     return res;
   }
@@ -171,9 +171,9 @@ export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
 };
 
 const DEFAULT_N8N_CONFIG: N8nConfig = {
-  ocrWebhookUrl: "https://ksjamwal.app.n8n.cloud/webhook/invoice-upload",
+  ocrWebhookUrl: "",
   reminderWebhookUrl: "",
-  apiKey: "n8n-invoice-secret-2024",
+  apiKey: "",
   autoSync: true,
 };
 
@@ -209,24 +209,50 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
     const pSnap = await getDoc(profileRef);
     if (pSnap.exists()) {
       const cloudProfile = pSnap.data() as BusinessProfile;
-      if (cloudProfile && cloudProfile.name !== "OG Enterprises") {
+      if (cloudProfile && (cloudProfile.name ?? "") !== "OG Enterprises") {
         localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(cloudProfile));
       }
     } else {
       const current = getStoredBusinessProfile();
-      if (current && (current.name || current.contactPerson || current.email)) {
+      if (current && ((current.name ?? "") || (current.contactPerson ?? "") || (current.email ?? ""))) {
         await setDoc(profileRef, cleanForFirestore(current), { merge: true });
       }
     }
 
-    // 2. Sync Invoices
+    // 2. Sync Invoices from Cloud (never overwrite or clear; merge collection & doc)
     const invRef = doc(db, "users", uid, "data", "invoices");
     const invSnap = await getDoc(invRef);
+    let cloudList: Invoice[] = [];
     if (invSnap.exists()) {
       const invData = invSnap.data();
       if (Array.isArray(invData?.items)) {
-        localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(invData.items));
+        cloudList = invData.items;
       }
+    }
+
+    try {
+      const colRef = collection(db, "users", uid, "invoices");
+      const colSnap = await getDocs(colRef);
+      if (!colSnap.empty) {
+        colSnap.forEach((d) => {
+          const item = d.data() as any;
+          if (item) {
+            const docId = item.id || d.id;
+            const exists = cloudList.some(
+              (ci) => ci.id === docId || (item.invoiceNumber && ci.invoiceNumber === item.invoiceNumber)
+            );
+            if (!exists) {
+              cloudList.unshift({ id: docId, ...item });
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Invoices collection fetch notice:", e);
+    }
+
+    if (cloudList.length > 0) {
+      localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(cloudList));
     } else {
       const localInvs = getStoredInvoices();
       if (localInvs && localInvs.length > 0) {
@@ -237,11 +263,36 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
     // 3. Sync Customers
     const custRef = doc(db, "users", uid, "data", "customers");
     const custSnap = await getDoc(custRef);
+    let custCloudList: Customer[] = [];
     if (custSnap.exists()) {
       const custData = custSnap.data();
       if (Array.isArray(custData?.items)) {
-        localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(custData.items));
+        custCloudList = custData.items;
       }
+    }
+
+    try {
+      const custColRef = collection(db, "users", uid, "customers");
+      const custColSnap = await getDocs(custColRef);
+      if (!custColSnap.empty) {
+        custColSnap.forEach((d) => {
+          const item = d.data() as any;
+          if (item) {
+            const exists = custCloudList.some(
+              (c) => c.id === (item.id || d.id) || (item.name && (c.name ?? "").toLowerCase() === (item.name ?? "").toLowerCase())
+            );
+            if (!exists) {
+              custCloudList.unshift({ id: item.id || d.id, ...item });
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Customers collection fetch notice:", e);
+    }
+
+    if (custCloudList.length > 0) {
+      localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(custCloudList));
     } else {
       const localCusts = getStoredCustomers();
       if (localCusts && localCusts.length > 0) {
@@ -280,10 +331,10 @@ export function getStoredInvoices(): Invoice[] {
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Automatically purge legacy demo/fake invoices
+    // Only filter out legacy hardcoded sample invoices (inv-001 through inv-010) — NEVER clear or overwrite real user invoices
     const cleanInvoices = parsed.filter(
       (inv: any) =>
-        !inv?.id?.startsWith("inv-") &&
+        !/^inv-00[1-9]$|^inv-010$/.test(inv?.id ?? "") &&
         !inv?.invoiceNumber?.startsWith("SP/24-25/")
     );
     if (cleanInvoices.length !== parsed.length) {
@@ -316,9 +367,19 @@ export function saveInvoice(invoice: Invoice): void {
   const uid = getActiveUserId();
   if (uid && uid !== "guest") {
     try {
-      setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch((err) =>
-        console.warn("Cloud invoices sync warning:", err)
+      // Rule: Use addDoc to save invoice into your own database. Replace undefined with "" before saving.
+      const cleaned = cleanForFirestore(invoice);
+      const invoicesCol = collection(db, "users", uid, "invoices");
+      addDoc(invoicesCol, cleaned).catch((err) =>
+        console.warn("Cloud invoices addDoc notice:", err)
       );
+
+      // Keep aggregate array updated so multi-device sync hydrates instantly
+      setDoc(
+        doc(db, "users", uid, "data", "invoices"),
+        cleanForFirestore({ items: invs }),
+        { merge: true }
+      ).catch((err) => console.warn("Cloud invoices sync warning:", err));
     } catch (e) {
       console.warn("Cloud invoices sync warning:", e);
     }
@@ -389,7 +450,7 @@ export function getStoredCustomers(): Customer[] {
     if (!Array.isArray(parsed)) return [];
     const cleanCustomers = parsed.filter(
       (c: any) =>
-        !c?.id?.startsWith("cust-") &&
+        !/^cust-[1-9]$|^cust-10$/.test(c?.id ?? "") &&
         c?.name !== "Gupta Traders" &&
         c?.name !== "Shree Ganesh Textiles"
     );
@@ -423,6 +484,9 @@ export function saveCustomer(customer: Customer): void {
   const uid = getActiveUserId();
   if (uid && uid !== "guest") {
     try {
+      const cleaned = cleanForFirestore(customer);
+      const custCol = collection(db, "users", uid, "customers");
+      addDoc(custCol, cleaned).catch(() => {});
       setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: custs }), { merge: true }).catch((err) =>
         console.warn("Cloud customers sync warning:", err)
       );
@@ -751,65 +815,40 @@ export interface N8nUploadedInvoice {
   payer_address?: string | null;
   payer_email?: string | null;
   payer_phone?: string | null;
+  place_of_supply?: string | null;
   amount?: number | string | null;
   currency?: string | null;
   raw_text?: string | null;
 }
 
 /**
- * Upload photo or PDF invoice to Cloud AI webhook
- * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-upload
- * Body: multipart/form-data. File in field named "data".
- * Content-Type header is not set manually (browser sets boundary).
- * 90-second timeout.
+ * Upload photo or PDF invoice to Cloud AI webhook via src/api/n8n.js
  */
 export async function uploadInvoiceToN8n(
   file: File | Blob
 ): Promise<N8nUploadedInvoice> {
-  const fd = new FormData();
-  // Append the file under the field name "data"
-  fd.append("data", file);
-
-  const controller = new AbortController();
-  // 90-second timeout
-  const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-  let res: Response;
-  try {
-    res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-upload", {
-      method: "POST",
-      body: fd,
-      signal: controller.signal,
-    });
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    console.error("invoice-upload fetch error:", err);
-    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
-  } finally {
-    clearTimeout(timeoutId);
+  const res = await uploadInvoice(file);
+  if (!res.ok || !res.fields) {
+    throw new Error(res.error || "Could not read this invoice. Please upload a clear photo or PDF.");
   }
-
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => "");
-    console.error("invoice-upload error response:", res.status, errorText);
-    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
-  }
-
-  let json: any;
-  try {
-    json = await res.json();
-  } catch {
-    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
-  }
-
-  const payload: N8nUploadedInvoice = Array.isArray(json) ? json[0] : json;
-
-  if (!payload || ((payload.status ?? "") as string).toLowerCase() !== "ready") {
-    console.warn("Upload response not ready:", payload);
-    throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
-  }
-
-  return payload;
+  const f = res.fields;
+  return {
+    id: f.n8nId,
+    status: "ready",
+    invoice_number: f.invoiceNumber,
+    invoice_date: f.invoiceDate,
+    due_date: f.dueDate,
+    vendor_name: f.vendorName,
+    vendor_gstin: f.vendorGstin,
+    payer_name: f.buyerName,
+    payer_gstin: f.buyerGstin,
+    payer_address: f.buyerAddress,
+    payer_email: f.buyerEmail,
+    payer_phone: f.buyerPhone,
+    place_of_supply: f.placeOfSupply,
+    amount: f.amount,
+    currency: f.currency,
+  };
 }
 
 /**
@@ -923,7 +962,7 @@ export function saveN8nExtractedInvoice(
     customerCity: customer.city || "",
     customerState: customer.state || "",
     customerGstin: customer.gstin || payerGstin || null,
-    placeOfSupply: customer.state || "",
+    placeOfSupply: (extracted?.place_of_supply ?? "").trim() || customer.state || "",
     invoiceDate,
     dueDate,
     terms: "Net 30",
@@ -1021,96 +1060,49 @@ export async function processInvoiceImageWithN8n(
 }
 
 /**
- * Trigger Payment Reminder dispatch via n8n webhook (focuses on Email or WhatsApp)
+ * Trigger Payment Reminder dispatch via src/api/n8n.js
  */
 export async function sendReminderViaN8n(
   payload: N8nReminderPayload
-): Promise<{ success: boolean; message: string; channel: string; executionId: string; liveSent?: boolean }> {
+): Promise<{ success: boolean; message: string; channel: string; executionId: string; liveSent?: boolean; fallbackLink?: string }> {
   const executionId = `n8n-exec-${Date.now().toString(36)}`;
   const channel = payload.channel || "email";
-  const config = getN8nConfig();
 
-  // Target endpoint:
-  // If reminderWebhookUrl is configured, use it.
-  // Otherwise default to the n8n cloud webhook for email/whatsapp
-  let endpoint = config.reminderWebhookUrl;
-  const isDefaultEndpoint = !endpoint || !endpoint.startsWith("http");
-  if (isDefaultEndpoint) {
-    endpoint = channel === "email"
-      ? "https://ksjamwal.app.n8n.cloud/webhook/email-reminder"
-      : "https://ksjamwal.app.n8n.cloud/webhook/whatsapp-reminder";
+  if (channel === "email") {
+    const res = await sendEmailReminder({
+      invoiceNumber: payload.invoiceNumber || "",
+      email: payload.buyer.email || "",
+      buyerName: payload.buyer.name || "",
+      amountText: payload.amountDueFormatted || "",
+      dueDate: payload.dueDate || "",
+      senderName: payload.sender?.name || "ApkaInvoice",
+      senderEmail: payload.sender?.email || "",
+    });
+    return {
+      success: res.ok,
+      liveSent: res.ok,
+      message: res.message || res.error || (res.ok ? "Email reminder sent" : "Failed to send email reminder"),
+      channel: "Email Workflow",
+      executionId,
+    };
+  } else {
+    const res = await sendWhatsAppReminder({
+      invoiceNumber: payload.invoiceNumber || "",
+      phone: payload.buyer.phone || "",
+      buyerName: payload.buyer.name || "",
+      amountText: payload.amountDueFormatted || "",
+      dueDate: payload.dueDate || "",
+      senderName: payload.sender?.name || "ApkaInvoice",
+    });
+    return {
+      success: res.ok,
+      liveSent: res.ok,
+      fallbackLink: res.fallbackLink,
+      message: res.message || res.error || "WhatsApp reminder prepared",
+      channel: "WhatsApp Workflow",
+      executionId,
+    };
   }
-
-  const requestBody = JSON.stringify({
-    ...payload,
-    invoice_number: payload.invoiceNumber || "",
-    invoice_id: payload.invoiceId || "",
-    recipient_email: payload.buyer.email || "",
-    recipient_phone: payload.buyer.phone || "",
-    recipient_name: payload.buyer.name || "",
-    subject: payload.subject || "",
-    message: payload.reminderMessage || "",
-    amount: payload.amountDueFormatted || "",
-    due_date: payload.dueDate || "",
-    sender_name: payload.sender.name || "",
-    sender_email: payload.sender.email || "",
-    sender_phone: payload.sender.phone || "",
-    upi: payload.sender.upi || "",
-    channel,
-    sent_at: new Date().toISOString(),
-  });
-
-  let liveSent = false;
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-    let res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
-      },
-      body: requestBody,
-      signal: controller.signal,
-    }).catch(() => null);
-    clearTimeout(timeoutId);
-
-    // If default email endpoint returned 404, fallback to invoice-reminder-email alternative
-    if (isDefaultEndpoint && channel === "email" && (!res || res.status === 404)) {
-      const altController = new AbortController();
-      const altTimeout = setTimeout(() => altController.abort(), 6000);
-      res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(config.apiKey ? { "X-API-KEY": config.apiKey } : {}),
-        },
-        body: requestBody,
-        signal: altController.signal,
-      }).catch(() => null);
-      clearTimeout(altTimeout);
-    }
-
-    if (res && res.ok) {
-      liveSent = true;
-    }
-  } catch (err) {
-    console.warn("n8n reminder dispatch endpoint notice:", err);
-  }
-
-  const targetRecipient = channel === "email"
-    ? (payload.buyer.email || "buyer email")
-    : (payload.buyer.phone || "buyer phone");
-
-  return {
-    success: true,
-    liveSent,
-    message: liveSent
-      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient}!`
-      : `${channel === "email" ? "Email" : "WhatsApp"} reminder recorded and prepared for ${payload.buyer.name} (${payload.invoiceNumber || "Invoice"}).`,
-    channel: channel === "email" ? "Email Workflow" : "WhatsApp Workflow",
-    executionId,
-  };
 }
 
 export const sendReminderViaRemainder = sendReminderViaN8n;
@@ -1139,87 +1131,43 @@ export interface InvoiceReminderEmailResponse {
 }
 
 /**
- * Dedicated n8n email reminder dispatcher
- * Endpoint: POST https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email
+ * Dedicated email reminder dispatcher via src/api/n8n.js
  */
 export async function sendInvoiceReminderEmail(
   payload: InvoiceReminderEmailPayload
 ): Promise<InvoiceReminderEmailResponse> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+  const res = await sendEmailReminder({
+    invoiceNumber: (payload.invoice_number ?? ""),
+    email: (payload.recipient_email ?? "").trim(),
+    buyerName: (payload.recipient_name ?? ""),
+    amountText: (payload.amount ?? ""),
+    dueDate: (payload.due_date ?? ""),
+    senderName: (payload.sender?.name ?? "ApkaInvoice"),
+    senderEmail: (payload.sender?.email ?? ""),
+    gmailToken: payload.sender_gmail_token,
+  });
 
-  try {
-    const targetEmail = (payload.recipient_email ?? "").trim();
-    const body: Record<string, any> = {
-      invoice_number: (payload.invoice_number ?? ""),
-      recipient_email: targetEmail,
-      recipient_name: (payload.recipient_name ?? ""),
-      subject: (payload.subject ?? ""),
-      message: (payload.message ?? ""),
-      amount: (payload.amount ?? ""),
-      due_date: (payload.due_date ?? ""),
-      sender: {
-        name: (payload.sender?.name ?? "ApkaInvoice"),
-        email: (payload.sender?.email ?? ""),
-      },
-    };
-
-    if (payload.sender_gmail_token && payload.sender_gmail_token.trim()) {
-      body.sender_gmail_token = payload.sender_gmail_token.trim();
-    }
-
-    const res = await fetch("https://ksjamwal.app.n8n.cloud/webhook/invoice-reminder-email", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch {
-      // not JSON
-    }
-
-    if (res.status === 200 && json?.status === "reminder_sent") {
-      const sentFrom = json?.sent_from === "business_gmail" ? "business_gmail" : "shared_sender";
-      return {
-        ok: true,
-        status: "reminder_sent",
-        sent_from: sentFrom,
-        message: `Email sent to ${targetEmail}`,
-        rawJson: json,
-      };
-    }
-
-    if (res.status === 404 || res.status === 422 || json?.status === "missing_email" || json?.status === "not_found") {
-      return {
-        ok: false,
-        status: "missing_email",
-        message: "Please enter the payer's email",
-        rawJson: json,
-      };
-    }
-
+  if (res.ok) {
     return {
-      ok: false,
-      status: "error",
-      message: "Couldn't send the email. Please try again.",
-      rawJson: json,
-    };
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    console.error("sendInvoiceReminderEmail fetch error:", err);
-    return {
-      ok: false,
-      status: "error",
-      message: "Couldn't send the email. Please try again.",
+      ok: true,
+      status: "reminder_sent",
+      sent_from: payload.sender_gmail_token ? "business_gmail" : "shared_sender",
+      message: res.message || `Email sent to ${payload.recipient_email}`,
     };
   }
+
+  if (res.needEmail) {
+    return {
+      ok: false,
+      status: "missing_email",
+      message: res.error || "Please enter the customer's email.",
+    };
+  }
+
+  return {
+    ok: false,
+    status: "error",
+    message: res.error || "Email could not be sent. Please try again.",
+  };
 }
 

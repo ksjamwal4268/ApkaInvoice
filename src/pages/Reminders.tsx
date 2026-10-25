@@ -31,7 +31,7 @@ import { HoverBorderGradient } from "../components/ui/hover-border-gradient";
 import { formatInr } from "../utils/money";
 import { formatDate, daysBetween, toISODateString } from "../utils/date";
 import { StatusBadge } from "../components/StatusBadge";
-import { sendInvoiceReminderEmail, InvoiceReminderEmailPayload } from "../data/dataStore";
+import { sendEmailReminder, sendWhatsAppReminder } from "../api/n8n.js";
 import { useAuth } from "../utils/auth";
 
 type FilterTab = "all" | "overdue" | "due";
@@ -170,17 +170,20 @@ ${bName}`;
   const [showPayerEmailModal, setShowPayerEmailModal] = useState(false);
   const [payerEmailInput, setPayerEmailInput] = useState("");
 
-  // Send ONE request from the browser to n8n webhook
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [waFallbackLink, setWaFallbackLink] = useState<string | null>(null);
+
+  // Send ONE request from the browser to n8n webhook via src/api/n8n.js
   const executeSendEmail = async (targetEmail: string) => {
     if (!selectedInvoice) return;
     if (isSending) return; // Send only once per click, disable while sending
 
     const emailClean = (targetEmail ?? "").trim();
     if (!emailClean || !isValidEmail(emailClean)) {
-      setEmailValidationError("Please enter the payer's email");
+      setEmailValidationError("Please enter the customer's email.");
       setDispatchNotice({
         type: "warning",
-        message: "Please enter the payer's email",
+        message: "Please enter the customer's email.",
       });
       setShowPayerEmailModal(true);
       setPayerEmailInput(emailClean);
@@ -218,35 +221,22 @@ ${bName}`;
         // ignore
       }
 
-      const payload: InvoiceReminderEmailPayload = {
-        invoice_number: invNum,
-        recipient_email: emailClean,
-        recipient_name: (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? ""),
-        subject: (emailSubject ?? "").trim() || `Payment reminder: invoice ${invNum}`,
-        message: (emailMessage ?? "").trim(),
-        amount: formattedAmt,
-        due_date: dueDateFormatted,
-        sender: {
-          name: senderName,
-          email: senderEmail,
-        },
-      };
+      // Call dedicated n8n helper in src/api/n8n.js
+      const res = await sendEmailReminder({
+        invoiceNumber: invNum,
+        email: emailClean,
+        buyerName: (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? ""),
+        amountText: formattedAmt,
+        dueDate: dueDateFormatted,
+        senderName,
+        senderEmail,
+        gmailToken: senderGmailToken,
+      });
 
-      if (senderGmailToken) {
-        payload.sender_gmail_token = senderGmailToken;
-      }
-
-      // Call dedicated n8n webhook (30s timeout handled in sendInvoiceReminderEmail)
-      const res = await sendInvoiceReminderEmail(payload);
-
-      // Handle the response per instructions:
-      // - 200 and status === "reminder_sent": show "Email sent to <recipient_email>".
-      // - 404 or 422: show "Please enter the payer's email" and open the email input.
-      // - Anything else: show "Couldn't send the email. Please try again."
-      if (res.ok && res.status === "reminder_sent") {
+      if (res.ok) {
         setDispatchNotice({
           type: "success",
-          message: `Email sent to ${emailClean}`,
+          message: res.message || `Email sent to ${emailClean}`,
         });
         setShowPayerEmailModal(false);
 
@@ -257,7 +247,7 @@ ${bName}`;
             date: new Date(),
             type: "reminder",
             title: "Email Reminder Sent",
-            description: `Sent to ${emailClean} via automated email (${res.sent_from ?? "shared_sender"})`,
+            description: `Sent to ${emailClean} via automated email`,
             amount: selectedInvoice.outstanding,
             channel: "email",
           });
@@ -270,12 +260,12 @@ ${bName}`;
         } catch (e) {
           console.warn("Evidence recording notice:", e);
         }
-      } else if (res.status === "missing_email" || res.status === "not_found") {
+      } else if (res.needEmail) {
         setDispatchNotice({
           type: "warning",
-          message: "Please enter the payer's email",
+          message: res.error || "Please check the customer's email.",
         });
-        setEmailValidationError("Please enter the payer's email");
+        setEmailValidationError(res.error || "Please check the customer's email.");
         setShowPayerEmailModal(true);
         setPayerEmailInput(emailClean);
         setTimeout(() => {
@@ -285,14 +275,14 @@ ${bName}`;
       } else {
         setDispatchNotice({
           type: "error",
-          message: "Couldn't send the email. Please try again.",
+          message: res.error || "Email could not be sent. Please try again.",
         });
       }
     } catch (err: any) {
       console.error("Email reminder error:", err);
       setDispatchNotice({
         type: "error",
-        message: "Couldn't send the email. Please try again.",
+        message: "Email could not be sent. Please try again.",
       });
     } finally {
       setIsSending(false);
@@ -342,7 +332,84 @@ ${bName}`;
     await executeSendEmail(typed);
   };
 
-  // WhatsApp Send helper
+  // WhatsApp automated reminder via src/api/n8n.js
+  const handleSendWhatsAppReminder = async () => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
+    if (!selectedInvoice || isSendingWhatsApp) return;
+
+    const rawPhone = (whatsappPhone ?? "").trim();
+    if (!rawPhone) {
+      setDispatchNotice({
+        type: "warning",
+        message: "Please enter the customer's phone number.",
+      });
+      return;
+    }
+
+    setIsSendingWhatsApp(true);
+    setDispatchNotice(null);
+    setWaFallbackLink(null);
+
+    try {
+      const invNum = (selectedInvoice.invoiceNumber ?? "");
+      const dueDateFormatted = selectedInvoice.dueDate
+        ? toISODateString(selectedInvoice.dueDate)
+        : "";
+      const formattedAmt = formatInr(selectedInvoice.outstanding);
+      const senderName = (businessProfile?.name ?? "ApkaInvoice");
+      const buyerName = (recipientName ?? "").trim() || (selectedCustomer?.name ?? selectedInvoice.customerName ?? "");
+
+      const res = await sendWhatsAppReminder({
+        invoiceNumber: invNum,
+        phone: rawPhone,
+        buyerName,
+        amountText: formattedAmt,
+        dueDate: dueDateFormatted,
+        senderName,
+      });
+
+      if (res.ok) {
+        setDispatchNotice({
+          type: "success",
+          message: res.message || "WhatsApp reminder sent",
+        });
+        addInvoiceEvidence(selectedInvoice.id, {
+          id: `ev-${Date.now()}`,
+          date: new Date(),
+          type: "reminder",
+          title: "WhatsApp Reminder Sent",
+          description: `Sent to ${rawPhone} via automated WhatsApp`,
+          amount: selectedInvoice.outstanding,
+          channel: "whatsapp",
+        });
+        const updatedInvoice = {
+          ...selectedInvoice,
+          lastReminderSentAt: new Date().toISOString(),
+        };
+        saveInvoice(updatedInvoice);
+      } else {
+        if (res.fallbackLink) {
+          setWaFallbackLink(res.fallbackLink);
+        }
+        setDispatchNotice({
+          type: res.fallbackLink ? "warning" : "error",
+          message: res.error || "Couldn't send automatically. Tap 'Open WhatsApp' to send it yourself.",
+        });
+      }
+    } catch (err: any) {
+      setDispatchNotice({
+        type: "error",
+        message: "Couldn't send automatically. Tap 'Open WhatsApp' to send it yourself.",
+      });
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
+  // WhatsApp Send helper / Fallback
   const handleOpenWhatsApp = () => {
     if (!user) {
       signInWithGoogle();
@@ -354,7 +421,7 @@ ${bName}`;
       alert("Please enter a valid phone number for WhatsApp.");
       return;
     }
-    const url = `https://wa.me/${phoneClean}?text=${encodeURIComponent(whatsappMessage ?? "")}`;
+    const url = waFallbackLink || `https://wa.me/${phoneClean}?text=${encodeURIComponent(whatsappMessage ?? "")}`;
     window.open(url, "_blank");
 
     try {
@@ -718,19 +785,40 @@ ${bName}`;
                   />
                 </div>
 
-                <div className="pt-2">
+                <div className="flex flex-wrap items-center gap-3 pt-2">
                   <HoverBorderGradient
                     as="button"
                     type="button"
-                    onClick={handleOpenWhatsApp}
+                    onClick={handleSendWhatsAppReminder}
+                    disabled={isSendingWhatsApp}
                     containerClassName="rounded-xl"
                     glowColor="#25D366"
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[inherit] bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold shadow-sm transition-all"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[inherit] bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Open in WhatsApp</span>
-                    <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                    {isSendingWhatsApp ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Sending WhatsApp...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Send WhatsApp Reminder</span>
+                      </>
+                    )}
                   </HoverBorderGradient>
+
+                  {(waFallbackLink || !isSendingWhatsApp) && (
+                    <button
+                      type="button"
+                      onClick={handleOpenWhatsApp}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Open WhatsApp</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

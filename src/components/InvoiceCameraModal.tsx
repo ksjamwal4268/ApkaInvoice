@@ -14,10 +14,10 @@ import {
   Info,
 } from "lucide-react";
 import {
-  uploadInvoiceToN8n,
   saveN8nExtractedInvoice,
   N8nUploadedInvoice,
 } from "../data/dataStore";
+import { uploadInvoice } from "../api/n8n.js";
 import { Invoice } from "../data/sampleData";
 import { useAuth } from "../utils/auth";
 
@@ -68,6 +68,7 @@ export function InvoiceCameraModal({
   const [editBuyerAddress, setEditBuyerAddress] = useState("");
   const [editBuyerEmail, setEditBuyerEmail] = useState("");
   const [editBuyerPhone, setEditBuyerPhone] = useState("");
+  const [editPlaceOfSupply, setEditPlaceOfSupply] = useState("");
   const [editSellerName, setEditSellerName] = useState("");
   const [editSellerGstin, setEditSellerGstin] = useState("");
   const [editAmount, setEditAmount] = useState<number | string>("");
@@ -142,6 +143,7 @@ export function InvoiceCameraModal({
     setEditBuyerAddress("");
     setEditBuyerEmail("");
     setEditBuyerPhone("");
+    setEditPlaceOfSupply("");
     setEditSellerName("");
     setEditSellerGstin("");
     setEditAmount("");
@@ -218,77 +220,100 @@ export function InvoiceCameraModal({
     }
 
     try {
-      const result = await uploadInvoiceToN8n(file);
+      const result = await uploadInvoice(file);
 
       // Rule 2: Fill form fields AFTER the response arrives (set state from response)
       // Rule 5: Guard every string call: (value ?? "").toLowerCase(), (value ?? "").trim()
-      if (result && ((result.status ?? "") as string).toLowerCase() === "ready") {
-        setExtractedInvoice(result);
+      if (result && result.ok && result.fields) {
+        const fields = result.fields;
+        const invPayload: N8nUploadedInvoice = {
+          id: fields.n8nId,
+          status: "ready",
+          invoice_number: fields.invoiceNumber,
+          invoice_date: fields.invoiceDate,
+          due_date: fields.dueDate,
+          vendor_name: fields.vendorName,
+          vendor_gstin: fields.vendorGstin,
+          payer_name: fields.buyerName,
+          payer_gstin: fields.buyerGstin,
+          payer_address: fields.buyerAddress,
+          payer_email: fields.buyerEmail,
+          payer_phone: fields.buyerPhone,
+          place_of_supply: fields.placeOfSupply,
+          amount: fields.amount,
+          currency: fields.currency,
+        };
+        setExtractedInvoice(invPayload);
 
         // Rule 1 & Rule 6: Never put a GSTIN into the invoice number field.
         // If invoice_number is "", show an empty field and let user type (or use "INV-" + id)
-        const respInvNum = (result.invoice_number ?? "").trim();
+        const respInvNum = (fields.invoiceNumber ?? "").trim();
         const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(respInvNum);
         if (respInvNum && !isGstinPattern) {
           setEditInvoiceNumber(respInvNum);
         } else if (!editInvoiceNumber.trim()) {
-          setEditInvoiceNumber(result.id ? `INV-${result.id}` : "");
+          setEditInvoiceNumber(fields.n8nId ? `INV-${fields.n8nId}` : "");
         }
 
         // Rule 1 & 3: Only overwrite if response value is non-empty; keep what user typed otherwise
-        const respInvDate = (result.invoice_date ?? "").trim();
+        const respInvDate = (fields.invoiceDate ?? "").trim();
         if (respInvDate) {
           setEditInvoiceDate(respInvDate);
         }
 
-        const respDueDate = (result.due_date ?? "").trim();
+        const respDueDate = (fields.dueDate ?? "").trim();
         if (respDueDate) {
           setEditDueDate(respDueDate);
         }
 
-        const respBuyerName = (result.payer_name ?? "").trim();
+        const respBuyerName = (fields.buyerName ?? "").trim();
         if (respBuyerName) {
           setEditBuyerName(respBuyerName);
         }
 
-        const respBuyerGstin = (result.payer_gstin ?? "").trim().toUpperCase();
+        const respBuyerGstin = (fields.buyerGstin ?? "").trim().toUpperCase();
         if (respBuyerGstin) {
           setEditBuyerGstin(respBuyerGstin);
         }
 
-        const respBuyerAddress = (result.payer_address ?? "").trim();
+        const respBuyerAddress = (fields.buyerAddress ?? "").trim();
         if (respBuyerAddress) {
           setEditBuyerAddress(respBuyerAddress);
         }
 
-        const respBuyerEmail = (result.payer_email ?? "").trim();
+        const respBuyerEmail = (fields.buyerEmail ?? "").trim();
         if (respBuyerEmail) {
           setEditBuyerEmail(respBuyerEmail);
         }
 
-        const respBuyerPhone = (result.payer_phone ?? "").trim();
+        const respBuyerPhone = (fields.buyerPhone ?? "").trim();
         if (respBuyerPhone) {
           setEditBuyerPhone(respBuyerPhone);
         }
 
-        const respSellerName = (result.vendor_name ?? "").trim();
+        const respPos = (fields.placeOfSupply ?? "").trim();
+        if (respPos) {
+          setEditPlaceOfSupply(respPos);
+        }
+
+        const respSellerName = (fields.vendorName ?? "").trim();
         if (respSellerName) {
           setEditSellerName(respSellerName);
         }
 
-        const respSellerGstin = (result.vendor_gstin ?? "").trim().toUpperCase();
+        const respSellerGstin = (fields.vendorGstin ?? "").trim().toUpperCase();
         if (respSellerGstin) {
           setEditSellerGstin(respSellerGstin);
         }
 
-        if (result.amount !== undefined && result.amount !== null && String(result.amount).trim() !== "") {
-          const parsed = typeof result.amount === "number" ? result.amount : parseFloat(String(result.amount));
+        if (fields.amount !== undefined && fields.amount !== null && String(fields.amount).trim() !== "") {
+          const parsed = typeof fields.amount === "number" ? fields.amount : parseFloat(String(fields.amount));
           if (!isNaN(parsed)) {
             setEditAmount(parsed);
           }
         }
 
-        const respCurrency = (result.currency ?? "").trim();
+        const respCurrency = (fields.currency ?? "").trim();
         if (respCurrency) {
           setEditCurrency(respCurrency);
         }
@@ -298,11 +323,11 @@ export function InvoiceCameraModal({
       }
 
       // Rule 8: On non-200 / timeout show: "Could not read this invoice. Please upload a clear photo or PDF."
-      throw new Error("Could not read this invoice. Please upload a clear photo or PDF.");
+      throw new Error(result?.error || "Could not read this invoice. Please upload a clear photo or PDF.");
     } catch (err: any) {
       console.error("Invoice extraction failed:", err);
       // Rule 8: Exactly show this error string
-      setUploadError("Could not read this invoice. Please upload a clear photo or PDF.");
+      setUploadError(err?.message || "Could not read this invoice. Please upload a clear photo or PDF.");
     } finally {
       setIsUploading(false);
     }
@@ -360,6 +385,7 @@ export function InvoiceCameraModal({
       payer_address: (editBuyerAddress ?? "").trim(),
       payer_email: emailClean,
       payer_phone: phoneClean,
+      place_of_supply: (editPlaceOfSupply ?? "").trim(),
       vendor_name: (editSellerName ?? "").trim(),
       vendor_gstin: (editSellerGstin ?? "").trim().toUpperCase(),
       amount: editAmount !== "" ? Number(editAmount) : 0,
@@ -1002,6 +1028,20 @@ export function InvoiceCameraModal({
                               onChange={(e) => setEditCurrency(e.target.value)}
                               placeholder="INR"
                               className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
+                            />
+                          </div>
+
+                          {/* Place of Supply */}
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                              Place of Supply
+                            </label>
+                            <input
+                              type="text"
+                              value={editPlaceOfSupply}
+                              onChange={(e) => setEditPlaceOfSupply(e.target.value)}
+                              placeholder="e.g. Kerala (32)"
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-900 focus:bg-white focus:border-teal-500 outline-none"
                             />
                           </div>
                         </div>
