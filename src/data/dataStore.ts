@@ -1,5 +1,7 @@
 import { Customer, Invoice, INVOICES, CUSTOMERS, EvidenceEntry, CustomerId, InvoiceId } from "./sampleData";
 import { Paise } from "../utils/money";
+import { db } from "../firebaseApp";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export type { Customer, Invoice, EvidenceEntry, CustomerId, InvoiceId };
 
@@ -96,10 +98,55 @@ export interface N8nReminderPayload {
 
 export type RemainderPayload = N8nReminderPayload;
 
-const INVOICES_KEY = "cc_invoices_real_v2";
-const CUSTOMERS_KEY = "cc_customers_real_v2";
+export function getActiveUserId(): string {
+  if (typeof window === "undefined") return "guest";
+  try {
+    const raw = localStorage.getItem("cc-google-user");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.id) return parsed.id;
+    }
+  } catch {}
+  return "guest";
+}
+
+export function getInvoicesKey(): string {
+  const uid = getActiveUserId();
+  return uid === "guest" ? "cc_invoices_real_v2" : `cc_invoices_${uid}`;
+}
+
+export function getCustomersKey(): string {
+  const uid = getActiveUserId();
+  return uid === "guest" ? "cc_customers_real_v2" : `cc_customers_${uid}`;
+}
+
+export function getBusinessKey(): string {
+  const uid = getActiveUserId();
+  return uid === "guest" ? "cc_business_profile_v2" : `cc_business_profile_${uid}`;
+}
+
+export function getForecastKey(): string {
+  const uid = getActiveUserId();
+  return uid === "guest" ? "cc_forecast_settings_v2" : `cc_forecast_settings_${uid}`;
+}
+
 const N8N_CONFIG_KEY = "cc_n8n_config_v1";
-const BUSINESS_KEY = "cc_business_profile_v2";
+
+function cleanForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) return obj.map(cleanForFirestore);
+  if (obj instanceof Date) return obj.toISOString();
+  if (typeof obj === "object") {
+    const res: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined) {
+        res[k] = cleanForFirestore(v);
+      }
+    }
+    return res;
+  }
+  return obj;
+}
 
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
   name: "",
@@ -149,14 +196,86 @@ function reviveInvoice(raw: any): Invoice {
 }
 
 /**
- * Real Data Invoices: Starts with 0 fake data. Only real invoices created/scanned are stored.
+ * Cross-device Cloud Sync: Pulls user's cloud profile, invoices, and customers from Firestore.
+ * Ensures the exact same data shows on both devices for the same account,
+ * and different accounts see their own data.
+ */
+export async function syncUserDataFromCloud(uid: string): Promise<void> {
+  if (!uid || uid === "guest") return;
+
+  try {
+    // 1. Sync Business Profile
+    const profileRef = doc(db, "users", uid, "profile", "business");
+    const pSnap = await getDoc(profileRef);
+    if (pSnap.exists()) {
+      const cloudProfile = pSnap.data() as BusinessProfile;
+      if (cloudProfile && cloudProfile.name !== "OG Enterprises") {
+        localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(cloudProfile));
+      }
+    } else {
+      const current = getStoredBusinessProfile();
+      if (current && (current.name || current.contactPerson || current.email)) {
+        await setDoc(profileRef, cleanForFirestore(current), { merge: true });
+      }
+    }
+
+    // 2. Sync Invoices
+    const invRef = doc(db, "users", uid, "data", "invoices");
+    const invSnap = await getDoc(invRef);
+    if (invSnap.exists()) {
+      const invData = invSnap.data();
+      if (Array.isArray(invData?.items)) {
+        localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(invData.items));
+      }
+    } else {
+      const localInvs = getStoredInvoices();
+      if (localInvs && localInvs.length > 0) {
+        await setDoc(invRef, cleanForFirestore({ items: localInvs }), { merge: true });
+      }
+    }
+
+    // 3. Sync Customers
+    const custRef = doc(db, "users", uid, "data", "customers");
+    const custSnap = await getDoc(custRef);
+    if (custSnap.exists()) {
+      const custData = custSnap.data();
+      if (Array.isArray(custData?.items)) {
+        localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(custData.items));
+      }
+    } else {
+      const localCusts = getStoredCustomers();
+      if (localCusts && localCusts.length > 0) {
+        await setDoc(custRef, cleanForFirestore({ items: localCusts }), { merge: true });
+      }
+    }
+
+    dispatchStoreChange();
+  } catch (err) {
+    console.warn("Cloud sync warning (operating in local fallback):", err);
+  }
+}
+
+/**
+ * Real Data Invoices: Scoped to active account. Starts with 0 fake data.
  */
 export function getStoredInvoices(): Invoice[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(INVOICES_KEY);
+    const key = getInvoicesKey();
+    let raw = localStorage.getItem(key);
+    const uid = getActiveUserId();
+
+    // Migrate from legacy un-scoped key if first time logging in
+    if (!raw && uid !== "guest") {
+      const legacyRaw = localStorage.getItem("cc_invoices_real_v2");
+      if (legacyRaw) {
+        raw = legacyRaw;
+        localStorage.setItem(key, legacyRaw);
+      }
+    }
+
     if (!raw) {
-      localStorage.setItem(INVOICES_KEY, JSON.stringify([]));
+      localStorage.setItem(key, JSON.stringify([]));
       return [];
     }
     const parsed = JSON.parse(raw);
@@ -168,7 +287,7 @@ export function getStoredInvoices(): Invoice[] {
         !inv?.invoiceNumber?.startsWith("SP/24-25/")
     );
     if (cleanInvoices.length !== parsed.length) {
-      localStorage.setItem(INVOICES_KEY, JSON.stringify(cleanInvoices));
+      localStorage.setItem(key, JSON.stringify(cleanInvoices));
     }
     return cleanInvoices.map(reviveInvoice);
   } catch (e) {
@@ -190,15 +309,39 @@ export function saveInvoice(invoice: Invoice): void {
   } else {
     invs.unshift(invoice);
   }
-  localStorage.setItem(INVOICES_KEY, JSON.stringify(invs));
+  const key = getInvoicesKey();
+  localStorage.setItem(key, JSON.stringify(invs));
   dispatchStoreChange();
+
+  const uid = getActiveUserId();
+  if (uid && uid !== "guest") {
+    try {
+      setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch((err) =>
+        console.warn("Cloud invoices sync warning:", err)
+      );
+    } catch (e) {
+      console.warn("Cloud invoices sync warning:", e);
+    }
+  }
 }
 
 export function deleteInvoice(id: InvoiceId): void {
   const invs = getStoredInvoices();
   const filtered = invs.filter((i) => i.id !== id);
-  localStorage.setItem(INVOICES_KEY, JSON.stringify(filtered));
+  const key = getInvoicesKey();
+  localStorage.setItem(key, JSON.stringify(filtered));
   dispatchStoreChange();
+
+  const uid = getActiveUserId();
+  if (uid && uid !== "guest") {
+    try {
+      setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: filtered }), { merge: true }).catch((err) =>
+        console.warn("Cloud invoices sync warning:", err)
+      );
+    } catch (e) {
+      console.warn("Cloud invoices sync warning:", e);
+    }
+  }
 }
 
 export function addInvoiceEvidence(invoiceId: InvoiceId, entry: EvidenceEntry): void {
@@ -207,25 +350,43 @@ export function addInvoiceEvidence(invoiceId: InvoiceId, entry: EvidenceEntry): 
   if (inv) {
     if (!inv.evidence) inv.evidence = [];
     inv.evidence.unshift(entry);
-    localStorage.setItem(INVOICES_KEY, JSON.stringify(invs));
+    const key = getInvoicesKey();
+    localStorage.setItem(key, JSON.stringify(invs));
     dispatchStoreChange();
+
+    const uid = getActiveUserId();
+    if (uid && uid !== "guest") {
+      try {
+        setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch(() => {});
+      } catch {}
+    }
   }
 }
 
 /**
- * Real Data Customers: Starts with 0 fake buyers. Only real customers added are stored.
+ * Real Data Customers: Scoped to active account. Starts with 0 fake buyers.
  */
 export function getStoredCustomers(): Customer[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(CUSTOMERS_KEY);
+    const key = getCustomersKey();
+    let raw = localStorage.getItem(key);
+    const uid = getActiveUserId();
+
+    if (!raw && uid !== "guest") {
+      const legacyRaw = localStorage.getItem("cc_customers_real_v2");
+      if (legacyRaw) {
+        raw = legacyRaw;
+        localStorage.setItem(key, legacyRaw);
+      }
+    }
+
     if (!raw) {
-      localStorage.setItem(CUSTOMERS_KEY, JSON.stringify([]));
+      localStorage.setItem(key, JSON.stringify([]));
       return [];
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // Automatically purge legacy demo/fake customers
     const cleanCustomers = parsed.filter(
       (c: any) =>
         !c?.id?.startsWith("cust-") &&
@@ -233,7 +394,7 @@ export function getStoredCustomers(): Customer[] {
         c?.name !== "Shree Ganesh Textiles"
     );
     if (cleanCustomers.length !== parsed.length) {
-      localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(cleanCustomers));
+      localStorage.setItem(key, JSON.stringify(cleanCustomers));
     }
     return cleanCustomers;
   } catch (e) {
@@ -255,24 +416,64 @@ export function saveCustomer(customer: Customer): void {
   } else {
     custs.unshift(customer);
   }
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(custs));
+  const key = getCustomersKey();
+  localStorage.setItem(key, JSON.stringify(custs));
   dispatchStoreChange();
+
+  const uid = getActiveUserId();
+  if (uid && uid !== "guest") {
+    try {
+      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: custs }), { merge: true }).catch((err) =>
+        console.warn("Cloud customers sync warning:", err)
+      );
+    } catch (e) {
+      console.warn("Cloud customers sync warning:", e);
+    }
+  }
 }
 
 export function deleteCustomer(id: CustomerId): void {
   const custs = getStoredCustomers();
   const filtered = custs.filter((c) => c.id !== id);
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(filtered));
+  const key = getCustomersKey();
+  localStorage.setItem(key, JSON.stringify(filtered));
   dispatchStoreChange();
+
+  const uid = getActiveUserId();
+  if (uid && uid !== "guest") {
+    try {
+      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: filtered }), { merge: true }).catch((err) =>
+        console.warn("Cloud customers sync warning:", err)
+      );
+    } catch (e) {
+      console.warn("Cloud customers sync warning:", e);
+    }
+  }
 }
 
 /**
- * Business Profile Store
+ * Business Profile Store: Scoped to active account and synced to cloud.
  */
 export function getStoredBusinessProfile(): BusinessProfile {
   if (typeof window === "undefined") return DEFAULT_BUSINESS_PROFILE;
   try {
-    const raw = localStorage.getItem(BUSINESS_KEY);
+    const key = getBusinessKey();
+    let raw = localStorage.getItem(key);
+    const uid = getActiveUserId();
+
+    if (!raw && uid !== "guest") {
+      const legacyRaw = localStorage.getItem("cc_business_profile_v2");
+      if (legacyRaw) {
+        try {
+          const legParsed = JSON.parse(legacyRaw);
+          if (legParsed && legParsed.name !== "OG Enterprises" && legParsed.name !== "Sharma Packaging") {
+            raw = legacyRaw;
+            localStorage.setItem(key, legacyRaw);
+          }
+        } catch {}
+      }
+    }
+
     if (!raw) return DEFAULT_BUSINESS_PROFILE;
     const parsed = JSON.parse(raw);
     // Discard legacy demo / fake Sharma Packaging or fake auto-generated OG Enterprises
@@ -281,12 +482,12 @@ export function getStoredBusinessProfile(): BusinessProfile {
       parsed.email === "billing@sharmapackaging.in" ||
       parsed.upi === "sharmapackaging@hdfc"
     ) {
-      localStorage.removeItem(BUSINESS_KEY);
+      localStorage.removeItem(key);
       return DEFAULT_BUSINESS_PROFILE;
     }
     if (parsed.name === "OG Enterprises") {
       parsed.name = "";
-      localStorage.setItem(BUSINESS_KEY, JSON.stringify(parsed));
+      localStorage.setItem(key, JSON.stringify(parsed));
     }
     return { ...DEFAULT_BUSINESS_PROFILE, ...parsed };
   } catch {
@@ -295,8 +496,20 @@ export function getStoredBusinessProfile(): BusinessProfile {
 }
 
 export function saveBusinessProfile(profile: BusinessProfile): void {
-  localStorage.setItem(BUSINESS_KEY, JSON.stringify(profile));
+  const key = getBusinessKey();
+  localStorage.setItem(key, JSON.stringify(profile));
   dispatchStoreChange();
+
+  const uid = getActiveUserId();
+  if (uid && uid !== "guest") {
+    try {
+      setDoc(doc(db, "users", uid, "profile", "business"), cleanForFirestore(profile), { merge: true }).catch((err) =>
+        console.warn("Cloud profile sync warning:", err)
+      );
+    } catch (e) {
+      console.warn("Cloud profile sync warning:", e);
+    }
+  }
 }
 
 export interface ForecastSettings {
@@ -305,8 +518,6 @@ export interface ForecastSettings {
   monthlyPayroll: number; // in INR
   weeklyVendors: number; // in INR
 }
-
-const FORECAST_KEY = "cc_forecast_settings_v2";
 
 export const DEFAULT_FORECAST_SETTINGS: ForecastSettings = {
   startingBalance: 0,
@@ -318,7 +529,7 @@ export const DEFAULT_FORECAST_SETTINGS: ForecastSettings = {
 export function getStoredForecastSettings(): ForecastSettings {
   if (typeof window === "undefined") return DEFAULT_FORECAST_SETTINGS;
   try {
-    const raw = localStorage.getItem(FORECAST_KEY);
+    const raw = localStorage.getItem(getForecastKey());
     if (!raw) return DEFAULT_FORECAST_SETTINGS;
     return { ...DEFAULT_FORECAST_SETTINGS, ...JSON.parse(raw) };
   } catch {
@@ -327,7 +538,7 @@ export function getStoredForecastSettings(): ForecastSettings {
 }
 
 export function saveForecastSettings(settings: ForecastSettings): void {
-  localStorage.setItem(FORECAST_KEY, JSON.stringify(settings));
+  localStorage.setItem(getForecastKey(), JSON.stringify(settings));
   dispatchStoreChange();
 }
 
@@ -335,8 +546,8 @@ export function saveForecastSettings(settings: ForecastSettings): void {
  * Wipe all fake / demo data completely so user starts fresh with real data only
  */
 export function clearAllData(): void {
-  localStorage.setItem(INVOICES_KEY, JSON.stringify([]));
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify([]));
+  localStorage.setItem(getInvoicesKey(), JSON.stringify([]));
+  localStorage.setItem(getCustomersKey(), JSON.stringify([]));
   // Clean up legacy keys
   localStorage.removeItem("cc_invoices_store_v1");
   localStorage.removeItem("cc_customers_store_v1");
@@ -347,8 +558,8 @@ export function clearAllData(): void {
  * Load sample data if ever explicitly requested
  */
 export function loadSampleData(): void {
-  localStorage.setItem(INVOICES_KEY, JSON.stringify(INVOICES));
-  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(CUSTOMERS));
+  localStorage.setItem(getInvoicesKey(), JSON.stringify(INVOICES));
+  localStorage.setItem(getCustomersKey(), JSON.stringify(CUSTOMERS));
   dispatchStoreChange();
 }
 

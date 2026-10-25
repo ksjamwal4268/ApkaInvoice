@@ -41,9 +41,11 @@ export function useDataStore() {
     const handleUpdate = () => refresh();
     window.addEventListener("cc-store-updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
+    window.addEventListener("cc-auth-updated", handleUpdate);
     return () => {
       window.removeEventListener("cc-store-updated", handleUpdate);
       window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("cc-auth-updated", handleUpdate);
     };
   }, [refresh]);
 

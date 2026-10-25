@@ -1,23 +1,14 @@
 import { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
 import {
-  getAuth,
   signInWithPopup,
-  GoogleAuthProvider,
   onAuthStateChanged,
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
-import firebaseConfig from "../firebase.config";
-import { getStoredBusinessProfile, saveBusinessProfile } from "../data/dataStore";
+import { app, auth, db, googleProvider } from "../firebaseApp";
+import { getStoredBusinessProfile, saveBusinessProfile, syncUserDataFromCloud } from "../data/dataStore";
 
-// Initialize Firebase App & Auth
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-
-// Google provider setup
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: "select_account" });
+export { app, auth, db };
 
 export interface AppUser {
   id: string;
@@ -30,7 +21,7 @@ export interface AppUser {
 export type GoogleUser = AppUser;
 
 // Google login function
-export const signInWithGoogle = () => signInWithPopup(auth, provider);
+export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 
 // Google logout function
 export const signOutUser = () => firebaseSignOut(auth);
@@ -85,23 +76,32 @@ export const useAuth = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       if (firebaseUser) {
         const appUser: AppUser = {
           id: firebaseUser.uid,
-          name: firebaseUser.displayName || "Google User",
+          name: firebaseUser.displayName || "",
           email: firebaseUser.email || "",
           picture: firebaseUser.photoURL || undefined,
         };
         setUser(appUser);
         localStorage.setItem("cc-google-user", JSON.stringify(appUser));
+        window.dispatchEvent(new Event("cc-auth-updated"));
+        window.dispatchEvent(new Event("cc-store-updated"));
 
-        // Sync with stored business profile
+        // Pull user's synced data from Firestore (for cross-device sync)
+        try {
+          await syncUserDataFromCloud(firebaseUser.uid);
+        } catch (err) {
+          console.warn("Cloud sync warning:", err);
+        }
+
+        // Initialize default profile fields for this user if missing
         try {
           const currentProf = getStoredBusinessProfile();
           let needsUpdate = false;
           const nextProf = { ...currentProf };
-          if (!nextProf.contactPerson && appUser.name && appUser.name !== "Google User") {
+          if (!nextProf.contactPerson && appUser.name) {
             nextProf.contactPerson = appUser.name;
             needsUpdate = true;
           }
@@ -116,10 +116,10 @@ export const useAuth = () => {
           console.warn("Auto-sync profile on login notice:", err);
         }
       } else {
-        const stored = localStorage.getItem("cc-google-user");
-        if (!stored) {
-          setUser(null);
-        }
+        localStorage.removeItem("cc-google-user");
+        setUser(null);
+        window.dispatchEvent(new Event("cc-auth-updated"));
+        window.dispatchEvent(new Event("cc-store-updated"));
       }
       setLoading(false);
     });
@@ -135,6 +135,8 @@ export const useAuth = () => {
     }
     localStorage.removeItem("cc-google-user");
     setUser(null);
+    window.dispatchEvent(new Event("cc-auth-updated"));
+    window.dispatchEvent(new Event("cc-store-updated"));
   };
 
   return {
