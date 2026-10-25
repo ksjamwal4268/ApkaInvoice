@@ -17,7 +17,9 @@ export interface UploadedInvoiceFields {
 
 export interface UploadInvoiceResult {
   ok: boolean;
+  message?: string;
   error?: string;
+  invoice?: UploadedInvoiceFields;
   fields?: UploadedInvoiceFields;
 }
 
@@ -25,10 +27,16 @@ export function uploadInvoice(file: File | Blob): Promise<UploadInvoiceResult>;
 
 export interface SendEmailReminderParams {
   invoiceNumber: string;
-  email: string;
+  recipientEmail?: string;
+  email?: string;
+  recipientName?: string;
   buyerName?: string;
+  subject?: string;
+  message?: string;
+  amount?: number | string;
   amountText?: string;
   dueDate?: string;
+  sender?: { name?: string; email?: string };
   senderName?: string;
   senderEmail?: string;
   gmailToken?: string;
@@ -47,20 +55,25 @@ export function normalizePhone(p: string): string;
 
 export interface SendWhatsAppReminderParams {
   invoiceNumber: string;
-  phone: string;
+  recipientPhone?: string;
+  phone?: string;
+  recipientName?: string;
   buyerName?: string;
+  amount?: number | string;
   amountText?: string;
   dueDate?: string;
+  sender?: { name?: string };
   senderName?: string;
+  message?: string;
 }
 
 export interface SendWhatsAppReminderResult {
   ok: boolean;
   needPhone?: boolean;
+  fallbackUrl?: string;
   fallbackLink?: string;
   error?: string;
   message?: string;
 }
 
 export function sendWhatsAppReminder(params: SendWhatsAppReminderParams): Promise<SendWhatsAppReminderResult>;
-

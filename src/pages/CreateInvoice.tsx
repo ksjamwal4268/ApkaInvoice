@@ -27,7 +27,8 @@ import { useDataStore } from "../hooks/useDataStore";
 import { useAuth } from "../utils/auth";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CustomerModal } from "../components/CustomerModal";
-import { ExtractedInvoiceData, uploadInvoiceToN8n, getStoredBusinessProfile } from "../data/dataStore";
+import { ExtractedInvoiceData, getStoredBusinessProfile } from "../data/dataStore";
+import { uploadInvoice } from "../api/n8n.js";
 import { Customer, getCustomerCategory } from "../data/sampleData";
 import { INDIAN_STATES } from "../utils/gstin";
 
@@ -90,6 +91,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const [scannedImagePreview, setScannedImagePreview] = useState<string | null>(null);
   const [ocrBadge, setOcrBadge] = useState<string | null>(null);
   const [isUploadingDirect, setIsUploadingDirect] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [missing, setMissing] = useState<string[]>([]);
 
   // Modals state
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
@@ -341,26 +345,134 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     }
   };
 
-  // Direct file upload from the page
-  const handleDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Direct file upload from the page via n8n uploadInvoice
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    e.target.value = ""; // allow re-uploading the same file
+    if (!file || reading) return;
 
     if (!user) {
       signInWithGoogle();
       return;
     }
 
-    setIsUploadingDirect(true);
-    try {
-      const res = await uploadInvoiceToN8n(file);
-      handleApplyExtractedData(res);
-    } catch (err: any) {
-      alert("Could not read this invoice. Please upload a clear photo or PDF.");
-    } finally {
-      setIsUploadingDirect(false);
-      e.target.value = "";
+    setReading(true);
+    setUploadError("");
+    const res = await uploadInvoice(file);
+    setReading(false);
+
+    if (!res.ok) {
+      setUploadError(res.message || "Could not read this invoice right now. Please try again in a minute.");
+      return;
     }
+
+    const inv = res.invoice;
+    if (!inv) return;
+
+    const pick = (newVal: any, oldVal: any) => ((newVal ?? "") !== "" ? String(newVal) : (oldVal ?? ""));
+
+    // Rule: Never put a GSTIN in the invoice number field. Remove any regex or text guessing on the uploaded file.
+    const extractedInvNum = (inv.invoiceNumber ?? "").trim();
+    const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(extractedInvNum);
+    if (extractedInvNum && !isGstinPattern) {
+      setInvoiceNumber(extractedInvNum);
+    }
+
+    if (inv.invoiceDate) setInvoiceDate(inv.invoiceDate);
+
+    // Rule: Place of Supply comes only from inv.placeOfSupply. Never derive it from the seller address or GSTIN.
+    if (inv.placeOfSupply) {
+      setPlaceOfSupply(inv.placeOfSupply);
+    }
+
+    if (inv.vendorName) {
+      setSenderBusinessName((prev) => pick(inv.vendorName, prev));
+    }
+    if (inv.vendorGstin) {
+      setSenderGstin((prev) => pick(inv.vendorGstin, prev));
+    }
+
+    if (inv.buyerName) {
+      const bName = (inv.buyerName ?? "").trim();
+      const bGstin = (inv.buyerGstin ?? "").trim().toUpperCase();
+      const bEmail = (inv.buyerEmail ?? "").trim();
+      const bPhone = (inv.buyerPhone ?? "").trim();
+      const bAddress = (inv.buyerAddress ?? "").trim();
+
+      let matchedCustomer = customers.find(
+        (c) =>
+          Boolean(c && (c.name ?? "").toLowerCase() === (bName ?? "").toLowerCase()) ||
+          Boolean(bGstin && c && (c.gstin ?? "").toUpperCase() === bGstin)
+      );
+
+      if (!matchedCustomer && bName) {
+        const newCust: Customer = {
+          id: `cust-${Date.now().toString(36)}`,
+          name: bName,
+          city: bAddress ? (bAddress.split(",")[0] ?? "").trim() : "",
+          state: inv.placeOfSupply || "",
+          address: bAddress,
+          gstin: bGstin || null,
+          pan: bGstin && bGstin.length >= 12 ? bGstin.substring(2, 12) : null,
+          email: bEmail || "",
+          phone: bPhone || "",
+          isChronicallyLate: false,
+          grade: "A",
+          gradeReasons: ["Registered via Invoice Document Scanner"],
+        };
+        saveCustomer(newCust);
+        matchedCustomer = newCust;
+      }
+
+      if (matchedCustomer) {
+        setCustomerId(matchedCustomer.id);
+        setGstin(bGstin || matchedCustomer.gstin || "");
+        setBuyerPhone(bPhone || matchedCustomer.phone || "");
+        setBuyerEmail(bEmail || matchedCustomer.email || "");
+      }
+    } else {
+      if (inv.buyerGstin) setGstin((prev) => pick(inv.buyerGstin, prev));
+      if (inv.buyerPhone) setBuyerPhone((prev) => pick(inv.buyerPhone, prev));
+      if (inv.buyerEmail) setBuyerEmail((prev) => pick(inv.buyerEmail, prev));
+    }
+
+    if (inv.dueDate && inv.invoiceDate) {
+      const d1 = new Date(inv.invoiceDate);
+      const d2 = new Date(inv.dueDate);
+      const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
+      if (diffDays <= 15) setTerms("Net 15");
+      else if (diffDays <= 30) setTerms("Net 30");
+      else setTerms("Net 45");
+    }
+
+    if (inv.amount) {
+      const amt = Number(inv.amount) || 0;
+      if (amt > 0) {
+        const baseRate = Math.round(amt * 0.82);
+        setLineItems([
+          {
+            id: "1",
+            description: `Goods / Services from ${(inv.vendorName ?? "").trim() || "Vendor"}`,
+            hsn: "9983",
+            quantity: 1,
+            rate: Math.round(baseRate / 100),
+            gstRate: 18,
+          },
+        ]);
+      }
+    }
+
+    setOcrBadge("Auto-Extracted from Invoice Document");
+
+    setMissing(
+      [
+        ["buyerEmail", inv.buyerEmail],
+        ["buyerPhone", inv.buyerPhone],
+        ["dueDate", inv.dueDate],
+      ]
+        .filter(([, v]) => (v ?? "") === "")
+        .map(([k]) => k as string)
+    );
   };
 
   const handleSaveBuyerModal = (newBuyer: Customer) => {
@@ -555,19 +667,26 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 <span>Scan Camera</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingDirect}
-                className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 border-slate-600 bg-white bg-slate-50 text-slate-700 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 hover:bg-slate-50 transition-all shadow-xs"
-              >
-                {isUploadingDirect ? (
-                  <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+              <label className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer">
+                {reading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                    <span>Reading invoice… (can take up to 90s)</span>
+                  </>
                 ) : (
-                  <Upload className="w-4 h-4 text-teal-600" />
+                  <>
+                    <Upload className="w-4 h-4 text-teal-600" />
+                    <span>Upload invoice photo / PDF</span>
+                  </>
                 )}
-                <span>{isUploadingDirect ? "Extracting..." : "Upload Photo or PDF"}</span>
-              </button>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  hidden
+                  disabled={reading}
+                  onChange={handleFile}
+                />
+              </label>
             </>
           )}
 
@@ -582,14 +701,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         </div>
       </div>
 
-      {/* Hidden file input for direct bill upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,application/pdf"
-        className="hidden"
-        onChange={handleDirectFileUpload}
-      />
+      {uploadError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-between text-xs font-semibold">
+          <span>{uploadError}</span>
+          <button type="button" onClick={() => setUploadError("")} className="text-rose-500 hover:text-rose-700 font-bold ml-2">✕</button>
+        </div>
+      )}
 
       {/* OCR Extraction Alert Banner */}
       {ocrBadge && (
@@ -770,11 +887,23 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               </label>
               <input
                 type="tel"
-                value={buyerPhone}
-                onChange={(e) => setBuyerPhone(e.target.value)}
-                placeholder="+91 98234 56780"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                value={buyerPhone ?? ""}
+                onChange={(e) => {
+                  setBuyerPhone(e.target.value);
+                  if (missing.includes("buyerPhone")) {
+                    setMissing((prev) => prev.filter((m) => m !== "buyerPhone"));
+                  }
+                }}
+                placeholder={missing.includes("buyerPhone") ? "Buyer phone (please check)" : "+91 98234 56780"}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                  missing.includes("buyerPhone")
+                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
+                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                }`}
               />
+              {missing.includes("buyerPhone") && (
+                <p className="mt-1 text-[11px] text-amber-600 font-semibold">Please check/enter buyer phone</p>
+              )}
             </div>
 
             {/* Buyer Email */}
@@ -785,11 +914,23 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
               </label>
               <input
                 type="email"
-                value={buyerEmail}
-                onChange={(e) => setBuyerEmail(e.target.value)}
-                placeholder="accounts@buyer.in"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 border-slate-600 bg-white bg-slate-900 text-slate-900 text-slate-900 text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                value={buyerEmail ?? ""}
+                onChange={(e) => {
+                  setBuyerEmail(e.target.value);
+                  if (missing.includes("buyerEmail")) {
+                    setMissing((prev) => prev.filter((m) => m !== "buyerEmail"));
+                  }
+                }}
+                placeholder={missing.includes("buyerEmail") ? "Buyer email (please check)" : "accounts@buyer.in"}
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none ${
+                  missing.includes("buyerEmail")
+                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
+                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                }`}
               />
+              {missing.includes("buyerEmail") && (
+                <p className="mt-1 text-[11px] text-amber-600 font-semibold">Please check/enter buyer email</p>
+              )}
             </div>
 
             {/* Invoice Number */}
