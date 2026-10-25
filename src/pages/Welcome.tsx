@@ -78,9 +78,9 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       // Fallback demo user if Firebase auth popup is closed or blocked
       const demoUser = {
         id: "demo-user-1",
-        name: businessProfile.contactPerson || businessProfile.name || "Rohit Sharma",
-        email: businessProfile.email || "accounts@sharmapackaging.com",
-        picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sharma",
+        name: businessProfile.contactPerson || businessProfile.name || "Business User",
+        email: businessProfile.email || "accounts@apkainvoice.com",
+        picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=User",
       };
       localStorage.setItem("cc-google-user", JSON.stringify(demoUser));
       window.location.reload();
@@ -103,7 +103,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
     );
   }
 
-  const businessName = businessProfile.name || "Sharma Packaging";
+  const businessName = businessProfile.name;
 
   return (
     <div className="welcome-page">
@@ -243,7 +243,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <div className="b b3"></div>
         <h1 className="d">Your cash flow should be working harder than you are.</h1>
         <p>
-          Welcome back, {businessName}. Apka Invoice predicts cash shortfalls 8 weeks ahead, reads bills from a photo, and chases dues in English, Hindi and Marathi.
+          {businessName ? `Welcome back, ${businessName}. ` : ""}ApkaInvoice predicts cash shortfalls, reads bills from photos or PDFs, and automates payment chasing with WhatsApp and email reminders.
         </p>
         <div className="row">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
@@ -266,7 +266,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <span>CGST, SGST &amp; IGST to the paisa</span>
         <span>WhatsApp &amp; email reminders</span>
         <span>UPI payment links</span>
-        <span>TDS 194C/J detection</span>
+        <span>Instant bill photo OCR</span>
+        <span>Real-time payment tracking</span>
       </div>
 
       {/* 4. HOW IT WORKS SECTION */}
@@ -300,8 +301,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               onClick={() => navigate("/reminders")}
             >
               <div className="ic">3</div>
-              <h3>Send automated reminders</h3>
-              <p>A 4-stage reminder ladder in English, Hindi and Marathi. You approve every WhatsApp and email before it goes.</p>
+              <h3>Send reminder options</h3>
+              <p>One-click reminder options via WhatsApp and email. Review message details and dispatch payment links directly to your buyers.</p>
             </div>
           </CometCard>
         </div>
@@ -311,38 +312,77 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       <section className="blk pink scroll-mt-28" id="live">
         <div className="wrap">
           <div className="hd">
-            <h2 className="d">You slept 8 hours.<br />Apka Invoice didn't.</h2>
-            <p>Your live portfolio, updated as bills are scanned and payments land.</p>
+            <h2 className="d">You slept 8 hours.<br />ApkaInvoice didn't.</h2>
+            <p>
+              {invoices.length > 0
+                ? "Your live portfolio, updated as bills are scanned and payments land."
+                : "Continuous monitoring for your receivables, ready as soon as you record your first bill."}
+            </p>
           </div>
           <div className="stats">
-            <CometCard className="h-full">
-              <div className="st">
-                <small>Money owed</small>
-                <b>{moneyOwed > 0 ? formatInr(moneyOwed) : "₹5,310"}</b>
-                <i>Open across all customers</i>
-              </div>
-            </CometCard>
-            <CometCard className="h-full">
-              <div className="st">
-                <small>Overdue</small>
-                <b>{overdueAmount > 0 ? formatInr(overdueAmount) : "₹0"}</b>
-                <i>{overdueAmount > 0 ? "Requires action" : "Nothing late right now"}</i>
-              </div>
-            </CometCard>
-            <CometCard className="h-full">
-              <div className="st">
-                <small>Expected in 4 weeks</small>
-                <b>{expected4Weeks > 0 ? formatInr(expected4Weeks) : "₹0"}</b>
-                <i>{expected4Weeks > 0 ? "Scheduled customer dues" : "No payments scheduled"}</i>
-              </div>
-            </CometCard>
-            <CometCard className="h-full">
-              <div className="st">
-                <small>Bills due in 4 weeks</small>
-                <b>{bills4Weeks > 0 ? formatInr(bills4Weeks) : "₹0"}</b>
-                <i>Nothing to pay soon</i>
-              </div>
-            </CometCard>
+            {invoices.length > 0 ? (
+              <>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Money owed</small>
+                    <b>{formatInr(moneyOwed)}</b>
+                    <i>Open across all customers</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Overdue</small>
+                    <b>{formatInr(overdueAmount)}</b>
+                    <i>{overdueAmount > 0 ? "Requires action" : "All payments current"}</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Expected in 4 weeks</small>
+                    <b>{formatInr(expected4Weeks)}</b>
+                    <i>Scheduled customer dues</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Invoices recorded</small>
+                    <b>{invoices.length.toString()}</b>
+                    <i>Active in your ledger</i>
+                  </div>
+                </CometCard>
+              </>
+            ) : (
+              <>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Bill extraction</small>
+                    <b>OCR Ready</b>
+                    <i>Scan camera photo or upload PDF</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Receivables tracking</small>
+                    <b>Real-Time</b>
+                    <i>Tracks invoice dues and overdue days</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Buyer reminders</small>
+                    <b>1-Click</b>
+                    <i>WhatsApp &amp; email notifications</i>
+                  </div>
+                </CometCard>
+                <CometCard className="h-full">
+                  <div className="st">
+                    <small>Direct settlement</small>
+                    <b>100% Direct</b>
+                    <i>Buyers pay straight to your UPI &amp; bank</i>
+                  </div>
+                </CometCard>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -358,7 +398,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               <div className="fi">
                 <div>
                   <b>Bill scanned</b><br />
-                  <span>Line items and GST split read from your photo. Ready to review.</span>
+                  <span>Line items and GST split extracted from your photo or PDF. Ready to review.</span>
                 </div>
                 <em>02:14 AM</em>
               </div>
@@ -366,8 +406,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <CometCard>
               <div className="fi">
                 <div>
-                  <b>Reminder drafted</b><br />
-                  <span>Stage 2 message in Hindi is waiting for your approval.</span>
+                  <b>Payment reminder prepared</b><br />
+                  <span>Personalized message ready to dispatch via WhatsApp or email with your payment details.</span>
                 </div>
                 <em>03:40 AM</em>
               </div>
@@ -375,8 +415,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <CometCard>
               <div className="fi">
                 <div>
-                  <b>Payment matched</b><br />
-                  <span>Bank credit tied to its invoice. TDS 194C flagged.</span>
+                  <b>Payment recorded</b><br />
+                  <span>Invoice marked received, customer balance updated, and ledger reconciled.</span>
                 </div>
                 <em>06:05 AM</em>
               </div>
@@ -396,8 +436,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <CometCard className="sc-card">
               <div className="sc-item" onClick={() => navigate("/invoices")}>
                 <div>
-                  <h3>Bank reconciliation</h3>
-                  <p>Matches credits to invoices and detects TDS 194C/J automatically.</p>
+                  <h3>Invoice ledger</h3>
+                  <p>Tracks payment status, records receipts, and updates outstanding dues.</p>
                 </div>
                 <small>Open →</small>
               </div>
@@ -429,25 +469,27 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <CometCard className="w-full">
           <div className="cfg">
             <h2 className="d">
-              Automation is configured for {businessProfile.name ? `${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}` : "Sharma Packaging Enterprises, Pune"}.
+              {businessProfile.name
+                ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
+                : "Configure your business profile & reminder sender identity."}
             </h2>
             <div>
               <ul>
                 <li>
                   <b>WhatsApp &amp; payments</b>
-                  <span>{businessProfile.phone || "9906639590"}</span>
+                  <span>{businessProfile.phone || "Configure in Profile"}</span>
                 </li>
                 <li>
                   <b>Email</b>
-                  <span>{businessProfile.email || "arnavgos09@gmail.com"}</span>
+                  <span>{businessProfile.email || user?.email || "Configure in Profile"}</span>
                 </li>
                 <li>
-                  <b>UPI</b>
-                  <span>{businessProfile.upi || "sharmapackaging@hdfc"}</span>
+                  <b>UPI ID</b>
+                  <span>{businessProfile.upi || (businessProfile.phone ? `${businessProfile.phone.replace(/\D/g, "")}@upi` : "Configure in Profile")}</span>
                 </li>
                 <li>
                   <b>Signed in as</b>
-                  <span>{user?.email || "billing@sharmapackaging.in"}</span>
+                  <span>{user?.email || "Local device session"}</span>
                 </li>
               </ul>
               <p style={{ marginTop: "18px", display: "flex", gap: "8px" }}>
@@ -500,7 +542,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           </div>
           <div>
             <b>Recovery</b>
-            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/invoices")}>Bank reconciliation</button>
+            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/invoices")}>Invoice ledger</button>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/customers")}>Payment grades</button>
           </div>
           <div>
@@ -514,7 +556,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             )}
           </div>
         </div>
-        <p className="cp">© 2026 Apka Invoice. Built for Indian manufacturing and trading businesses.</p>
+        <p className="cp">© 2026 ApkaInvoice. Built for Indian manufacturing and trading businesses.</p>
       </footer>
 
       {/* Invoice Camera / OCR Modal */}
