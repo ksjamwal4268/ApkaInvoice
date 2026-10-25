@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FileText, Users, LayoutDashboard } from "lucide-react";
 import { Language } from "../data/i18n";
 import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
@@ -434,30 +435,63 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           </div>
           <div className="sc">
             <CometCard className="sc-card">
-              <div className="sc-item" onClick={() => navigate("/invoices")}>
-                <div>
-                  <h3>Invoice ledger</h3>
-                  <p>Tracks payment status, records receipts, and updates outstanding dues.</p>
+              <div
+                className="sc-item"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate("/invoices")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/invoices");
+                  }
+                }}
+              >
+                <div className="sc-icon">
+                  <FileText className="w-5 h-5 text-neutral-800" />
                 </div>
-                <small>Open →</small>
+                <h3>Invoice Ledger</h3>
+                <p>Track payment status, record settlements, and monitor outstanding buyer balances in real time.</p>
               </div>
             </CometCard>
             <CometCard className="sc-card">
-              <div className="sc-item" onClick={() => navigate("/customers")}>
-                <div>
-                  <h3>Customer discipline</h3>
-                  <p>Payment grades A, B and C show who pays on time.</p>
+              <div
+                className="sc-item"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate("/customers")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate("/customers");
+                  }
+                }}
+              >
+                <div className="sc-icon">
+                  <Users className="w-5 h-5 text-neutral-800" />
                 </div>
-                <small>Open →</small>
+                <h3>Customer Discipline</h3>
+                <p>Automated payment grades A, B, and C classify which buyers pay promptly versus chronic late payers.</p>
               </div>
             </CometCard>
             <CometCard className="sc-card">
-              <div className="sc-item" onClick={handleEnterDashboard}>
-                <div>
-                  <h3>Main app</h3>
-                  <p>Open the full dashboard with every invoice and forecast.</p>
+              <div
+                className="sc-item"
+                role="button"
+                tabIndex={0}
+                onClick={handleEnterDashboard}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleEnterDashboard();
+                  }
+                }}
+              >
+                <div className="sc-icon">
+                  <LayoutDashboard className="w-5 h-5 text-neutral-800" />
                 </div>
-                <small>Enter →</small>
+                <h3>Financial Dashboard</h3>
+                <p>Open the comprehensive dashboard with 6-week cash forecasts, overdue priority alerts, and metrics.</p>
               </div>
             </CometCard>
           </div>
