@@ -123,7 +123,7 @@ export const useAuth = () => {
           console.warn("Cloud sync warning:", err);
         }
 
-        // Initialize default profile fields for this user if missing
+        // Initialize default profile fields for this user if missing, preserving phone and email for returning users
         try {
           const currentProf = getStoredBusinessProfile();
           let needsUpdate = false;
@@ -134,6 +134,14 @@ export const useAuth = () => {
           }
           if (!nextProf.email && appUser.email) {
             nextProf.email = appUser.email;
+            needsUpdate = true;
+          }
+          if (nextProf.phone && !appUser.phone) {
+            appUser.phone = nextProf.phone;
+            localStorage.setItem("cc-google-user", JSON.stringify(appUser));
+          }
+          if (nextProf.phone && nextProf.email && !nextProf.isOnboarded) {
+            nextProf.isOnboarded = true;
             needsUpdate = true;
           }
           if (needsUpdate) {

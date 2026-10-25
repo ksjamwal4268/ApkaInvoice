@@ -77,7 +77,7 @@ export function OnboardingModal({
       setPhone(
         existingProfile.phone && existingProfile.phone !== "+91 98765 43210"
           ? existingProfile.phone
-          : ""
+          : currentUser?.phone || ""
       );
       setState(existingProfile.state || "");
       setStateCode(existingProfile.stateCode || "");

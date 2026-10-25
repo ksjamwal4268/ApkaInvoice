@@ -6,6 +6,7 @@ import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
 import { DEFAULT_OUTFLOWS } from "../utils/forecast";
+import { getStoredBusinessProfile } from "../data/dataStore";
 import { OnboardingModal } from "../components/OnboardingModal";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CometCard } from "@/components/ui/comet-card";
@@ -74,6 +75,12 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
     setAuthError(null);
     try {
       await signInWithGoogle();
+      setTimeout(() => {
+        const prof = getStoredBusinessProfile();
+        if (prof.email && prof.phone) {
+          navigate("/dashboard");
+        }
+      }, 400);
     } catch (err: any) {
       console.warn("Google sign in notice:", err);
       if (err?.code !== "auth/popup-closed-by-user") {
@@ -83,7 +90,8 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
   };
 
   const handleEnterDashboard = () => {
-    if (user && !businessProfile.isOnboarded) {
+    const hasSavedDetails = Boolean(businessProfile.email && businessProfile.phone);
+    if (user && !businessProfile.isOnboarded && !hasSavedDetails) {
       setIsOnboardingOpen(true);
     } else {
       navigate("/dashboard");

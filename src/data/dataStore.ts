@@ -204,18 +204,42 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
   if (!uid || uid === "guest") return;
 
   try {
-    // 1. Sync Business Profile
+    // 1. Sync Business Profile (ensuring phone and email are preserved for returning users)
     const profileRef = doc(db, "users", uid, "profile", "business");
     const pSnap = await getDoc(profileRef);
     if (pSnap.exists()) {
       const cloudProfile = pSnap.data() as BusinessProfile;
-      if (cloudProfile && (cloudProfile.name ?? "") !== "OG Enterprises") {
+      if (cloudProfile) {
+        if (cloudProfile.name === "OG Enterprises") {
+          cloudProfile.name = "";
+        }
+        if (cloudProfile.phone && cloudProfile.email) {
+          cloudProfile.isOnboarded = true;
+        }
         localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(cloudProfile));
       }
     } else {
-      const current = getStoredBusinessProfile();
-      if (current && ((current.name ?? "") || (current.contactPerson ?? "") || (current.email ?? ""))) {
-        await setDoc(profileRef, cleanForFirestore(current), { merge: true });
+      // Check root user document for saved phone/email
+      const userRef = doc(db, "users", uid);
+      const uSnap = await getDoc(userRef);
+      if (uSnap.exists()) {
+        const uData = uSnap.data();
+        const current = getStoredBusinessProfile();
+        const merged: BusinessProfile = {
+          ...current,
+          phone: uData.phone || current.phone,
+          email: uData.email || current.email,
+          name: uData.businessName || current.name,
+          contactPerson: uData.name || current.contactPerson,
+          isOnboarded: Boolean((uData.phone || current.phone) && (uData.email || current.email)),
+        };
+        localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(merged));
+        await setDoc(profileRef, cleanForFirestore(merged), { merge: true });
+      } else {
+        const current = getStoredBusinessProfile();
+        if (current && ((current.name ?? "") || (current.contactPerson ?? "") || (current.email ?? "") || (current.phone ?? ""))) {
+          await setDoc(profileRef, cleanForFirestore(current), { merge: true });
+        }
       }
     }
 
@@ -567,9 +591,19 @@ export function saveBusinessProfile(profile: BusinessProfile): void {
   const uid = getActiveUserId();
   if (uid && uid !== "guest") {
     try {
-      setDoc(doc(db, "users", uid, "profile", "business"), cleanForFirestore(profile), { merge: true }).catch((err) =>
+      const cleaned = cleanForFirestore(profile);
+      setDoc(doc(db, "users", uid, "profile", "business"), cleaned, { merge: true }).catch((err) =>
         console.warn("Cloud profile sync warning:", err)
       );
+      // Also persist at user root level so email and phone are permanently attached to this Google UID
+      setDoc(doc(db, "users", uid), {
+        email: profile.email || "",
+        phone: profile.phone || "",
+        businessName: profile.name || "",
+        contactPerson: profile.contactPerson || "",
+        isOnboarded: Boolean(profile.phone && profile.email),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true }).catch(() => {});
     } catch (e) {
       console.warn("Cloud profile sync warning:", e);
     }
