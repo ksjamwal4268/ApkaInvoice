@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
 import { GlowingEffect } from "../components/ui/glowing-effect";
+import { HoverBorderGradient } from "../components/ui/hover-border-gradient";
 import { formatInr, add } from "../utils/money";
 import { daysBetween, formatHindiDate } from "../utils/date";
 import { Language } from "../data/i18n";
@@ -685,15 +686,18 @@ export function Dashboard({ lang }: { lang: Language }) {
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <a
+                        <HoverBorderGradient
+                          as="a"
                           href={waUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2 rounded-lg bg-[#25D366] text-white hover:opacity-90 shadow-2xs tap-target"
+                          containerClassName="rounded-lg"
+                          glowColor="#25D366"
+                          className="p-2 rounded-[inherit] bg-[#25D366] text-white hover:opacity-95 flex items-center justify-center tap-target"
                           title="Quick WhatsApp reminder"
                         >
                           <MessageSquare className="w-4 h-4" />
-                        </a>
+                        </HoverBorderGradient>
                         <button
                           onClick={() => navigate(`/invoices/${inv.id}`)}
                           className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 tap-target"

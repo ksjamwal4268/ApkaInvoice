@@ -26,6 +26,8 @@ import {
   X,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
+import { GlowingEffect } from "../components/ui/glowing-effect";
+import { HoverBorderGradient } from "../components/ui/hover-border-gradient";
 import { formatInr } from "../utils/money";
 import { formatDate, daysBetween, toISODateString } from "../utils/date";
 import { StatusBadge } from "../components/StatusBadge";
@@ -434,9 +436,17 @@ ${bName}`;
 
       {/* Selected Invoice Workspace Banner */}
       {selectedInvoice ? (
-        <div className="rounded-2xl border border-teal-500/40 bg-white dark:bg-slate-850 shadow-sm overflow-hidden space-y-0 animate-in fade-in slide-in-from-top-2">
-          {/* Top Summary Bar */}
-          <div className="p-5 bg-teal-50/70 dark:bg-teal-950/30 border-b border-teal-100 dark:border-teal-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative rounded-2xl border border-teal-500/40 bg-white p-2 md:rounded-3xl md:p-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative rounded-xl overflow-hidden bg-white">
+            {/* Top Summary Bar */}
+            <div className="p-5 bg-teal-50/70 border-b border-teal-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-teal-600 text-white shadow-xs shrink-0">
                 <CheckCircle2 className="w-5 h-5" />
@@ -644,11 +654,14 @@ ${bName}`;
                     </p>
                   </div>
 
-                  <button
+                  <HoverBorderGradient
+                    as="button"
                     type="button"
                     onClick={handleSendEmailReminder}
                     disabled={isSending}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+                    containerClassName="rounded-xl self-start sm:self-auto"
+                    glowColor="#0d9488"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-[inherit] bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all"
                   >
                     {isSending ? (
                       <>
@@ -661,7 +674,7 @@ ${bName}`;
                         <span>Send Email Reminder</span>
                       </>
                     )}
-                  </button>
+                  </HoverBorderGradient>
                 </div>
               </div>
             )}
@@ -696,19 +709,23 @@ ${bName}`;
                 </div>
 
                 <div className="pt-2">
-                  <button
+                  <HoverBorderGradient
+                    as="button"
                     type="button"
                     onClick={handleOpenWhatsApp}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    containerClassName="rounded-xl"
+                    glowColor="#25D366"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-[inherit] bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold shadow-sm transition-all"
                   >
                     <MessageSquare className="w-4 h-4" />
                     <span>Open in WhatsApp</span>
                     <ExternalLink className="w-3.5 h-3.5 opacity-80" />
-                  </button>
+                  </HoverBorderGradient>
                 </div>
               </div>
             )}
           </div>
+        </div>
         </div>
       ) : (
         <div className="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 text-center space-y-1">
@@ -722,7 +739,15 @@ ${bName}`;
       )}
 
       {/* Invoice Section with Tick Box Selection and Side Option */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs space-y-4">
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl p-4 sm:p-6 bg-white space-y-4">
         {/* Controls: Header, Filter Pills & Search */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -926,13 +951,16 @@ ${bName}`;
 
                       {/* Side Option Column: Send Reminder */}
                       <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button
+                        <HoverBorderGradient
+                          as="button"
                           type="button"
                           onClick={() => handleToggleSelect(inv.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer ${
+                          containerClassName="rounded-lg inline-flex"
+                          glowColor={isSelected ? "#0d9488" : "#0ea5e9"}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[inherit] text-xs font-bold transition-all ${
                             isSelected
                               ? "bg-teal-600 text-white shadow-xs"
-                              : "border border-teal-600/30 text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-600 hover:text-white"
+                              : "border border-teal-600/30 text-teal-700 bg-teal-50 hover:bg-teal-600 hover:text-white"
                           }`}
                         >
                           {isSelected ? (
@@ -946,7 +974,7 @@ ${bName}`;
                               <span>Send Reminder</span>
                             </>
                           )}
-                        </button>
+                        </HoverBorderGradient>
                       </td>
                     </tr>
                   );
@@ -955,6 +983,7 @@ ${bName}`;
             </table>
           </div>
         )}
+        </div>
       </div>
 
       {/* Small input modal asking "Payer's email" */}
