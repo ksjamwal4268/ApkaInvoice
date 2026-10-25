@@ -275,7 +275,7 @@ export function getStoredBusinessProfile(): BusinessProfile {
     const raw = localStorage.getItem(BUSINESS_KEY);
     if (!raw) return DEFAULT_BUSINESS_PROFILE;
     const parsed = JSON.parse(raw);
-    // Discard legacy demo / fake Sharma Packaging data
+    // Discard legacy demo / fake Sharma Packaging or fake auto-generated OG Enterprises
     if (
       parsed.name === "Sharma Packaging" ||
       parsed.email === "billing@sharmapackaging.in" ||
@@ -283,6 +283,10 @@ export function getStoredBusinessProfile(): BusinessProfile {
     ) {
       localStorage.removeItem(BUSINESS_KEY);
       return DEFAULT_BUSINESS_PROFILE;
+    }
+    if (parsed.name === "OG Enterprises") {
+      parsed.name = "";
+      localStorage.setItem(BUSINESS_KEY, JSON.stringify(parsed));
     }
     return { ...DEFAULT_BUSINESS_PROFILE, ...parsed };
   } catch {

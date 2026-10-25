@@ -104,7 +104,11 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
     );
   }
 
-  const businessName = businessProfile.name;
+  const displayName = user
+    ? (businessProfile.name && businessProfile.name !== "OG Enterprises"
+        ? businessProfile.name
+        : (user.name && user.name !== "Google User" ? user.name : user.email?.split("@")[0] || ""))
+    : "";
 
   return (
     <div className="welcome-page">
@@ -244,7 +248,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <div className="b b3"></div>
         <h1 className="d">Your cash flow should be working harder than you are.</h1>
         <p>
-          {businessName ? `Welcome back, ${businessName}. ` : ""}ApkaInvoice predicts cash shortfalls, reads bills from photos or PDFs, and automates payment chasing with WhatsApp and email reminders.
+          {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice predicts cash shortfalls, reads bills from photos or PDFs, and automates payment chasing with WhatsApp and email reminders.
         </p>
         <div className="row">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
@@ -515,10 +519,10 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <CometCard className="w-full">
           <div className="cfg">
             <h2 className="d">
-              {user && businessProfile.name
+              {user && businessProfile.name && businessProfile.name !== "OG Enterprises"
                 ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
                 : user
-                ? "Finish configuring your business profile."
+                ? `Automation is configured for ${user.name || user.email}.`
                 : "Your business details will appear here."}
             </h2>
             <div>

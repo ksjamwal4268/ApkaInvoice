@@ -58,7 +58,11 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
       setContactPerson(businessProfile.contactPerson || user?.name || "");
       setEmail(businessProfile.email || user?.email || "");
       setPhone(businessProfile.phone || "");
-      setBusinessName(businessProfile.name || (user?.name ? `${user.name} Enterprises` : ""));
+      setBusinessName(
+        businessProfile.name && businessProfile.name !== "OG Enterprises"
+          ? businessProfile.name
+          : user?.name || ""
+      );
 
       // Location
       setAddress(businessProfile.address || "");
@@ -89,8 +93,8 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
     }
     if (user.name) {
       setContactPerson(user.name);
-      if (!businessName) {
-        setBusinessName(`${user.name} Enterprises`);
+      if (!businessName || businessName === "OG Enterprises") {
+        setBusinessName(user.name);
       }
     }
     if (user.email) {
@@ -111,7 +115,9 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
     const updatedProfile: BusinessProfile = {
       ...businessProfile,
-      name: businessName.trim() || (contactPerson.trim() ? `${contactPerson.trim()} Enterprises` : "My Business"),
+      name: (businessName.trim() && businessName.trim() !== "OG Enterprises")
+        ? businessName.trim()
+        : (contactPerson.trim() || user?.name || ""),
       contactPerson: contactPerson.trim(),
       email: email.trim(),
       phone: cleanPhone,
