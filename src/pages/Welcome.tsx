@@ -478,12 +478,18 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
       {/* 10. FOOTER */}
       <footer>
-        <div className="wm" aria-label="apkainvoice">
-          <span>a</span>
+        <div className="wm" aria-label="ApkaInvoice">
+          <span>A</span>
           <span>p</span>
           <span>k</span>
           <span>a</span>
+          <span>I</span>
+          <span>n</span>
+          <span>v</span>
+          <span>o</span>
           <span>i</span>
+          <span>c</span>
+          <span>e</span>
         </div>
         <div className="fc">
           <div>

@@ -511,22 +511,27 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-bottom: 60px;
   flex-wrap: wrap;
 }
 
 .welcome-page .wm span {
-  font: 400 clamp(90px, 17vw, 210px)/1 Anton, Impact, sans-serif;
-  text-transform: lowercase;
-  letter-spacing: -0.02em;
+  font: 400 clamp(42px, 8.5vw, 125px)/1 Anton, Impact, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .welcome-page .wm span:nth-child(1) { color: #a9b8ee; }
 .welcome-page .wm span:nth-child(2) { color: #f2a6f5; }
 .welcome-page .wm span:nth-child(3) { color: #b7e36a; }
 .welcome-page .wm span:nth-child(4) { color: #f4f27a; }
-.welcome-page .wm span:nth-child(5) { color: #a9b8ee; }
+.welcome-page .wm span:nth-child(5) { color: #38bdf8; }
+.welcome-page .wm span:nth-child(6) { color: #a9b8ee; }
+.welcome-page .wm span:nth-child(7) { color: #f2a6f5; }
+.welcome-page .wm span:nth-child(8) { color: #b7e36a; }
+.welcome-page .wm span:nth-child(9) { color: #f4f27a; }
+.welcome-page .wm span:nth-child(10) { color: #38bdf8; }
+.welcome-page .wm span:nth-child(11) { color: #a9b8ee; }
 
 .welcome-page .fc {
   max-width: 1180px;
