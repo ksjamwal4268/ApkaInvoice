@@ -30,6 +30,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
+import { GlowingEffect } from "../components/ui/glowing-effect";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import {
   ExtractedInvoiceData,
@@ -356,48 +357,84 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
 
       {/* KPI Cards Overview */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Billed</p>
-          <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-white mt-1">
-            {formatInr(totalBilled)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{invoices.length} invoices generated</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Collected</p>
-            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-              Completed
-            </span>
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-1.5 md:rounded-3xl md:p-2 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative flex h-full flex-col justify-between rounded-xl p-3.5 sm:p-4 bg-white">
+            <p className="text-xs font-semibold text-slate-500">Total Billed</p>
+            <p className="text-xl font-extrabold tabular-nums text-slate-900 mt-1">
+              {formatInr(totalBilled)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{invoices.length} invoices generated</p>
           </div>
-          <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400 mt-1">
-            {formatInr(totalPaid)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{counts.completed} payments received</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Outstanding Balance</p>
-          <p className="text-xl font-bold tabular-nums text-slate-900 dark:text-white mt-1">
-            {formatInr(totalOutstanding)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{counts.due + counts.overdue} pending collection</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Overdue Risk</p>
-            {counts.overdue > 0 && (
-              <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
-                Action Req.
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-1.5 md:rounded-3xl md:p-2 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative flex h-full flex-col justify-between rounded-xl p-3.5 sm:p-4 bg-white">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">Total Collected</p>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                Completed
               </span>
-            )}
+            </div>
+            <p className="text-xl font-extrabold tabular-nums text-emerald-600 mt-1">
+              {formatInr(totalPaid)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{counts.completed} payments received</p>
           </div>
-          <p className="text-xl font-bold tabular-nums text-rose-600 dark:text-rose-400 mt-1">
-            {formatInr(totalOverdue)}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-0.5">{counts.overdue} overdue bills</p>
+        </div>
+
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-1.5 md:rounded-3xl md:p-2 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative flex h-full flex-col justify-between rounded-xl p-3.5 sm:p-4 bg-white">
+            <p className="text-xs font-semibold text-slate-500">Outstanding Balance</p>
+            <p className="text-xl font-extrabold tabular-nums text-slate-900 mt-1">
+              {formatInr(totalOutstanding)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{counts.due + counts.overdue} pending collection</p>
+          </div>
+        </div>
+
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-1.5 md:rounded-3xl md:p-2 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative flex h-full flex-col justify-between rounded-xl p-3.5 sm:p-4 bg-white">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-500">Overdue Risk</p>
+              {counts.overdue > 0 && (
+                <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">
+                  Action Req.
+                </span>
+              )}
+            </div>
+            <p className="text-xl font-extrabold tabular-nums text-rose-600 mt-1">
+              {formatInr(totalOverdue)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{counts.overdue} overdue bills</p>
+          </div>
         </div>
       </div>
 
@@ -459,8 +496,16 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
       </div>
 
       {/* Master Invoice Dataset Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-xs">
-        {filtered.length === 0 ? (
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl overflow-hidden bg-white border border-slate-100">
+          {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
@@ -703,6 +748,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             </table>
           </div>
         )}
+        </div>
       </div>
 
       {/* Edit Invoice Modal */}

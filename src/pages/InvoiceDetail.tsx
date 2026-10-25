@@ -17,6 +17,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
+import { GlowingEffect } from "../components/ui/glowing-effect";
 
 export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
@@ -176,34 +177,38 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
 
       {/* Invoice Meta Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Invoice date</p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-            {formatDate(invoice.invoiceDate)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Due date</p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-            {formatDate(invoice.dueDate)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Payment terms</p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-            {invoice.terms}
-          </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-xs">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Place of supply</p>
-          <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
-            {invoice.placeOfSupply}
-          </p>
-        </div>
+        {[
+          { label: "Invoice date", val: formatDate(invoice.invoiceDate) },
+          { label: "Due date", val: formatDate(invoice.dueDate) },
+          { label: "Payment terms", val: invoice.terms },
+          { label: "Place of supply", val: invoice.placeOfSupply },
+        ].map((item, idx) => (
+          <div key={idx} className="relative rounded-2xl border border-slate-200/80 bg-white p-1.5 md:rounded-3xl md:p-2 shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <GlowingEffect
+              spread={40}
+              glow={true}
+              disabled={false}
+              proximity={64}
+              inactiveZone={0.01}
+            />
+            <div className="relative rounded-xl p-3.5 sm:p-4 bg-white">
+              <p className="text-xs font-semibold text-slate-500">{item.label}</p>
+              <p className="text-sm font-bold text-slate-900 mt-1">{item.val}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Financials & GST Breakdown */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs">
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl p-5 md:p-6 bg-white">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
           Financials & Tax Summary
         </h2>
@@ -264,105 +269,133 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
           </div>
         </div>
       </div>
+      </div>
 
       {/* Line Items Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Line Items ({invoice.lineItems.length})
-          </h2>
-          <Link
-            to={`/invoices/${invoice.id}/edit`}
-            className="text-xs text-teal-600 dark:text-teal-400 font-semibold hover:underline inline-flex items-center gap-1"
-          >
-            <Edit className="w-3.5 h-3.5" />
-            <span>Edit Items</span>
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-750 text-xs font-bold text-slate-600 dark:text-slate-300">
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3 text-right font-mono">HSN</th>
-                <th className="px-4 py-3 text-right">Qty</th>
-                <th className="px-4 py-3 text-right">Rate</th>
-                <th className="px-4 py-3 text-right">GST %</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {invoice.lineItems.map((item: any) => (
-                <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-750/30">
-                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">{item.description}</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">{item.hsn}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{formatInr(item.rate)}</td>
-                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">{item.gstRate}%</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900 dark:text-white">
-                    {formatInr(item.rate * item.quantity)}
-                  </td>
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl overflow-hidden bg-white border border-slate-100">
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Line Items ({invoice.lineItems.length})
+            </h2>
+            <Link
+              to={`/invoices/${invoice.id}/edit`}
+              className="text-xs text-teal-600 font-semibold hover:underline inline-flex items-center gap-1"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              <span>Edit Items</span>
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-bold text-slate-600">
+                  <th className="px-4 py-3">Description</th>
+                  <th className="px-4 py-3 text-right font-mono">HSN</th>
+                  <th className="px-4 py-3 text-right">Qty</th>
+                  <th className="px-4 py-3 text-right">Rate</th>
+                  <th className="px-4 py-3 text-right">GST %</th>
+                  <th className="px-4 py-3 text-right">Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {invoice.lineItems.map((item: any) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-3 font-medium text-slate-800">{item.description}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs text-slate-500">{item.hsn}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{item.quantity}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{formatInr(item.rate)}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{item.gstRate}%</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-slate-900">
+                      {formatInr(item.rate * item.quantity)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {/* Attached Bill Photo or Document */}
       {invoice.pdfUrl && (
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-teal-600" />
-              <span>Attached Bill Photo / Original Document</span>
-            </h2>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-              Verified File
-            </span>
-          </div>
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative rounded-xl p-5 md:p-6 bg-white space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-teal-600" />
+                <span>Attached Bill Photo / Original Document</span>
+              </h2>
+              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200">
+                Verified File
+              </span>
+            </div>
 
-          {invoice.pdfUrl.startsWith("data:image") ? (
-            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700">
-              <img
-                src={invoice.pdfUrl}
-                alt={`Bill photo for ${invoice.invoiceNumber}`}
-                className="max-h-64 object-contain rounded-lg border border-slate-200 dark:border-slate-600 shadow-sm"
-              />
-              <div className="text-xs space-y-2">
-                <p className="font-bold text-slate-900 dark:text-white">Uploaded Bill Photo (JPG/PNG)</p>
-                <p className="text-slate-500 dark:text-slate-400">
-                  Extracted and verified. This paper photo is attached to invoice {invoice.invoiceNumber} and preserved for payment chasing.
-                </p>
-                <a
-                  href={invoice.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-2xs"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>View Full Photo</span>
-                </a>
+            {invoice.pdfUrl.startsWith("data:image") ? (
+              <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <img
+                  src={invoice.pdfUrl}
+                  alt={`Bill photo for ${invoice.invoiceNumber}`}
+                  className="max-h-64 object-contain rounded-lg border border-slate-200 shadow-sm"
+                />
+                <div className="text-xs space-y-2">
+                  <p className="font-bold text-slate-900">Uploaded Bill Photo (JPG/PNG)</p>
+                  <p className="text-slate-500">
+                    Extracted and verified. This paper photo is attached to invoice {invoice.invoiceNumber} and preserved for payment chasing.
+                  </p>
+                  <a
+                    href={invoice.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-2xs"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>View Full Photo</span>
+                  </a>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-750 border border-slate-200 dark:border-slate-700 text-xs">
-              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
-                <FileText className="w-4 h-4 text-teal-600" />
-                <span>{invoice.pdfUrl}</span>
+            ) : (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div className="flex items-center gap-2 text-slate-700 font-medium">
+                  <FileText className="w-4 h-4 text-teal-600" />
+                  <span>{invoice.pdfUrl}</span>
+                </div>
+                <span className="text-[11px] text-teal-600 font-semibold">Attached</span>
               </div>
-              <span className="text-[11px] text-teal-600 font-semibold">Attached</span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
       {/* Evidence Timeline */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4">
-          Invoice & Payment Audit Timeline
-        </h2>
-        <Timeline entries={invoice.evidence} />
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl p-5 md:p-6 bg-white">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+            Invoice & Payment Audit Timeline
+          </h2>
+          <Timeline entries={invoice.evidence} />
+        </div>
       </div>
     </div>
   );

@@ -111,3 +111,43 @@ input::placeholder, textarea::placeholder {
 .dark .demo-banner {
   @apply bg-amber-900/20 border-amber-800 text-amber-100;
 }
+
+/* Aceternity Glowing Effect Border & Aura */
+.glow-effect-aura {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.glow-effect-aura::after {
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--glowingeffect-border-width, 1.5px));
+  border-radius: inherit;
+  border: var(--glowingeffect-border-width, 1.5px) solid transparent;
+  background: var(--gradient);
+  background-attachment: fixed;
+  opacity: var(--active, 0);
+  transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-image: linear-gradient(#0000, #0000),
+    conic-gradient(
+      from calc((var(--start, 0) - var(--spread, 40)) * 1deg),
+      #00000000 0deg,
+      #fff,
+      #00000000 calc(var(--spread, 40) * 2deg)
+    );
+  mask-image: linear-gradient(#0000, #0000),
+    conic-gradient(
+      from calc((var(--start, 0) - var(--spread, 40)) * 1deg),
+      #00000000 0deg,
+      #fff,
+      #00000000 calc(var(--spread, 40) * 2deg)
+    );
+}
+

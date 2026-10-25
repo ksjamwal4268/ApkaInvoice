@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
+import { GlowingEffect } from "../components/ui/glowing-effect";
 import { formatInr, add } from "../utils/money";
 import { daysBetween, formatHindiDate } from "../utils/date";
 import { Language } from "../data/i18n";
@@ -337,44 +338,61 @@ export function Dashboard({ lang }: { lang: Language }) {
 
       {/* Real Data Onboarding Card (Shown when user has 0 invoices) */}
       {invoices.length === 0 && (
-        <div className="p-6 rounded-2xl border border-teal-200 dark:border-teal-800 bg-linear-to-r from-teal-50/80 via-emerald-50/50 to-white dark:from-teal-950/40 dark:via-slate-850 dark:to-slate-800 shadow-xs">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Operational Ledger Active
-              </span>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                Start Tracking Your Real Invoices
-              </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
-                Upload any paper bill photo, receipt, or PDF invoice to auto-extract details, or manually record your customer invoices.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsCameraModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all tap-target cursor-pointer"
-              >
-                <Camera className="w-4 h-4" />
-                <span>Upload Invoice (Photo or PDF)</span>
-              </button>
-              <Link
-                to="/invoices/create"
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 transition-colors"
-              >
-                <Plus className="w-4 h-4 text-teal-600" />
-                <span>Create Invoice Manually</span>
-              </Link>
+        <div className="relative rounded-2xl border border-teal-200 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative p-6 rounded-xl bg-linear-to-r from-teal-50/80 via-emerald-50/50 to-white shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" /> Operational Ledger Active
+                </span>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Start Tracking Your Real Invoices
+                </h2>
+                <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                  Upload any paper bill photo, receipt, or PDF invoice to auto-extract details, or manually record your customer invoices.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCameraModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all tap-target cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Upload Invoice (Photo or PDF)</span>
+                </button>
+                <Link
+                  to="/invoices/create"
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-teal-600" />
+                  <span>Create Invoice Manually</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Weekly / Monthly Billing & Collections Activity Graph */}
-      <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs flex flex-col justify-between">
-        <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl p-4 md:p-6 bg-white flex flex-col justify-between">
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
@@ -557,36 +575,45 @@ export function Dashboard({ lang }: { lang: Language }) {
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span>Aggregated from your live invoices database</span>
-          <Link to="/invoices" className="text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-1">
+          <Link to="/invoices" className="text-teal-600 hover:underline font-semibold flex items-center gap-1">
             <span>View full dataset</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
+        </div>
         </div>
       </div>
 
       {/* Main Grid: Chase These Today (Left 2 cols) + Critical Invoices (Right 1 col) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chase List */}
-        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Chase These Today</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 font-bold">
-                  {chaseList.length} Pending
-                </span>
-              </h2>
+        <div className="relative lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative rounded-xl p-4 md:p-6 bg-white flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>Chase These Today</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold">
+                    {chaseList.length} Pending
+                  </span>
+                </h2>
+              </div>
+              <Link
+                to="/reminders"
+                className="text-xs font-semibold text-teal-600 hover:underline inline-flex items-center gap-1"
+              >
+                <span>Batch Remind</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
-            <Link
-              to="/reminders"
-              className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
-            >
-              <span>Batch Remind</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
 
           {chaseList.length === 0 ? (
             <EmptyState title="No overdue invoices" message="All payments are current or up to date." />
@@ -680,67 +707,77 @@ export function Dashboard({ lang }: { lang: Language }) {
               })}
             </div>
           )}
+          </div>
         </div>
 
         {/* Critical Invoices Panel (Right Side) */}
-        <div className="rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 pb-3 border-b border-rose-100 dark:border-rose-900/40">
-              <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-300">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-rose-900 dark:text-rose-200">Critical Invoices</h2>
-                <p className="text-xs text-rose-600 dark:text-rose-400">Overdue 30+ days</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 flex-grow overflow-y-auto mt-4">
-              {redInvoices.length === 0 ? (
-                <div className="text-center py-6 text-xs text-rose-600 dark:text-rose-400">
-                  No critical invoices overdue 30+ days. All payments are healthy.
+        <div className="relative rounded-2xl border border-rose-200/80 bg-rose-50/20 p-2 md:rounded-3xl md:p-3 shadow-xs flex flex-col justify-between">
+          <GlowingEffect
+            spread={40}
+            glow={true}
+            disabled={false}
+            proximity={64}
+            inactiveZone={0.01}
+          />
+          <div className="relative rounded-xl p-4 md:p-5 bg-white flex flex-col justify-between h-full border border-rose-100/80">
+            <div>
+              <div className="flex items-center gap-2 pb-3 border-b border-rose-100">
+                <div className="p-2 rounded-lg bg-rose-100 text-rose-600">
+                  <AlertTriangle className="w-4 h-4" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {redInvoices.map(({ invoice, customer, daysLate: dLate, amount }) => (
-                    <div
-                      key={invoice.id}
-                      onClick={() => navigate(`/invoices/${invoice.id}`)}
-                      className="p-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold text-rose-900 dark:text-rose-200 truncate">
-                              {invoice.invoiceNumber || <span className="font-normal italic text-slate-400">— (No number)</span>}
-                            </h3>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300">
-                              {dLate}d late
-                            </span>
+                <div>
+                  <h2 className="text-base font-bold text-rose-900">Critical Invoices</h2>
+                  <p className="text-xs text-rose-600">Overdue 30+ days</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 flex-grow overflow-y-auto mt-4">
+                {redInvoices.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-rose-600">
+                    No critical invoices overdue 30+ days. All payments are healthy.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {redInvoices.map(({ invoice, customer, daysLate: dLate, amount }) => (
+                      <div
+                        key={invoice.id}
+                        onClick={() => navigate(`/invoices/${invoice.id}`)}
+                        className="p-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50/70 transition-all cursor-pointer shadow-2xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-bold text-rose-900 truncate">
+                                {invoice.invoiceNumber || <span className="font-normal italic text-slate-400">— (No number)</span>}
+                              </h3>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
+                                {dLate}d late
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600">{customer?.name || invoice.customerName}</p>
                           </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">{customer?.name || invoice.customerName}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-rose-800 dark:text-rose-300">{formatInr(amount)}</div>
-                          <div className="text-[10px] text-slate-400">{new Date(invoice.dueDate).toLocaleDateString()}</div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-rose-800">{formatInr(amount)}</div>
+                            <div className="text-[10px] text-slate-400">{new Date(invoice.dueDate).toLocaleDateString()}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-4 pt-4 border-t border-rose-100 dark:border-rose-900/40 flex items-center justify-between text-xs text-rose-600 dark:text-rose-400">
-            <span>Critical overdue ledger</span>
-            <Link
-              to="/reminders"
-              className="inline-flex items-center gap-1 font-semibold text-rose-600 dark:text-rose-400 hover:underline"
-            >
-              <span>View all</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <div className="mt-4 pt-4 border-t border-rose-100 flex items-center justify-between text-xs text-rose-600">
+              <span>Critical overdue ledger</span>
+              <Link
+                to="/reminders"
+                className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:underline"
+              >
+                <span>View all</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
