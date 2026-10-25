@@ -464,70 +464,35 @@ export function InvoiceCameraModal({
           <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-800 text-xs text-teal-900 dark:text-teal-200">
             <div className="flex items-center gap-2 font-medium">
               <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-              <span>Supports Photos & PDFs:</span>
+              <span>Supported Documents:</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-              <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300">
-                📷 Photos (JPG, PNG)
-              </span>
               <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300">
                 📄 PDF Bills (.PDF)
               </span>
               <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300">
-                📱 Mobile Camera
+                📷 Photos (JPG, PNG, WEBP)
               </span>
             </div>
           </div>
 
-          {/* Mode Switcher Tabs */}
+          {/* Mode Switcher Tabs - Exactly 2 options */}
           {activeTab !== "review" && (
-            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-750 rounded-xl">
+            <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-750 rounded-xl">
               <button
                 type="button"
                 onClick={() => {
                   stopCamera();
                   setActiveTab("all");
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === "all"
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab !== "camera"
                     ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload (Photo or PDF)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  stopCamera();
-                  setActiveTab("photo");
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === "photo"
-                    ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <ImageIcon className="w-3.5 h-3.5" />
-                <span>Photo (JPG / PNG)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  stopCamera();
-                  setActiveTab("pdf");
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === "pdf"
-                    ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>PDF Document</span>
+                <Upload className="w-4 h-4" />
+                <span>1. Upload PDF or Image</span>
               </button>
 
               <button
@@ -536,171 +501,50 @@ export function InvoiceCameraModal({
                   setActiveTab("camera");
                   startCamera();
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   activeTab === "camera"
                     ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Live Camera</span>
+                <Camera className="w-4 h-4" />
+                <span>2. Camera</span>
               </button>
             </div>
           )}
 
-          {/* 1. MAIN ALL OPTIONS VIEW (TWO BIG CARDS: PHOTO vs PDF) */}
-          {activeTab === "all" && (
-            <div className="space-y-4">
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(true);
-                }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={handleDrop}
-                className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border-2 border-dashed transition-all ${
-                  isDragOver
-                    ? "border-teal-500 bg-teal-50/40 dark:bg-teal-950/30"
-                    : "border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/20"
-                }`}
-              >
-                {/* Option 1: Upload Photo / Image */}
-                <div
-                  onClick={() => !isUploading && photoInputRef.current?.click()}
-                  className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-lg cursor-pointer transition-all group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-xs">
-                      <ImageIcon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      Upload Bill Photo
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
-                        JPG / PNG
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                      Upload invoice photos from your gallery, camera roll, or device. Analyzed automatically using AI.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    <span>Choose Photo (JPG / PNG)</span>
-                  </button>
-                </div>
-
-                {/* Option 2: Upload PDF */}
-                <div
-                  onClick={() => !isUploading && pdfInputRef.current?.click()}
-                  className="p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-teal-500 hover:shadow-lg cursor-pointer transition-all group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform shadow-xs">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      Upload PDF Document
-                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-750 text-slate-600 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
-                        .PDF
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                      Digital bills, invoices from accounting software, or scanned PDF documents.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    className="mt-5 w-full py-2.5 px-3 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 pointer-events-none"
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Choose PDF File</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Bottom Mobile Camera Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-100 dark:bg-slate-750 text-xs">
-                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Smartphone className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span>On mobile? Take a fresh photo of your paper bill with camera.</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    onClick={() => mobileCameraInputRef.current?.click()}
-                    className="px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold transition-colors cursor-pointer flex items-center gap-1"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Take Photo</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isUploading}
-                    onClick={() => {
-                      setActiveTab("camera");
-                      startCamera();
-                    }}
-                    className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-slate-200 font-semibold transition-colors cursor-pointer"
-                  >
-                    Webcam
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 2. DEDICATED PHOTO VIEW */}
-          {activeTab === "photo" && (
+          {/* 1. UPLOAD PDF OR IMAGE VIEW */}
+          {activeTab !== "camera" && activeTab !== "review" && (
             <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
               onClick={() => !isUploading && photoInputRef.current?.click()}
-              className="border-2 border-dashed border-teal-300 dark:border-teal-700 hover:border-teal-500 rounded-2xl p-10 text-center cursor-pointer bg-teal-50/20 dark:bg-teal-950/10 hover:bg-teal-50/40 transition-all group"
+              className={`border-2 border-dashed rounded-2xl p-8 sm:p-14 text-center cursor-pointer transition-all group ${
+                isDragOver
+                  ? "border-teal-500 bg-teal-50/40 dark:bg-teal-950/30"
+                  : "border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/20 hover:border-teal-500 hover:bg-teal-50/20"
+              }`}
             >
-              <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-xs">
-                <ImageIcon className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform shadow-xs">
+                <Upload className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Click or Drop Your Bill Photo Here
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Upload PDF or Image
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Accepts JPG, JPEG, PNG, WEBP or HEIC up to 10 MB. Fast automated extraction.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto leading-relaxed">
+                Click to browse or drag & drop your PDF invoice or bill photo (JPG, PNG, WEBP).
               </p>
               <button
                 type="button"
                 disabled={isUploading}
-                className="mt-4 px-6 py-2.5 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 disabled:opacity-50 shadow-xs transition-colors pointer-events-none"
+                className="mt-5 px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold transition-colors shadow-xs inline-flex items-center gap-2 pointer-events-none"
               >
-                Select Photo (JPG / PNG)
-              </button>
-            </div>
-          )}
-
-          {/* 3. DEDICATED PDF VIEW */}
-          {activeTab === "pdf" && (
-            <div
-              onClick={() => !isUploading && pdfInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 rounded-2xl p-10 text-center cursor-pointer bg-slate-50/40 dark:bg-slate-800/30 hover:bg-teal-50/20 transition-all group"
-            >
-              <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-750 text-slate-700 dark:text-slate-300 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform shadow-xs">
-                <FileText className="w-8 h-8" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Click or Drop Your PDF Invoice Here
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Accepts any PDF invoice up to 10 MB for instant automated extraction.
-              </p>
-              <button
-                type="button"
-                disabled={isUploading}
-                className="mt-4 px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 text-white text-xs font-bold hover:bg-slate-800 disabled:opacity-50 shadow-xs transition-colors pointer-events-none"
-              >
-                Select PDF Document
+                <Upload className="w-4 h-4" />
+                <span>Choose PDF or Image</span>
               </button>
             </div>
           )}

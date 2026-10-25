@@ -675,15 +675,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         <div className="flex flex-wrap items-center gap-2.5">
           {!isEditing && (
             <>
-              <button
-                type="button"
-                onClick={() => setIsCameraModalOpen(true)}
-                className="flex items-center gap-2 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all tap-target"
-              >
-                <Camera className="w-4 h-4" />
-                <span>Scan Camera</span>
-              </button>
-
+              {/* 1. Upload PDF or Image */}
               <label className="upload-btn flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer">
                 {reading ? (
                   <>
@@ -693,7 +685,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 ) : (
                   <>
                     <Upload className="w-4 h-4 text-teal-600" />
-                    <span>Upload invoice photo / PDF</span>
+                    <span>Upload PDF or Image</span>
                   </>
                 )}
                 <input
@@ -704,6 +696,16 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                   onChange={handleFile}
                 />
               </label>
+
+              {/* 2. Camera */}
+              <button
+                type="button"
+                onClick={() => setIsCameraModalOpen(true)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all tap-target cursor-pointer"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Camera</span>
+              </button>
             </>
           )}
 

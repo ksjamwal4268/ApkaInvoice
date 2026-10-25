@@ -334,7 +334,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Universal Upload Button (Photo or PDF) */}
+          {/* Universal Upload Button (PDF or Image) */}
           <button
             type="button"
             onClick={() => {
@@ -345,19 +345,11 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
               setModalInitialFile(null);
               setIsCameraModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold hover:bg-teal-100 dark:hover:bg-teal-900/40 transition-colors shadow-xs cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-xs cursor-pointer"
           >
-            <Upload className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>Upload Invoice (Photo / PDF)</span>
+            <Upload className="w-4 h-4" />
+            <span>Upload Invoice (PDF or Image)</span>
           </button>
-
-          <Link
-            to="/invoices/create"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-sm transition-colors tap-target"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Invoice</span>
-          </Link>
         </div>
       </div>
 
@@ -539,13 +531,7 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
                 <span>Upload Invoice</span>
               </button>
 
-              <Link
-                to="/invoices/create"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create New Invoice</span>
-              </Link>
+
 
               {invoices.length === 0 && (
                 <button
