@@ -30,7 +30,7 @@ export function CustomerModal({
   const { user, signInWithGoogle } = useAuth();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
-  const [state, setState] = useState("Maharashtra");
+  const [state, setState] = useState("");
   const [gstin, setGstin] = useState("");
   const [pan, setPan] = useState("");
   const [email, setEmail] = useState("");
@@ -58,7 +58,7 @@ export function CustomerModal({
     } else {
       setName(suggestedName || "");
       setCity(suggestedCity || "");
-      setState(suggestedState || "Maharashtra");
+      setState(suggestedState || "");
       const initGstin = suggestedGstin || "";
       setGstin(initGstin);
       if (initGstin.length >= 12) {
@@ -110,7 +110,7 @@ export function CustomerModal({
       id: initialCustomer ? initialCustomer.id : `cust-${Date.now().toString(36)}`,
       name: name.trim(),
       city: city.trim(),
-      state: state.trim() || "Maharashtra",
+      state: state.trim(),
       gstin: gstin.trim() ? gstin.toUpperCase().trim() : null,
       pan: pan.trim() ? pan.toUpperCase().trim() : null,
       email: email.trim() || "",
@@ -189,7 +189,7 @@ export function CustomerModal({
                 value={gstin}
                 maxLength={15}
                 onChange={(e) => handleGstinChange(e.target.value)}
-                placeholder="27AABCS1234Q1ZM"
+                placeholder="e.g. 07AAAAA0000A1Z5"
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono text-slate-900 dark:text-white uppercase focus:outline-none focus:ring-2 ${
                   gstinError
                     ? "border-rose-500 focus:ring-rose-500 bg-rose-50/20"
@@ -266,7 +266,7 @@ export function CustomerModal({
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Pune / Mumbai"
+                placeholder="e.g. City name"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -280,9 +280,10 @@ export function CustomerModal({
                 onChange={(e) => setState(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
+                <option value="">Select State</option>
                 {STATES.map((s) => (
                   <option key={s} value={s}>
-                    {s} {s === "Maharashtra" ? "(Intra-state: CGST+SGST)" : "(Inter-state: IGST)"}
+                    {s}
                   </option>
                 ))}
               </select>

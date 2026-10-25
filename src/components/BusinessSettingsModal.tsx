@@ -190,7 +190,7 @@ export function BusinessSettingsModal({
                   type="text"
                   value={profile.city}
                   onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                  placeholder="e.g. Jammu / Pune / Delhi"
+                  placeholder="e.g. City name"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>

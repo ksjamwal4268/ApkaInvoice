@@ -8,18 +8,18 @@ import { Paise, toPaise } from "../utils/money";
 import { PaymentTerms } from "../utils/date";
 
 export const BUSINESS = {
-  name: "Sharma Packaging",
-  city: "Pune",
-  state: "Maharashtra",
-  stateCode: "27",
-  gstin: "27AABCS1234Q1ZM",
-  address: "Gut No. 145, Chakan Industrial Area, Pune - 412105, Maharashtra",
-  email: "billing@sharmapackaging.in",
-  phone: "+91 98765 43210",
-  bankName: "HDFC Bank",
-  bankAccount: "50200045678901",
-  ifsc: "HDFC0001234",
-  upi: "sharmapackaging@hdfc",
+  name: "",
+  city: "",
+  state: "",
+  stateCode: "",
+  gstin: "",
+  address: "",
+  email: "",
+  phone: "",
+  bankName: "",
+  bankAccount: "",
+  ifsc: "",
+  upi: "",
 } as const;
 
 export type CustomerId = string;

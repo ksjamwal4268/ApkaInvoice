@@ -42,8 +42,8 @@ export function OnboardingModal({
   // Step 2: Automation & Other Essential Details
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [state, setState] = useState("Maharashtra");
-  const [stateCode, setStateCode] = useState("27");
+  const [state, setState] = useState("");
+  const [stateCode, setStateCode] = useState("");
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [gstin, setGstin] = useState("");
@@ -79,8 +79,8 @@ export function OnboardingModal({
           ? existingProfile.phone
           : ""
       );
-      setState(existingProfile.state || "Maharashtra");
-      setStateCode(existingProfile.stateCode || "27");
+      setState(existingProfile.state || "");
+      setStateCode(existingProfile.stateCode || "");
       setCity(existingProfile.city && existingProfile.city !== "Pune" ? existingProfile.city : "");
       setAddress(existingProfile.address || "");
       setGstin(existingProfile.gstin || "");
@@ -169,8 +169,8 @@ export function OnboardingModal({
       email: email.trim(),
       state,
       stateCode,
-      city: city.trim() || existingProfile.city || "Pune",
-      address: address.trim() || `${city || existingProfile.city || "Pune"}, ${state}`,
+      city: city.trim() || existingProfile.city || "",
+      address: address.trim() || existingProfile.address || "",
       gstin: cleanGstin,
       pan: cleanPan,
       bankName: existingProfile.bankName || "",
@@ -410,6 +410,7 @@ export function OnboardingModal({
                     onChange={(e) => handleStateChange(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   >
+                    <option value="">Select State</option>
                     {INDIAN_STATES.map((s) => (
                       <option key={s.state} value={s.state}>
                         {s.state} ({s.code})
@@ -426,7 +427,7 @@ export function OnboardingModal({
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Pune"
+                    placeholder="e.g. City name"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>
@@ -439,7 +440,7 @@ export function OnboardingModal({
                     type="text"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g. Gandhi Nagar / Chakan"
+                    placeholder="e.g. Street, Area or Industrial Estate"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>

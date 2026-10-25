@@ -431,8 +431,8 @@ export function storeExtractedInvoice(
     customer = {
       id: `cust-${Date.now().toString(36)}`,
       name: buyerName,
-      city: extracted?.buyerCity || "Pune",
-      state: extracted?.buyerState || "Maharashtra",
+      city: extracted?.buyerCity || "",
+      state: extracted?.buyerState || "",
       gstin: extracted?.buyerGstin || null,
       pan: extracted?.buyerGstin && extracted.buyerGstin.length >= 12 ? extracted.buyerGstin.substring(2, 12) : null,
       email: extracted?.buyerEmail || "",
@@ -444,7 +444,9 @@ export function storeExtractedInvoice(
     saveCustomer(customer);
   }
 
-  const isIntraState = (extracted.buyerState || "Maharashtra") === (profile.state || "Maharashtra");
+  const isIntraState = Boolean(
+    extracted?.buyerState && profile?.state && extracted.buyerState.trim().toLowerCase() === profile.state.trim().toLowerCase()
+  );
   const grandTotalPaise = Math.round((extracted.grandTotal || 0) * 100);
   const subtotalPaise = Math.round((extracted.subtotal || (extracted.grandTotal ? extracted.grandTotal * 0.82 : 0)) * 100);
   const totalGstPaise = grandTotalPaise - subtotalPaise;
@@ -619,8 +621,8 @@ export function saveN8nExtractedInvoice(
     customer = {
       id: `cust-${Date.now().toString(36)}`,
       name: payerName,
-      city: "Mumbai",
-      state: "Maharashtra",
+      city: "",
+      state: "",
       gstin: null,
       pan: null,
       email: payerEmail || "",
@@ -664,10 +666,10 @@ export function saveN8nExtractedInvoice(
     invoiceNumber: safeInvoiceNumber,
     customerId: customer?.id || `cust-${Date.now().toString(36)}`,
     customerName: customer?.name || payerName,
-    customerCity: customer?.city || "Mumbai",
-    customerState: customer?.state || "Maharashtra",
-    customerGstin: null,
-    placeOfSupply: customer?.state || "Maharashtra",
+    customerCity: customer?.city || "",
+    customerState: customer?.state || "",
+    customerGstin: customer?.gstin || null,
+    placeOfSupply: customer?.state || "",
     invoiceDate: new Date(),
     dueDate,
     terms: "Net 30",
@@ -778,8 +780,8 @@ export async function processInvoiceImageWithN8n(
             invoiceNumber: payload.invoice_number || payload.invoiceNumber || "",
             buyerName: payload.payer_name || payload.buyerName || "Customer",
             buyerGstin: payload.payer_gstin || payload.buyerGstin || "",
-            buyerCity: payload.payer_city || payload.buyerCity || "Mumbai",
-            buyerState: payload.payer_state || payload.buyerState || "Maharashtra",
+            buyerCity: payload.payer_city || payload.buyerCity || "",
+            buyerState: payload.payer_state || payload.buyerState || "",
             buyerPhone: payload.payer_phone || payload.buyerPhone || extraParams?.payerPhone || "",
             buyerEmail: payload.payer_email || payload.buyerEmail || extraParams?.payerEmail || "",
             invoiceDate: payload.invoice_date || payload.invoiceDate || new Date().toISOString().split("T")[0],

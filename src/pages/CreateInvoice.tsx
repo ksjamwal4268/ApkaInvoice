@@ -67,12 +67,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const [senderGstin, setSenderGstin] = useState(currentProfile.gstin || "");
   const [senderAddress, setSenderAddress] = useState(currentProfile.address || "");
   const [senderCity, setSenderCity] = useState(currentProfile.city || "");
-  const [senderState, setSenderState] = useState(currentProfile.state || "Maharashtra");
+  const [senderState, setSenderState] = useState(currentProfile.state || "");
 
   const [customerId, setCustomerId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [gstin, setGstin] = useState("");
-  const [placeOfSupply, setPlaceOfSupply] = useState(currentProfile.state || "Maharashtra");
+  const [placeOfSupply, setPlaceOfSupply] = useState(currentProfile.state || "");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [terms, setTerms] = useState<PaymentTerms>("Net 30");
 
@@ -175,7 +175,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           id: `cust-${Date.now().toString(36)}`,
           name: data.buyerName,
           city: data.buyerCity || "",
-          state: data.buyerState || "Maharashtra",
+          state: data.buyerState || "",
           gstin: data.buyerGstin || null,
           pan: data.buyerGstin && data.buyerGstin.length >= 12 ? data.buyerGstin.substring(2, 12) : null,
           email: data.buyerEmail || "",
@@ -191,7 +191,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       if (matchedCustomer) {
         setCustomerId(matchedCustomer.id);
         setGstin(data.buyerGstin || matchedCustomer.gstin || "");
-        setPlaceOfSupply(data.buyerState || matchedCustomer.state || "Maharashtra");
+        setPlaceOfSupply(data.buyerState || matchedCustomer.state || "");
         setBuyerPhone(data.buyerPhone || matchedCustomer.phone || "");
         setBuyerEmail(data.buyerEmail || matchedCustomer.email || "");
       }
@@ -229,8 +229,11 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   }, [location.state, handleApplyExtractedData]);
 
   const customer = customers.find((c) => c.id === customerId);
-  const customerState = customer?.state || businessProfile.state || "Maharashtra";
-  const isSameState = placeOfSupply === customerState;
+  const effectiveSenderState = senderState || businessProfile.state || "";
+  const customerState = customer?.state || effectiveSenderState;
+  const isSameState = Boolean(
+    effectiveSenderState && placeOfSupply && effectiveSenderState.trim().toLowerCase() === placeOfSupply.trim().toLowerCase()
+  );
 
   // Calculate line totals in whole paise
   const lineTotals = useMemo(() => {
@@ -316,7 +319,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     saveCustomer(newBuyer);
     setCustomerId(newBuyer.id);
     setGstin(newBuyer.gstin || "");
-    setPlaceOfSupply(newBuyer.state || "Maharashtra");
+    setPlaceOfSupply(newBuyer.state || "");
     setBuyerPhone(newBuyer.phone || "");
     setBuyerEmail(newBuyer.email || "");
   };
@@ -773,9 +776,10 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 onChange={(e) => setPlaceOfSupply(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
+                <option value="">Select Place of Supply</option>
                 {INDIAN_STATES.map((s) => (
                   <option key={s.state} value={s.state}>
-                    {s.state} ({s.code}) {s.state === customerState ? "• Intra-state (CGST+SGST)" : "• Inter-state (IGST)"}
+                    {s.state} ({s.code}) {customerState && s.state === customerState ? "• Intra-state (CGST+SGST)" : customerState ? "• Inter-state (IGST)" : ""}
                   </option>
                 ))}
               </select>

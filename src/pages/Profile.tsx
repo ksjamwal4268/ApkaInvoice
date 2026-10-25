@@ -39,8 +39,8 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
   // Location Details
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
-  const [state, setState] = useState("Maharashtra");
-  const [stateCode, setStateCode] = useState("27");
+  const [state, setState] = useState("");
+  const [stateCode, setStateCode] = useState("");
   const [pincode, setPincode] = useState("");
 
   // Direct Phone Payment / UPI
@@ -63,8 +63,8 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
       // Location
       setAddress(businessProfile.address || "");
       setCity(businessProfile.city || "");
-      setState(businessProfile.state || "Maharashtra");
-      setStateCode(businessProfile.stateCode || "27");
+      setState(businessProfile.state || "");
+      setStateCode(businessProfile.stateCode || "");
       setPincode(businessProfile.pincode || "");
       setGstin(businessProfile.gstin || "");
 
@@ -410,7 +410,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. 4268.kulvardhan.7a@gmail.com"
+                    placeholder="e.g. billing@yourcompany.com"
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -456,7 +456,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                   required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Jammu, Pune, Delhi, Mumbai"
+                  placeholder="e.g. City name"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
@@ -471,6 +471,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                   onChange={(e) => handleStateChange(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 >
+                  <option value="">Select State</option>
                   {INDIAN_STATES.map((s) => (
                     <option key={s.code} value={s.state}>
                       {s.state} ({s.code})
@@ -489,7 +490,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                   maxLength={6}
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value)}
-                  placeholder="e.g. 180001 / 412105"
+                  placeholder="e.g. 110001"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none font-mono"
                 />
               </div>
@@ -504,7 +505,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                   maxLength={15}
                   value={gstin}
                   onChange={(e) => setGstin(e.target.value.toUpperCase().trim())}
-                  placeholder="e.g. 27AABCS1234Q1ZM"
+                  placeholder="e.g. 07AAAAA0000A1Z5"
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
               </div>
@@ -519,7 +520,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                     rows={2}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="e.g. Main Market, Gandhi Nagar, Jammu"
+                    placeholder="e.g. Street, Area or Industrial Estate"
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   />
                   <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
