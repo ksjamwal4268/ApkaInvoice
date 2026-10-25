@@ -306,9 +306,10 @@ export function InvoiceCameraModal({
           setEditSellerGstin(respSellerGstin);
         }
 
-        if (fields.amount !== undefined && fields.amount !== null && String(fields.amount).trim() !== "") {
-          const parsed = typeof fields.amount === "number" ? fields.amount : parseFloat(String(fields.amount));
-          if (!isNaN(parsed)) {
+        const rawAmt = (fields as any).amount !== undefined ? (fields as any).amount : ((fields as any).total !== undefined ? (fields as any).total : (fields as any).grand_total);
+        if (rawAmt !== undefined && rawAmt !== null && String(rawAmt).trim() !== "") {
+          const parsed = typeof rawAmt === "number" ? (isNaN(rawAmt) ? 0 : rawAmt) : parseFloat(String(rawAmt).replace(/[^0-9.-]/g, ""));
+          if (!isNaN(parsed) && parsed > 0) {
             setEditAmount(parsed);
           }
         }
@@ -388,7 +389,7 @@ export function InvoiceCameraModal({
       place_of_supply: (editPlaceOfSupply ?? "").trim(),
       vendor_name: (editSellerName ?? "").trim(),
       vendor_gstin: (editSellerGstin ?? "").trim().toUpperCase(),
-      amount: editAmount !== "" ? Number(editAmount) : 0,
+      amount: editAmount !== "" ? (typeof editAmount === "number" ? editAmount : parseFloat(String(editAmount).replace(/[^0-9.-]/g, "")) || 0) : 0,
       currency: (editCurrency ?? "").trim() || "INR",
     };
 

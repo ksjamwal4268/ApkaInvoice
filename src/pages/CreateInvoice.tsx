@@ -252,9 +252,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         else setTerms("Net 45");
       }
 
-      const rawAmount = data?.amount !== undefined ? data.amount : data?.grandTotal;
+      const rawAmount = data?.amount !== undefined ? data.amount : (data?.grandTotal !== undefined ? data.grandTotal : data?.total);
       if (rawAmount !== undefined && rawAmount !== null && rawAmount !== "") {
-        const amt = Number(rawAmount) || 0;
+        const amt = typeof rawAmount === "number" ? (isNaN(rawAmount) ? 0 : rawAmount) : parseFloat(String(rawAmount).replace(/[^0-9.-]/g, "")) || 0;
         if (amt > 0) {
           setFromUpload(true);
           setUploadAmount(amt);
@@ -445,8 +445,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       else setTerms("Net 45");
     }
 
-    if (next.amount !== undefined && next.amount !== null && next.amount !== "") {
-      const amt = Number(next.amount) || 0;
+    const rawUploadAmt = next.amount !== undefined ? next.amount : next.grandTotal;
+    if (rawUploadAmt !== undefined && rawUploadAmt !== null && rawUploadAmt !== "") {
+      const amt = typeof rawUploadAmt === "number" ? (isNaN(rawUploadAmt) ? 0 : rawUploadAmt) : parseFloat(String(rawUploadAmt).replace(/[^0-9.-]/g, "")) || 0;
       if (amt > 0) {
         setFromUpload(true);
         setUploadAmount(amt);
@@ -1208,9 +1209,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                         step="0.01"
                         value={item.rate}
                         onChange={(e) => {
+                          const val = Math.max(0, parseFloat(e.target.value) || 0);
                           const next = [...lineItems];
-                          next[idx].rate = Math.max(0, parseFloat(e.target.value) || 0);
+                          next[idx].rate = val;
                           setLineItems(next);
+                          if (fromUpload) {
+                            setUploadAmount(val);
+                          }
                         }}
                         className="w-full text-right bg-transparent border-0 border-b border-transparent focus:border-teal-500 focus:ring-0 text-slate-900 text-slate-900 px-0 text-sm tabular-nums font-medium"
                       />

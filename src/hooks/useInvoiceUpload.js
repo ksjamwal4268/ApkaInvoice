@@ -31,7 +31,7 @@ export function useInvoiceUpload(setForm) {
       buyerEmail:    pick(inv.buyerEmail, prev?.buyerEmail),
       buyerPhone:    pick(inv.buyerPhone, prev?.buyerPhone),
       placeOfSupply: pick(inv.placeOfSupply, prev?.placeOfSupply),
-      amount:        inv.amount || prev?.amount || 0,
+      amount:        inv.amount !== undefined && inv.amount !== null && inv.amount !== "" ? (typeof inv.amount === "number" ? inv.amount : parseFloat(String(inv.amount).replace(/[^0-9.-]/g, "")) || 0) : prev?.amount || 0,
       currency:      pick(inv.currency, prev?.currency) || "INR",
       n8nId:         inv.n8nId,
     }));

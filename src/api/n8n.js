@@ -39,6 +39,8 @@ export async function uploadInvoice(file) {
   const d = r.data;
   const pos = s(d.place_of_supply);
   const posCode = s(d.place_of_supply_code);
+  const rawAmt = d.amount !== undefined ? d.amount : (d.total !== undefined ? d.total : d.grand_total);
+  const parsedAmt = typeof rawAmt === "number" ? (isNaN(rawAmt) ? 0 : rawAmt) : parseFloat(String(rawAmt ?? "0").replace(/[^0-9.-]/g, "")) || 0;
   const inv = {
     n8nId: s(d.id),
     invoiceNumber: s(d.invoice_number),
@@ -52,7 +54,7 @@ export async function uploadInvoice(file) {
     buyerEmail: s(d.payer_email),
     buyerPhone: s(d.payer_phone),
     placeOfSupply: pos && posCode ? `${pos} (${posCode})` : pos || posCode,
-    amount: Number(d.amount) || 0,
+    amount: parsedAmt,
     currency: s(d.currency) || "INR",
   };
   return {

@@ -1,5 +1,5 @@
 import { Customer, Invoice, INVOICES, CUSTOMERS, EvidenceEntry, CustomerId, InvoiceId } from "./sampleData";
-import { Paise } from "../utils/money";
+import { Paise, toPaise } from "../utils/money";
 import { db, isCloudAvailable, markCloudBlocked } from "../firebaseApp";
 import { doc, getDoc, setDoc, collection, addDoc, getDocs } from "firebase/firestore";
 import { uploadInvoice, sendEmailReminder, sendWhatsAppReminder } from "../api/n8n.js";
@@ -752,12 +752,11 @@ export function storeExtractedInvoice(
     extracted?.buyerState && profile?.state && extracted.buyerState.trim().toLowerCase() === profile.state.trim().toLowerCase()
   );
   const grandTotalPaise = Math.round((extracted.grandTotal || 0) * 100);
-  const subtotalPaise = Math.round((extracted.subtotal || (extracted.grandTotal ? extracted.grandTotal * 0.82 : 0)) * 100);
-  const totalGstPaise = grandTotalPaise - subtotalPaise;
-
-  const cgstPaise = isIntraState ? Math.round(totalGstPaise / 2) : 0;
-  const sgstPaise = isIntraState ? totalGstPaise - cgstPaise : 0;
-  const igstPaise = isIntraState ? 0 : totalGstPaise;
+  const subtotalPaise = grandTotalPaise;
+  const totalGstPaise = 0;
+  const cgstPaise = 0;
+  const sgstPaise = 0;
+  const igstPaise = 0;
 
   const invDate = extracted.invoiceDate ? new Date(extracted.invoiceDate) : new Date();
   const dueDate = extracted.dueDate ? new Date(extracted.dueDate) : new Date(Date.now() + 30 * 86400000);
@@ -940,9 +939,9 @@ export function saveN8nExtractedInvoice(
 
   const numericAmount =
     typeof extracted?.amount === "number"
-      ? extracted.amount
-      : parseFloat(String(extracted?.amount ?? "0")) || 0;
-  const amountPaise = Math.round(numericAmount * 100);
+      ? (isNaN(extracted.amount) ? 0 : extracted.amount)
+      : parseFloat(String(extracted?.amount ?? "0").replace(/[^0-9.-]/g, "")) || 0;
+  const amountPaise = toPaise(numericAmount);
 
   let dueDate: Date;
   if ((extracted?.due_date ?? "").trim()) {
@@ -962,8 +961,6 @@ export function saveN8nExtractedInvoice(
 
   const targetId = existingInvoiceId || (extracted?.id ? String(extracted.id) : `inv-${Date.now().toString(36)}`);
 
-  // Rule 1 & Rule 6: Never put a GSTIN into the invoice number field.
-  // If invoice_number is "", let user type it or use "INV-" + id.
   let safeInvoiceNumber = (extracted?.invoice_number ?? "").trim();
   const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(safeInvoiceNumber);
   if (isGstinPattern) {
@@ -971,11 +968,6 @@ export function saveN8nExtractedInvoice(
   } else if (!safeInvoiceNumber && extracted?.id) {
     safeInvoiceNumber = `INV-${extracted.id}`;
   }
-
-  const subtotalPaise = Math.round(amountPaise * 0.82);
-  const gstPaise = amountPaise - subtotalPaise;
-  const cgstPaise = Math.round(gstPaise / 2);
-  const sgstPaise = gstPaise - cgstPaise;
 
   const vendorName = (extracted?.vendor_name ?? "").trim() || "Vendor";
 
@@ -1000,13 +992,13 @@ export function saveN8nExtractedInvoice(
         description: `Goods / Services from ${vendorName}`,
         hsn: "9983",
         quantity: 1,
-        rate: subtotalPaise,
-        gstRate: 18,
+        rate: amountPaise,
+        gstRate: 0,
       },
     ],
-    subtotal: subtotalPaise,
-    cgst: cgstPaise,
-    sgst: sgstPaise,
+    subtotal: amountPaise,
+    cgst: 0,
+    sgst: 0,
     igst: 0,
     roundOff: 0,
     total: amountPaise,
@@ -1053,9 +1045,7 @@ export async function processInvoiceImageWithN8n(
 
   const result = await uploadInvoiceToN8n(file);
   const numericAmount =
-    typeof result.amount === "number" ? result.amount : parseFloat(String(result.amount ?? "0")) || 0;
-  const subtotal = Math.round(numericAmount * 0.82);
-  const gst = numericAmount - subtotal;
+    typeof result.amount === "number" ? (isNaN(result.amount) ? 0 : result.amount) : parseFloat(String(result.amount ?? "0").replace(/[^0-9.-]/g, "")) || 0;
 
   const normalized: ExtractedInvoiceData = {
     invoiceNumber: (result.invoice_number ?? "").trim(),
@@ -1074,12 +1064,12 @@ export async function processInvoiceImageWithN8n(
         description: `Goods / Services from ${(result.vendor_name ?? "").trim() || "Vendor"}`,
         hsn: "9983",
         quantity: 1,
-        rate: subtotal,
-        gstRate: 18,
+        rate: numericAmount,
+        gstRate: 0,
       },
     ],
-    subtotal,
-    totalGst: gst,
+    subtotal: numericAmount,
+    totalGst: 0,
     grandTotal: numericAmount,
     confidenceScore: 98.0,
   };
