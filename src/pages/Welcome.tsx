@@ -12,6 +12,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Language } from "../data/i18n";
+import { motion } from "framer-motion";
+import { LampContainer } from "../components/ui/lamp";
 import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
@@ -245,16 +247,33 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         </MobileNav>
       </Navbar>
 
-      {/* 2. HERO SECTION */}
-      <header className="hero">
-        <div className="b b1"></div>
-        <div className="b b2"></div>
-        <div className="b b3"></div>
-        <h1 className="d">Your cash flow should be working harder than you are.</h1>
-        <p>
+      {/* 2. HERO SECTION WITH ACETERNITY LAMP EFFECT */}
+      <LampContainer className="min-h-[520px] my-0 mx-3.5 rounded-xl border border-teal-500/20 shadow-2xl py-12">
+        <motion.h1
+          initial={{ opacity: 0.5, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.2,
+            duration: 0.8,
+            ease: "easeInOut",
+          }}
+          className="d text-center text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl"
+        >
+          Your cash flow should be working harder than you are.
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0.5, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.3,
+            duration: 0.8,
+            ease: "easeInOut",
+          }}
+          className="text-slate-300 text-sm sm:text-base max-w-lg text-center my-6"
+        >
           {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice reads bills from photos or PDFs, maintains your invoices, and automates payment chasing with WhatsApp and email reminders.
-        </p>
-        <div className="row">
+        </motion.p>
+        <div className="flex items-center justify-center gap-3 flex-wrap relative z-20">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
             Enter dashboard
           </button>
@@ -273,7 +292,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             Upload bill (photo or PDF)
           </button>
         </div>
-      </header>
+      </LampContainer>
 
       {/* 3. TRUST BANNER */}
       <div className="trust">

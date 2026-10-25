@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { LampContainer } from "../components/ui/lamp";
 import { KpiCard } from "../components/KpiCard";
 import { EmptyState } from "../components/EmptyState";
 import { GlowingEffect } from "../components/ui/glowing-effect";
@@ -231,13 +233,21 @@ export function Dashboard({ lang }: { lang: Language }) {
 
   return (
     <div className="space-y-6">
-      {/* Business Header & Health Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-teal-900 via-teal-800 to-slate-900 p-6 text-white shadow-xl">
-        <div className="absolute right-0 top-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* Business Header & Health Banner with Aceternity Lamp Effect */}
+      <LampContainer className="min-h-[250px] py-6 sm:py-8 bg-slate-950 border border-teal-500/25 shadow-2xl">
+        <motion.div
+          initial={{ opacity: 0.5, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.2,
+            duration: 0.8,
+            ease: "easeInOut",
+          }}
+          className="relative z-10 w-full flex flex-col md:flex-row md:items-center justify-between gap-6"
+        >
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-500/40">
                 {businessProfile.city ? `${businessProfile.city}, ${businessProfile.state}` : "Operational Workspace"}
               </span>
               <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-400/30">
@@ -246,10 +256,15 @@ export function Dashboard({ lang }: { lang: Language }) {
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <motion.h1
+              initial={{ opacity: 0.8, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-br from-white via-slate-100 to-slate-400 bg-clip-text text-transparent"
+            >
               {businessProfile.name || "ApkaInvoice Dashboard"}
-            </h1>
-            <p className="text-sm text-teal-100 max-w-xl leading-relaxed">
+            </motion.h1>
+            <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
               {invoices.length === 0 ? (
                 <span>Welcome to your live operational workspace. Upload bill photos or PDF invoices to start tracking customer payments.</span>
               ) : overdueInvoices.length > 0 ? (
@@ -269,14 +284,14 @@ export function Dashboard({ lang }: { lang: Language }) {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               to="/invoices"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-950 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target border border-white/60"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-900 text-sm font-bold shadow-md hover:bg-slate-100 transition-all hover:scale-[1.02] tap-target border border-white/80"
             >
               <FileText className="w-4 h-4 text-teal-600" />
               <span>View Invoices</span>
             </Link>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </LampContainer>
 
       {/* Invoice Uploaded Live Success Banner */}
       {scanSuccessBanner && (
