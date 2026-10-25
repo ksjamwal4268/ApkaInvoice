@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   onAuthStateChanged,
   signOut as firebaseSignOut,
   User,
@@ -20,8 +22,28 @@ export interface AppUser {
 
 export type GoogleUser = AppUser;
 
-// Google login function
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+// Google login function with automatic fallback to redirect if popup is blocked
+export const signInWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (err: any) {
+    console.warn("signInWithPopup error:", err);
+    if (
+      err?.code === "auth/popup-blocked" ||
+      err?.code === "auth/cancelled-popup-request" ||
+      err?.code === "auth/internal-error"
+    ) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      } catch (redirectErr) {
+        console.error("signInWithRedirect error:", redirectErr);
+        throw redirectErr;
+      }
+    }
+    throw err;
+  }
+};
 
 // Google logout function
 export const signOutUser = () => firebaseSignOut(auth);
@@ -76,6 +98,11 @@ export const useAuth = () => {
   }, []);
 
   useEffect(() => {
+    // Process redirect result if browser was redirected for auth
+    getRedirectResult(auth).catch((err) => {
+      console.warn("getRedirectResult notice:", err);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
       if (firebaseUser) {
         const appUser: AppUser = {

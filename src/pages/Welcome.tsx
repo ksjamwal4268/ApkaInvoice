@@ -76,15 +76,9 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       await signInWithGoogle();
     } catch (err: any) {
       console.warn("Google sign in notice:", err);
-      // Fallback demo user if Firebase auth popup is closed or blocked
-      const demoUser = {
-        id: "demo-user-1",
-        name: businessProfile.contactPerson || businessProfile.name || "Business User",
-        email: businessProfile.email || "accounts@apkainvoice.com",
-        picture: "https://api.dicebear.com/7.x/avataaars/svg?seed=User",
-      };
-      localStorage.setItem("cc-google-user", JSON.stringify(demoUser));
-      window.location.reload();
+      if (err?.code !== "auth/popup-closed-by-user") {
+        setAuthError("Could not sign in with Google. Please try again.");
+      }
     }
   };
 
@@ -260,7 +254,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             style={{ background: "#ffffff26", color: "#fff" }}
             onClick={() => {
               if (!user) {
-                signInWithGoogle();
+                handleGoogleSignIn();
               } else {
                 setIsCameraModalOpen(true);
               }
@@ -291,7 +285,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               className="g3-card cursor-pointer hover:opacity-90 transition-opacity"
               onClick={() => {
                 if (!user) {
-                  signInWithGoogle();
+                  handleGoogleSignIn();
                 } else {
                   setIsCameraModalOpen(true);
                 }
@@ -562,10 +556,10 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                   </>
                 ) : (
                   <>
-                    <button type="button" className="btn" onClick={signInWithGoogle}>
+                    <button type="button" className="btn cursor-pointer" onClick={handleGoogleSignIn}>
                       Sign in with Google
                     </button>
-                    <button type="button" className="btn o" onClick={signInWithGoogle}>
+                    <button type="button" className="btn o cursor-pointer" onClick={handleGoogleSignIn}>
                       Set Up Profile
                     </button>
                   </>
@@ -579,22 +573,22 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       {/* 9. BOTTOM CTA */}
       <section className="wrap my-16 sm:my-24">
         <CometCard className="w-full">
-          <div className="cta" style={{ margin: 0 }}>
+          <div className="cta relative z-30" style={{ margin: 0, position: "relative", zIndex: 30 }}>
             <h2 className="d">Stop chasing<br />payments.</h2>
             <p>Upload one bill and see your cash forecast in about a minute.</p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-4" style={{ position: "relative", zIndex: 40 }}>
               {user ? (
                 <>
                   <button
                     type="button"
-                    className="btn"
+                    className="btn cursor-pointer"
                     onClick={() => setIsCameraModalOpen(true)}
                   >
                     Upload bill (photo or PDF)
                   </button>
                   <button
                     type="button"
-                    className="btn o"
+                    className="btn o cursor-pointer"
                     onClick={handleEnterDashboard}
                   >
                     Open Dashboard
@@ -603,10 +597,11 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               ) : (
                 <button
                   type="button"
-                  className="btn"
-                  onClick={signInWithGoogle}
+                  className="btn cursor-pointer"
+                  style={{ position: "relative", zIndex: 50 }}
+                  onClick={handleGoogleSignIn}
                 >
-                  Log in to use
+                  Sign up to use
                 </button>
               )}
             </div>
