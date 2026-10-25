@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -49,27 +49,55 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
   const [authError, setAuthError] = useState<string | null>(null);
 
 
-  // Calculate live financial KPIs from the data store
-  const moneyOwed = invoices
-    .filter((inv) => (inv?.status ?? "").toLowerCase() !== "paid" && (inv?.status ?? "").toLowerCase() !== "disputed")
-    .reduce((sum, inv) => sum + (inv?.outstanding || 0), 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const overdueAmount = invoices
-    .filter((inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0)
-    .reduce((sum, inv) => sum + (inv?.outstanding || 0), 0);
+  const isInvoiceOverdue = (inv: any) => {
+    if (!inv || inv.status === "paid" || inv.status === "disputed") return false;
+    if ((inv.outstanding || 0) <= 0) return false;
+    if ((inv.status ?? "").toLowerCase() === "overdue") return true;
+    if (!inv.dueDate) return false;
+    const due = new Date(inv.dueDate);
+    return due < today;
+  };
 
-  const fourWeeksFromNow = new Date();
-  fourWeeksFromNow.setDate(fourWeeksFromNow.getDate() + 28);
+  // Calculate live financial KPIs from the data store perfectly in sync with Dashboard
+  const moneyOwed = useMemo(() => {
+    return invoices
+      .filter((inv) => (inv?.status ?? "").toLowerCase() !== "paid" && (inv?.status ?? "").toLowerCase() !== "disputed")
+      .reduce((sum: number, inv: any) => sum + (inv?.outstanding || 0), 0);
+  }, [invoices]);
 
-  const expected4Weeks = invoices.reduce((sum, inv) => {
-    const status = (inv?.status ?? "").toLowerCase();
-    if (status === "disputed" || status === "paid") return sum;
-    const due = new Date(inv?.dueDate || 0);
-    if (due <= fourWeeksFromNow && due >= new Date() && (inv?.outstanding || 0) > 0) {
-      return sum + (inv?.outstanding || 0);
-    }
-    return sum;
-  }, 0);
+  const overdueInvoices = useMemo(() => {
+    return invoices.filter(isInvoiceOverdue);
+  }, [invoices, today]);
+
+  const overdueAmount = useMemo(() => {
+    return overdueInvoices.reduce((sum: number, inv: any) => sum + (inv?.outstanding || 0), 0);
+  }, [overdueInvoices]);
+
+  const fourWeeksFromNow = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 28);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }, []);
+
+  const expected4Weeks = useMemo(() => {
+    return invoices.reduce((sum: number, inv: any) => {
+      const status = (inv?.status ?? "").toLowerCase();
+      if (status === "disputed" || status === "paid") return sum;
+      if (isInvoiceOverdue(inv)) return sum;
+      const due = new Date(inv?.dueDate || 0);
+      if (due <= fourWeeksFromNow && (inv?.outstanding || 0) > 0) {
+        return sum + (inv?.outstanding || 0);
+      }
+      return sum;
+    }, 0);
+  }, [invoices, fourWeeksFromNow, today]);
 
   const handleGoogleSignIn = async () => {
     setAuthError(null);
@@ -373,7 +401,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                   <div className="st">
                     <small>Overdue</small>
                     <b>{formatInr(overdueAmount)}</b>
-                    <i>{overdueAmount > 0 ? "Requires action" : "All payments current"}</i>
+                    <i>{overdueAmount > 0 ? (overdueInvoices.length === 1 ? "1 invoice past due" : `${overdueInvoices.length} invoices past due`) : "All payments current"}</i>
                   </div>
                 </CometCard>
                 <CometCard className="h-full">
