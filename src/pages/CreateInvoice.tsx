@@ -59,12 +59,12 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     return { ...stored, ...(businessProfile || {}) };
   }, [businessProfile]);
 
-  const [senderBusinessName, setSenderBusinessName] = useState(currentProfile.name || "Sharma Packaging");
+  const [senderBusinessName, setSenderBusinessName] = useState(currentProfile.name || "");
   const [senderPhone, setSenderPhone] = useState(currentProfile.phone || "");
   const [senderEmail, setSenderEmail] = useState(currentProfile.email || "");
   const [senderGstin, setSenderGstin] = useState(currentProfile.gstin || "");
   const [senderAddress, setSenderAddress] = useState(currentProfile.address || "");
-  const [senderCity, setSenderCity] = useState(currentProfile.city || "Pune");
+  const [senderCity, setSenderCity] = useState(currentProfile.city || "");
   const [senderState, setSenderState] = useState(currentProfile.state || "Maharashtra");
 
   const [customerId, setCustomerId] = useState("");

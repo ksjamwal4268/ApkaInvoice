@@ -61,7 +61,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
       // Location
       setAddress(businessProfile.address || "");
-      setCity(businessProfile.city || "Pune");
+      setCity(businessProfile.city || "");
       setState(businessProfile.state || "Maharashtra");
       setStateCode(businessProfile.stateCode || "27");
       setPincode(businessProfile.pincode || "");
@@ -88,7 +88,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
     }
     if (user.name) {
       setContactPerson(user.name);
-      if (!businessName || businessName === "Sharma Packaging") {
+      if (!businessName) {
         setBusinessName(`${user.name} Enterprises`);
       }
     }
@@ -110,13 +110,13 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
     const updatedProfile: BusinessProfile = {
       ...businessProfile,
-      name: businessName.trim() || `${contactPerson || "My"} Enterprises`,
+      name: businessName.trim() || (contactPerson.trim() ? `${contactPerson.trim()} Enterprises` : "My Business"),
       contactPerson: contactPerson.trim(),
       email: email.trim(),
       phone: cleanPhone,
       // Location details
       address: address.trim(),
-      city: city.trim() || "Pune",
+      city: city.trim(),
       state,
       stateCode,
       pincode: pincode.trim(),
@@ -326,7 +326,7 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
                     type="text"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    placeholder="e.g. Jamwal Enterprises / Sharma Packaging"
+                    placeholder="e.g. Acme Enterprises / Global Logistics"
                     className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-teal-500 focus:outline-none font-semibold"
                   />
                   <Building2 className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />

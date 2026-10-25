@@ -11,7 +11,7 @@ export const translations: Record<Language, Record<string, string>> = {
   en: {
     appName: "ApkaInvoice",
     tagline: "Chase unpaid invoices. See cash shortages coming.",
-    demoLabel: "Demo data — Sharma Packaging, Pune",
+    demoLabel: "Demo data — Sample business invoices",
     navProfile: "Profile",
     navDashboard: "Dashboard",
     navInvoices: "Invoices",

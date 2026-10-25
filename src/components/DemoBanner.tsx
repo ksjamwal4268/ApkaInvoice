@@ -7,11 +7,11 @@ export function DemoBanner(): React.JSX.Element {
       <div className="flex items-center gap-2">
         <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
         <span className="font-medium">
-          <strong>Interactive Demo</strong> — Sharma Packaging, Pune. Sample business data.
+          <strong>Interactive Demo</strong> — Sample business invoices and forecast data.
         </span>
       </div>
       <span className="text-[11px] text-teal-700 dark:text-teal-400 font-semibold hidden sm:inline">
-        Simulated UPI & GST Invoicing
+        Simulated GST Invoicing & Payment Tracking
       </span>
     </div>
   );

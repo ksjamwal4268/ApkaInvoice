@@ -503,36 +503,57 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <CometCard className="w-full">
           <div className="cfg">
             <h2 className="d">
-              {businessProfile.name
+              {user && businessProfile.name
                 ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
-                : "Configure your business profile & reminder sender identity."}
+                : user
+                ? "Finish configuring your business profile."
+                : "Your business details will appear here."}
             </h2>
             <div>
               <ul>
                 <li>
-                  <b>WhatsApp &amp; payments</b>
-                  <span>{businessProfile.phone || "Configure in Profile"}</span>
+                  <b>WhatsApp &amp; reminders</b>
+                  <span>
+                    {user && businessProfile.phone
+                      ? businessProfile.phone
+                      : user
+                      ? "Pending setup — add your WhatsApp number"
+                      : "Your verified sender number will appear here"}
+                  </span>
                 </li>
                 <li>
-                  <b>Email</b>
-                  <span>{businessProfile.email || user?.email || "Configure in Profile"}</span>
-                </li>
-                <li>
-                  <b>UPI ID</b>
-                  <span>{businessProfile.upi || (businessProfile.phone ? `${businessProfile.phone.replace(/\D/g, "")}@upi` : "Configure in Profile")}</span>
+                  <b>Billing email</b>
+                  <span>
+                    {businessProfile.email || user?.email || "Your billing email will appear here"}
+                  </span>
                 </li>
                 <li>
                   <b>Signed in as</b>
-                  <span>{user?.email || "Local device session"}</span>
+                  <span>
+                    {user?.email || "Not signed in"}
+                  </span>
                 </li>
               </ul>
               <p style={{ marginTop: "18px", display: "flex", gap: "8px" }}>
-                <button type="button" className="btn" onClick={() => navigate("/profile")}>
-                  Profile
-                </button>
-                <button type="button" className="btn o" onClick={() => setIsOnboardingOpen(true)}>
-                  Setup
-                </button>
+                {user ? (
+                  <>
+                    <button type="button" className="btn" onClick={() => navigate("/profile")}>
+                      Profile
+                    </button>
+                    <button type="button" className="btn o" onClick={() => setIsOnboardingOpen(true)}>
+                      {businessProfile.name ? "Update Setup" : "Setup Now"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className="btn" onClick={signInWithGoogle}>
+                      Sign in with Google
+                    </button>
+                    <button type="button" className="btn o" onClick={signInWithGoogle}>
+                      Set Up Profile
+                    </button>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -540,32 +561,55 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       </section>
 
       {/* 9. BOTTOM CTA */}
-      <section className="wrap">
+      <section className="wrap my-16 sm:my-24">
         <CometCard className="w-full">
           <div className="cta" style={{ margin: 0 }}>
             <h2 className="d">Stop chasing<br />payments.</h2>
-            <p>Upload one bill and see your cash forecast in about a minute.</p>
-            <button type="button" className="btn" onClick={() => setIsCameraModalOpen(true)}>
-              Upload bill (photo or PDF)
-            </button>
+            <p>Upload one bill or see your live cash flow forecast in about a minute.</p>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  if (!user) {
+                    signInWithGoogle();
+                  } else {
+                    setIsCameraModalOpen(true);
+                  }
+                }}
+              >
+                Upload bill (photo or PDF)
+              </button>
+              <button
+                type="button"
+                className="btn o"
+                onClick={handleEnterDashboard}
+              >
+                Open Dashboard
+              </button>
+            </div>
           </div>
         </CometCard>
       </section>
 
       {/* 10. FOOTER */}
       <footer>
-        <div className="wm" aria-label="ApkaInvoice">
-          <span>A</span>
-          <span>p</span>
-          <span>k</span>
-          <span>a</span>
-          <span>I</span>
-          <span>n</span>
-          <span>v</span>
-          <span>o</span>
-          <span>i</span>
-          <span>c</span>
-          <span>e</span>
+        <div className="wm" aria-label="Apka Invoice">
+          <span className="wm-word">
+            <span>A</span>
+            <span>p</span>
+            <span>k</span>
+            <span>a</span>
+          </span>
+          <span className="wm-word">
+            <span>I</span>
+            <span>n</span>
+            <span>v</span>
+            <span>o</span>
+            <span>i</span>
+            <span>c</span>
+            <span>e</span>
+          </span>
         </div>
         <div className="fc">
           <div>

@@ -69,9 +69,7 @@ export function OnboardingModal({
       setBusinessName(
         existingProfile.name && existingProfile.name !== "Sharma Packaging"
           ? existingProfile.name
-          : currentUser?.name
-          ? `${currentUser.name} Enterprises`
-          : existingProfile.name || ""
+          : ""
       );
       setEmail(
         currentUser?.email || existingProfile.email || ""
@@ -83,7 +81,7 @@ export function OnboardingModal({
       );
       setState(existingProfile.state || "Maharashtra");
       setStateCode(existingProfile.stateCode || "27");
-      setCity(existingProfile.city || "Pune");
+      setCity(existingProfile.city && existingProfile.city !== "Pune" ? existingProfile.city : "");
       setAddress(existingProfile.address || "");
       setGstin(existingProfile.gstin || "");
       setUpi(existingProfile.upi || "");
@@ -279,7 +277,7 @@ export function OnboardingModal({
                       setContactPerson(e.target.value);
                       if (step1Error) setStep1Error(null);
                     }}
-                    placeholder="e.g. Rohit Sharma"
+                    placeholder="e.g. Rahul Verma"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>
@@ -302,7 +300,7 @@ export function OnboardingModal({
                       setBusinessName(e.target.value);
                       if (step1Error) setStep1Error(null);
                     }}
-                    placeholder="e.g. Sharma Packaging & Logistics"
+                    placeholder="e.g. Apex Enterprises or Shanti Logistics"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                   />
                 </div>

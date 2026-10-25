@@ -45,7 +45,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
       stage: "Stage 2 - Due-date reminder",
       reminderMessage: "Dear Gupta Traders, payment for invoice SP/24-25/001 is overdue...",
       paymentDetails: {
-        upi: "sharmapackaging@hdfc",
+        upi: "business@upi",
         bankName: "HDFC Bank",
         bankAccount: "50200045678901",
         ifsc: "HDFC0001234",
@@ -267,7 +267,7 @@ export function N8nSettingsModal({ isOpen, onClose }: N8nSettingsModalProps): Re
   "dueDate": "2024-04-10",
   "stage": "Stage 2 - Due-date reminder",
   "reminderMessage": "Dear Gupta Traders...",
-  "paymentDetails": { "upi": "sharmapackaging@hdfc", "bankAccount": "50200045678901" }
+  "paymentDetails": { "upi": "business@upi", "bankAccount": "50200045678901" }
 }`}
             </pre>
           </div>

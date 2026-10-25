@@ -101,17 +101,13 @@ export const useAuth = () => {
           const currentProf = getStoredBusinessProfile();
           let needsUpdate = false;
           const nextProf = { ...currentProf };
-          if (!nextProf.contactPerson || nextProf.contactPerson === "Rohit Sharma") {
-            if (appUser.name && appUser.name !== "Google User") {
-              nextProf.contactPerson = appUser.name;
-              needsUpdate = true;
-            }
+          if (!nextProf.contactPerson && appUser.name && appUser.name !== "Google User") {
+            nextProf.contactPerson = appUser.name;
+            needsUpdate = true;
           }
-          if (!nextProf.email || nextProf.email === "billing@sharmapackaging.in") {
-            if (appUser.email) {
-              nextProf.email = appUser.email;
-              needsUpdate = true;
-            }
+          if (!nextProf.email && appUser.email) {
+            nextProf.email = appUser.email;
+            needsUpdate = true;
           }
           if (needsUpdate) {
             saveBusinessProfile(nextProf);

@@ -102,24 +102,24 @@ const N8N_CONFIG_KEY = "cc_n8n_config_v1";
 const BUSINESS_KEY = "cc_business_profile_v2";
 
 export const DEFAULT_BUSINESS_PROFILE: BusinessProfile = {
-  name: "Sharma Packaging",
-  contactPerson: "Rohit Sharma",
-  role: "Proprietor",
-  city: "Pune",
-  state: "Maharashtra",
-  stateCode: "27",
-  pincode: "412105",
-  gstin: "27AABCS1234Q1ZM",
-  pan: "AABCS1234Q",
-  businessType: "Sole Proprietorship",
-  address: "Gut No. 145, Chakan Industrial Area, Pune - 412105, Maharashtra",
-  email: "billing@sharmapackaging.in",
-  phone: "+91 98765 43210",
-  bankName: "HDFC Bank",
-  accountHolderName: "Sharma Packaging",
-  bankAccount: "50200045678901",
-  ifsc: "HDFC0001234",
-  upi: "sharmapackaging@hdfc",
+  name: "",
+  contactPerson: "",
+  role: "",
+  city: "",
+  state: "",
+  stateCode: "",
+  pincode: "",
+  gstin: "",
+  pan: "",
+  businessType: "",
+  address: "",
+  email: "",
+  phone: "",
+  bankName: "",
+  accountHolderName: "",
+  bankAccount: "",
+  ifsc: "",
+  upi: "",
   isOnboarded: false,
 };
 
@@ -255,7 +255,17 @@ export function getStoredBusinessProfile(): BusinessProfile {
   try {
     const raw = localStorage.getItem(BUSINESS_KEY);
     if (!raw) return DEFAULT_BUSINESS_PROFILE;
-    return { ...DEFAULT_BUSINESS_PROFILE, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    // Discard legacy demo / fake Sharma Packaging data
+    if (
+      parsed.name === "Sharma Packaging" ||
+      parsed.email === "billing@sharmapackaging.in" ||
+      parsed.upi === "sharmapackaging@hdfc"
+    ) {
+      localStorage.removeItem(BUSINESS_KEY);
+      return DEFAULT_BUSINESS_PROFILE;
+    }
+    return { ...DEFAULT_BUSINESS_PROFILE, ...parsed };
   } catch {
     return DEFAULT_BUSINESS_PROFILE;
   }
