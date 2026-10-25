@@ -935,15 +935,15 @@ export function saveN8nExtractedInvoice(
   } else {
     customer = { ...existingCust };
     let updatedCust = false;
-    if (payerEmail && !customer.email) {
+    if (payerEmail && customer.email !== payerEmail) {
       customer.email = payerEmail;
       updatedCust = true;
     }
-    if (payerPhone && !customer.phone) {
+    if (payerPhone && customer.phone !== payerPhone) {
       customer.phone = payerPhone;
       updatedCust = true;
     }
-    if (payerGstin && !customer.gstin) {
+    if (payerGstin && customer.gstin !== payerGstin) {
       customer.gstin = payerGstin;
       updatedCust = true;
     }
@@ -1006,6 +1006,9 @@ export function saveN8nExtractedInvoice(
     customerState: customer.state || "",
     customerGstin: customer.gstin || payerGstin || null,
     placeOfSupply: (extracted?.place_of_supply ?? "").trim() || customer.state || "",
+    payerName: customer.name || payerName,
+    payerEmail: payerEmail || customer.email || "",
+    payerPhone: payerPhone || customer.phone || "",
     invoiceDate,
     dueDate,
     terms: "Net 30",

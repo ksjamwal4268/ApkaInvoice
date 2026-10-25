@@ -130,8 +130,11 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
         const cust = customers.find((c) => c.id === existing.customerId);
         if (cust) {
-          setBuyerPhone(cust.phone || "");
-          setBuyerEmail(cust.email || "");
+          setBuyerPhone(cust.phone || existing.payerPhone || "");
+          setBuyerEmail(cust.email || existing.payerEmail || "");
+        } else {
+          setBuyerPhone(existing.payerPhone || "");
+          setBuyerEmail(existing.payerEmail || "");
         }
 
         setLineItems(
@@ -194,6 +197,25 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       }
 
       if (matchedCustomer) {
+        let updatedCust = false;
+        const copyCust = { ...matchedCustomer };
+        if (bEmail && copyCust.email !== bEmail) {
+          copyCust.email = bEmail;
+          updatedCust = true;
+        }
+        if (bPhone && copyCust.phone !== bPhone) {
+          copyCust.phone = bPhone;
+          updatedCust = true;
+        }
+        if (bGstin && copyCust.gstin !== bGstin) {
+          copyCust.gstin = bGstin;
+          updatedCust = true;
+        }
+        if (updatedCust) {
+          saveCustomer(copyCust);
+          matchedCustomer = copyCust;
+        }
+
         setCustomerId(matchedCustomer.id);
         setGstin(bGstin || matchedCustomer.gstin || "");
         setPlaceOfSupply(matchedCustomer.state || (bAddress ? (bAddress.split(",").slice(-2)[0] ?? "").trim() : ""));
@@ -360,7 +382,22 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       return;
     }
 
+    const cleanEmail = (buyerEmail ?? "").trim();
+    const cleanPhone = (buyerPhone ?? "").trim();
+    const cleanGstin = (gstin ?? "").trim().toUpperCase();
+
     const selectedCust = customers.find((c) => c.id === customerId);
+    if (selectedCust) {
+      const updatedCust: Customer = {
+        ...selectedCust,
+        email: cleanEmail || selectedCust.email || "",
+        phone: cleanPhone || selectedCust.phone || "",
+        gstin: cleanGstin || selectedCust.gstin || null,
+        state: placeOfSupply || selectedCust.state || "",
+      };
+      saveCustomer(updatedCust);
+    }
+
     const invId = isEditing && routeInvoiceId ? routeInvoiceId : `inv-${Date.now().toString(36)}`;
     const finalNumber = invoiceNumber.trim();
 
@@ -373,8 +410,11 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       customerName: selectedCust?.name || "Customer",
       customerCity: selectedCust?.city || "",
       customerState: selectedCust?.state || "",
-      customerGstin: gstin || selectedCust?.gstin || "",
+      customerGstin: cleanGstin || selectedCust?.gstin || "",
       placeOfSupply,
+      payerName: selectedCust?.name || "Customer",
+      payerEmail: cleanEmail || selectedCust?.email || "",
+      payerPhone: cleanPhone || selectedCust?.phone || "",
       invoiceDate: new Date(invoiceDate),
       dueDate: computeDueDate(new Date(invoiceDate), terms),
       terms,

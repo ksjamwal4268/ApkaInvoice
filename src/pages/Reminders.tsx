@@ -40,7 +40,7 @@ type ChannelTab = "email" | "whatsapp";
 export function Reminders({ lang: _appLang }: { lang: Language }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, signInWithGoogle } = useAuth();
-  const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice } = useDataStore();
+  const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice, saveCustomer } = useDataStore();
 
   // Search and Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -116,14 +116,31 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
   // Sync composer fields whenever selected invoice or customer changes
   useEffect(() => {
     if (selectedInvoice) {
-      const custName = selectedCustomer?.name ?? selectedInvoice.customerName ?? "";
-      const custEmail = selectedCustomer?.email ?? "";
-      const custPhone = selectedCustomer?.phone ?? "";
+      const custName = (selectedCustomer?.name || selectedInvoice.payerName || selectedInvoice.customerName || "").trim();
+      const custEmail = (selectedCustomer?.email || selectedInvoice.payerEmail || "").trim();
+      const custPhone = (selectedCustomer?.phone || selectedInvoice.payerPhone || "").trim();
       const invNum = selectedInvoice.invoiceNumber ?? "";
       const formattedAmt = formatInr(selectedInvoice.outstanding);
       const bName = businessProfile?.name ?? "ApkaInvoice";
       const bPhone = businessProfile?.phone ?? "";
       const bUpi = businessProfile?.upi ?? (bPhone ? `${bPhone.replace(/\D/g, "")}@upi` : "");
+
+      // If customer record was missing email or phone but invoice had it, backfill customer record
+      if (selectedCustomer && (!selectedCustomer.email || !selectedCustomer.phone)) {
+        let needsUpdate = false;
+        const copyCust = { ...selectedCustomer };
+        if (!copyCust.email && custEmail) {
+          copyCust.email = custEmail;
+          needsUpdate = true;
+        }
+        if (!copyCust.phone && custPhone) {
+          copyCust.phone = custPhone;
+          needsUpdate = true;
+        }
+        if (needsUpdate) {
+          saveCustomer(copyCust);
+        }
+      }
 
       setRecipientName(custName);
       setRecipientEmail(custEmail);
@@ -240,8 +257,15 @@ ${bName}`;
         });
         setShowPayerEmailModal(false);
 
-        // Record evidence and update last reminder timestamp on invoice
+        // Record evidence, persist confirmed email, and update last reminder timestamp
         try {
+          if (selectedCustomer && selectedCustomer.email !== emailClean) {
+            saveCustomer({
+              ...selectedCustomer,
+              email: emailClean,
+            });
+          }
+
           addInvoiceEvidence(selectedInvoice.id, {
             id: `ev-${Date.now()}`,
             date: new Date(),
@@ -254,6 +278,7 @@ ${bName}`;
 
           const updatedInvoice = {
             ...selectedInvoice,
+            payerEmail: emailClean,
             lastReminderSentAt: new Date().toISOString(),
           };
           saveInvoice(updatedInvoice);
@@ -376,6 +401,12 @@ ${bName}`;
           type: "success",
           message: res.message || "WhatsApp reminder sent",
         });
+        if (selectedCustomer && selectedCustomer.phone !== rawPhone) {
+          saveCustomer({
+            ...selectedCustomer,
+            phone: rawPhone,
+          });
+        }
         addInvoiceEvidence(selectedInvoice.id, {
           id: `ev-${Date.now()}`,
           date: new Date(),
@@ -387,6 +418,7 @@ ${bName}`;
         });
         const updatedInvoice = {
           ...selectedInvoice,
+          payerPhone: rawPhone,
           lastReminderSentAt: new Date().toISOString(),
         };
         saveInvoice(updatedInvoice);
