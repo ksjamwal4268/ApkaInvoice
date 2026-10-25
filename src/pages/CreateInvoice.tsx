@@ -28,7 +28,7 @@ import { useAuth } from "../utils/auth";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import { CustomerModal } from "../components/CustomerModal";
 import { ExtractedInvoiceData, getStoredBusinessProfile } from "../data/dataStore";
-import { uploadInvoice } from "../api/n8n.js";
+import { useInvoiceUpload } from "../hooks/useInvoiceUpload";
 import { Customer, getCustomerCategory } from "../data/sampleData";
 import { INDIAN_STATES } from "../utils/gstin";
 
@@ -91,9 +91,6 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const [scannedImagePreview, setScannedImagePreview] = useState<string | null>(null);
   const [ocrBadge, setOcrBadge] = useState<string | null>(null);
   const [isUploadingDirect, setIsUploadingDirect] = useState(false);
-  const [reading, setReading] = useState(false);
-  const [uploadError, setUploadError] = useState("");
-  const [missing, setMissing] = useState<string[]>([]);
 
   // Modals state
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
@@ -345,59 +342,49 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     }
   };
 
-  // Direct file upload from the page via n8n uploadInvoice
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-uploading the same file
-    if (!file || reading) return;
+  // Upload setForm adapter conforming to useInvoiceUpload hook
+  const handleUploadSetForm = (updater: any) => {
+    const prevObj = {
+      invoiceNumber,
+      invoiceDate,
+      dueDate: "",
+      sellerName: senderBusinessName,
+      sellerGstin: senderGstin,
+      buyerName: "",
+      buyerGstin: gstin,
+      buyerAddress: "",
+      buyerEmail,
+      buyerPhone,
+      placeOfSupply,
+      amount: 0,
+      currency: "INR",
+      n8nId: "",
+    };
+    const next = typeof updater === "function" ? updater(prevObj) : updater;
 
-    if (!user) {
-      signInWithGoogle();
-      return;
-    }
-
-    setReading(true);
-    setUploadError("");
-    const res = await uploadInvoice(file);
-    setReading(false);
-
-    if (!res.ok) {
-      setUploadError(res.message || "Could not read this invoice right now. Please try again in a minute.");
-      return;
-    }
-
-    const inv = res.invoice;
-    if (!inv) return;
-
-    const pick = (newVal: any, oldVal: any) => ((newVal ?? "") !== "" ? String(newVal) : (oldVal ?? ""));
-
-    // Rule: Never put a GSTIN in the invoice number field. Remove any regex or text guessing on the uploaded file.
-    const extractedInvNum = (inv.invoiceNumber ?? "").trim();
+    // Rule: Never put a GSTIN in the invoice number
+    const extractedInvNum = (next.invoiceNumber ?? "").trim();
     const isGstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(extractedInvNum);
     if (extractedInvNum && !isGstinPattern) {
       setInvoiceNumber(extractedInvNum);
     }
 
-    if (inv.invoiceDate) setInvoiceDate(inv.invoiceDate);
+    if (next.invoiceDate) setInvoiceDate(next.invoiceDate);
 
     // Rule: Place of Supply comes only from inv.placeOfSupply. Never derive it from the seller address or GSTIN.
-    if (inv.placeOfSupply) {
-      setPlaceOfSupply(inv.placeOfSupply);
+    if (next.placeOfSupply) {
+      setPlaceOfSupply(next.placeOfSupply);
     }
 
-    if (inv.vendorName) {
-      setSenderBusinessName((prev) => pick(inv.vendorName, prev));
-    }
-    if (inv.vendorGstin) {
-      setSenderGstin((prev) => pick(inv.vendorGstin, prev));
-    }
+    if (next.sellerName) setSenderBusinessName(next.sellerName);
+    if (next.sellerGstin) setSenderGstin(next.sellerGstin);
 
-    if (inv.buyerName) {
-      const bName = (inv.buyerName ?? "").trim();
-      const bGstin = (inv.buyerGstin ?? "").trim().toUpperCase();
-      const bEmail = (inv.buyerEmail ?? "").trim();
-      const bPhone = (inv.buyerPhone ?? "").trim();
-      const bAddress = (inv.buyerAddress ?? "").trim();
+    if (next.buyerName) {
+      const bName = (next.buyerName ?? "").trim();
+      const bGstin = (next.buyerGstin ?? "").trim().toUpperCase();
+      const bEmail = (next.buyerEmail ?? "").trim();
+      const bPhone = (next.buyerPhone ?? "").trim();
+      const bAddress = (next.buyerAddress ?? "").trim();
 
       let matchedCustomer = customers.find(
         (c) =>
@@ -410,7 +397,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
           id: `cust-${Date.now().toString(36)}`,
           name: bName,
           city: bAddress ? (bAddress.split(",")[0] ?? "").trim() : "",
-          state: inv.placeOfSupply || "",
+          state: next.placeOfSupply || "",
           address: bAddress,
           gstin: bGstin || null,
           pan: bGstin && bGstin.length >= 12 ? bGstin.substring(2, 12) : null,
@@ -431,28 +418,28 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         setBuyerEmail(bEmail || matchedCustomer.email || "");
       }
     } else {
-      if (inv.buyerGstin) setGstin((prev) => pick(inv.buyerGstin, prev));
-      if (inv.buyerPhone) setBuyerPhone((prev) => pick(inv.buyerPhone, prev));
-      if (inv.buyerEmail) setBuyerEmail((prev) => pick(inv.buyerEmail, prev));
+      if (next.buyerGstin) setGstin(next.buyerGstin);
+      if (next.buyerPhone) setBuyerPhone(next.buyerPhone);
+      if (next.buyerEmail) setBuyerEmail(next.buyerEmail);
     }
 
-    if (inv.dueDate && inv.invoiceDate) {
-      const d1 = new Date(inv.invoiceDate);
-      const d2 = new Date(inv.dueDate);
+    if (next.dueDate && next.invoiceDate) {
+      const d1 = new Date(next.invoiceDate);
+      const d2 = new Date(next.dueDate);
       const diffDays = Math.round((d2.getTime() - d1.getTime()) / (1000 * 3600 * 24));
       if (diffDays <= 15) setTerms("Net 15");
       else if (diffDays <= 30) setTerms("Net 30");
       else setTerms("Net 45");
     }
 
-    if (inv.amount) {
-      const amt = Number(inv.amount) || 0;
+    if (next.amount) {
+      const amt = Number(next.amount) || 0;
       if (amt > 0) {
         const baseRate = Math.round(amt * 0.82);
         setLineItems([
           {
             id: "1",
-            description: `Goods / Services from ${(inv.vendorName ?? "").trim() || "Vendor"}`,
+            description: `Goods / Services from ${(next.sellerName ?? "").trim() || "Vendor"}`,
             hsn: "9983",
             quantity: 1,
             rate: Math.round(baseRate / 100),
@@ -463,17 +450,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     }
 
     setOcrBadge("Auto-Extracted from Invoice Document");
-
-    setMissing(
-      [
-        ["buyerEmail", inv.buyerEmail],
-        ["buyerPhone", inv.buyerPhone],
-        ["dueDate", inv.dueDate],
-      ]
-        .filter(([, v]) => (v ?? "") === "")
-        .map(([k]) => k as string)
-    );
   };
+
+  const { reading, uploadError, setUploadError, missing, setMissing, handleFile } = useInvoiceUpload(handleUploadSetForm);
 
   const handleSaveBuyerModal = (newBuyer: Customer) => {
     saveCustomer(newBuyer);
@@ -667,11 +646,11 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 <span>Scan Camera</span>
               </button>
 
-              <label className="flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer">
+              <label className="upload-btn flex items-center gap-2 px-3.5 py-2 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs cursor-pointer">
                 {reading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Reading invoice… (can take up to 90s)</span>
+                    <span>Reading invoice… (up to 90s)</span>
                   </>
                 ) : (
                   <>
@@ -702,7 +681,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       </div>
 
       {uploadError && (
-        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-between text-xs font-semibold">
+        <div className="error p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-between text-xs font-semibold">
           <span>{uploadError}</span>
           <button type="button" onClick={() => setUploadError("")} className="text-rose-500 hover:text-rose-700 font-bold ml-2">✕</button>
         </div>
@@ -897,7 +876,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 placeholder={missing.includes("buyerPhone") ? "Buyer phone (please check)" : "+91 98234 56780"}
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none ${
                   missing.includes("buyerPhone")
-                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
+                    ? "field-missing border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
                     : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 }`}
               />
@@ -924,7 +903,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 placeholder={missing.includes("buyerEmail") ? "Buyer email (please check)" : "accounts@buyer.in"}
                 className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none ${
                   missing.includes("buyerEmail")
-                    ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
+                    ? "field-missing border-amber-400 bg-amber-50/40 ring-1 ring-amber-400"
                     : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 }`}
               />
