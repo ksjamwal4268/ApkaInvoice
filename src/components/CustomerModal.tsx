@@ -177,48 +177,31 @@ export function CustomerModal({
             />
           </div>
 
-          {/* GSTIN & PAN */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-teal-600" />
-                GSTIN (15 Digits)
-              </label>
-              <input
-                type="text"
-                value={gstin}
-                maxLength={15}
-                onChange={(e) => handleGstinChange(e.target.value)}
-                placeholder="e.g. 07AAAAA0000A1Z5"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono text-slate-900 dark:text-white uppercase focus:outline-none focus:ring-2 ${
-                  gstinError
-                    ? "border-rose-500 focus:ring-rose-500 bg-rose-50/20"
-                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-teal-500"
-                }`}
-              />
-              {gstinError ? (
-                <p className="text-[11px] text-rose-600 dark:text-rose-400">{gstinError}</p>
-              ) : gstin.length === 15 ? (
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> Valid Indian GSTIN
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-teal-600" />
-                PAN Number
-              </label>
-              <input
-                type="text"
-                value={pan}
-                maxLength={10}
-                onChange={(e) => setPan(e.target.value.toUpperCase())}
-                placeholder="AABCS1234Q"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-mono text-slate-900 dark:text-white uppercase focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
+          {/* Buyer GSTIN */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-teal-600" />
+              GSTIN (15 Digits, Optional)
+            </label>
+            <input
+              type="text"
+              value={gstin}
+              maxLength={15}
+              onChange={(e) => handleGstinChange(e.target.value)}
+              placeholder="e.g. 07AAAAA0000A1Z5"
+              className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono text-slate-900 dark:text-white uppercase focus:outline-none focus:ring-2 ${
+                gstinError
+                  ? "border-rose-500 focus:ring-rose-500 bg-rose-50/20"
+                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:ring-teal-500"
+              }`}
+            />
+            {gstinError ? (
+              <p className="text-[11px] text-rose-600 dark:text-rose-400">{gstinError}</p>
+            ) : gstin.length === 15 ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <Check className="w-3 h-3" /> Valid Indian GSTIN
+              </p>
+            ) : null}
           </div>
 
           {/* Contact Details: Phone & Email */}

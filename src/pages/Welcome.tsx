@@ -15,7 +15,6 @@ import { Language } from "../data/i18n";
 import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
 import { formatInr } from "../utils/money";
-import { DEFAULT_OUTFLOWS } from "../utils/forecast";
 import { getStoredBusinessProfile } from "../data/dataStore";
 import { OnboardingModal } from "../components/OnboardingModal";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
@@ -69,11 +68,6 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
     }
     return sum;
   }, 0);
-
-  const bills4Weeks = Object.values(DEFAULT_OUTFLOWS || []).reduce(
-    (sum, o) => sum + (o?.amount || 0),
-    0
-  );
 
   const handleGoogleSignIn = async () => {
     setAuthError(null);
@@ -254,7 +248,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <div className="b b3"></div>
         <h1 className="d">Your cash flow should be working harder than you are.</h1>
         <p>
-          {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice predicts cash shortfalls, reads bills from photos or PDFs, and automates payment chasing with WhatsApp and email reminders.
+          {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice reads bills from photos or PDFs, maintains your invoices, and automates payment chasing with WhatsApp and email reminders.
         </p>
         <div className="row">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
@@ -513,7 +507,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                   <LayoutDashboard className="w-5 h-5 text-neutral-800" />
                 </div>
                 <h3>Financial Dashboard</h3>
-                <p>Open the comprehensive dashboard with 6-week cash forecasts, overdue priority alerts, and metrics.</p>
+                <p>Open the comprehensive operational dashboard with billing activity, overdue priority alerts, and metrics.</p>
               </div>
             </CometCard>
           </div>
@@ -674,7 +668,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <CometCard className="w-full">
           <div className="cta relative z-30" style={{ margin: 0, position: "relative", zIndex: 30 }}>
             <h2 className="d">Stop chasing<br />payments.</h2>
-            <p>Upload one bill and see your cash forecast in about a minute.</p>
+            <p>Upload one bill and maintain your invoices in about a minute.</p>
             <div className="flex flex-wrap items-center justify-center gap-3 mt-4" style={{ position: "relative", zIndex: 40 }}>
               {user ? (
                 <>
@@ -732,7 +726,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             <b>Product</b>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/invoices")}>Invoices ledger</button>
             <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={() => navigate("/reminders")}>Reminders</button>
-            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={handleEnterDashboard}>Cash forecast</button>
+            <button type="button" className="text-left hover:underline text-inherit bg-transparent border-0 p-0 cursor-pointer text-xs" onClick={handleEnterDashboard}>Dashboard</button>
           </div>
           <div>
             <b>Recovery</b>

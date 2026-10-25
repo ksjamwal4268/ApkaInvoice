@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Upload,
   FileText,
+  Send,
 } from "lucide-react";
 import {
   LineChart,
@@ -54,15 +55,24 @@ export function Dashboard({ lang }: { lang: Language }) {
     }, 0);
   }, [invoices]);
 
-  const overdueAmount = useMemo(() => {
-    return invoices.reduce((sum, inv) => {
-      if (inv.status === "disputed" || inv.status === "paid") return sum;
-      if (new Date(inv.dueDate) < today && inv.outstanding > 0) {
-        return sum + inv.outstanding;
-      }
-      return sum;
-    }, 0);
+  const isInvoiceOverdue = (inv: any) => {
+    if (!inv || inv.status === "paid" || inv.status === "disputed") return false;
+    if ((inv.outstanding || 0) <= 0) return false;
+    if ((inv.status ?? "").toLowerCase() === "overdue") return true;
+    if (!inv.dueDate) return false;
+    const due = new Date(inv.dueDate);
+    return due < today;
+  };
+
+  const overdueInvoices = useMemo(() => {
+    return invoices
+      .filter(isInvoiceOverdue)
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
   }, [invoices, today]);
+
+  const overdueAmount = useMemo(() => {
+    return overdueInvoices.reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
+  }, [overdueInvoices]);
 
   const totalPaid = useMemo(() => {
     return invoices.reduce((sum, inv) => {
@@ -209,30 +219,15 @@ export function Dashboard({ lang }: { lang: Language }) {
   }
 
   const redInvoices = useMemo((): RedInvoice[] => {
-    return invoices
-      .filter((inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed)
+    return overdueInvoices
       .map((inv) => {
         const customer = customers.find((c) => Boolean(c && c.id === inv?.customerId));
-        const dLate = daysBetween(new Date(inv?.dueDate || Date.now()), today);
+        const dLate = Math.max(0, daysBetween(new Date(inv?.dueDate || Date.now()), today));
         return { invoice: inv, customer: customer || undefined, daysLate: dLate, amount: inv?.outstanding || 0 };
       })
-      .filter((r) => r.daysLate >= 30)
-      .sort((a, b) => b.daysLate - a.daysLate)
-      .slice(0, 5);
-  }, [invoices, customers, today]);
-
-  const chaseList = useMemo(() => {
-    return invoices.filter(
-      (inv) => (inv?.status ?? "").toLowerCase() === "overdue" && (inv?.outstanding || 0) > 0 && !inv?.isDisputed
-    ).map((inv) => {
-      const customer = customers.find((c) => Boolean(c && c.id === inv?.customerId));
-      const dLate = daysBetween(new Date(inv?.dueDate || Date.now()), today);
-      const isChronic = customer?.isChronicallyLate || false;
-      const score = (inv?.outstanding || 0) * dLate * (isChronic ? 2 : 1);
-      return { inv, customer, daysLate: dLate, isChronic, score };
-    }).sort((a, b) => b.score - a.score);
-  }, [invoices, customers, today]);
-
+      .sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount)
+      .slice(0, 6);
+  }, [overdueInvoices, customers, today]);
 
   return (
     <div className="space-y-6">
@@ -245,8 +240,8 @@ export function Dashboard({ lang }: { lang: Language }) {
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-700/80 text-teal-200 border border-teal-600/50">
                 {businessProfile.city ? `${businessProfile.city}, ${businessProfile.state}` : "Operational Workspace"}
               </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-400/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-400 animate-pulse" />
                 Live Invoices Synced
               </span>
             </div>
@@ -254,13 +249,18 @@ export function Dashboard({ lang }: { lang: Language }) {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               {businessProfile.name || "ApkaInvoice Dashboard"}
             </h1>
-            <p className="text-sm text-teal-100/90 max-w-xl leading-relaxed">
+            <p className="text-sm text-teal-100 max-w-xl leading-relaxed">
               {invoices.length === 0 ? (
                 <span>Welcome to your live operational workspace. Upload bill photos or PDF invoices to start tracking customer payments.</span>
+              ) : overdueInvoices.length > 0 ? (
+                <>
+                  You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{overdueInvoices.length} overdue {overdueInvoices.length === 1 ? "invoice" : "invoices"}</strong> totaling{" "}
+                  <strong className="text-white font-bold">{formatInr(overdueAmount)}</strong>. Chase high-priority accounts today to secure your cash flow.
+                </>
               ) : (
                 <>
-                  You have <strong className="text-white underline decoration-teal-400 underline-offset-2">{chaseList.length} overdue invoices</strong> totaling{" "}
-                  <strong className="text-white font-bold">{formatInr(overdueAmount)}</strong>. Chase high-priority accounts today to secure your cash flow.
+                  All recorded customer invoices are currently up to date. Total left to collect:{" "}
+                  <strong className="text-white font-bold">{formatInr(moneyOwed)}</strong>.
                 </>
               )}
             </p>
@@ -269,9 +269,9 @@ export function Dashboard({ lang }: { lang: Language }) {
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <Link
               to="/invoices"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-900 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-teal-950 text-sm font-bold shadow-md hover:bg-teal-50 transition-all hover:scale-[1.02] tap-target border border-white/60"
             >
-              <FileText className="w-4 h-4 text-teal-700" />
+              <FileText className="w-4 h-4 text-teal-600" />
               <span>View Invoices</span>
             </Link>
           </div>
@@ -306,7 +306,7 @@ export function Dashboard({ lang }: { lang: Language }) {
           label="Payment Left to Receive"
           value={formatInr(moneyOwed)}
           icon={Wallet}
-          change={overdueAmount > 0 ? `${chaseList.length} overdue` : "All clear"}
+          change={overdueAmount > 0 ? `${overdueInvoices.length} overdue` : "All clear"}
           changeType={overdueAmount > 0 ? "negative" : "positive"}
           subtitle="Outstanding across open invoices"
           highlight={overdueAmount > 0}
@@ -382,8 +382,10 @@ export function Dashboard({ lang }: { lang: Language }) {
         </div>
       )}
 
-      {/* Weekly / Monthly Billing & Collections Activity Graph */}
-      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+      {/* 2-Column Row: Activity Graph (Left 2 cols) + Critical Invoices (Right 1 col) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Weekly / Monthly Billing & Collections Activity Graph (Left 2 cols) */}
+        <div className="lg:col-span-2 relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
         <GlowingEffect
           spread={40}
           glow={true}
@@ -442,7 +444,7 @@ export function Dashboard({ lang }: { lang: Language }) {
                   Received
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-teal-600" />
                   Expected
                 </span>
                 <span className="flex items-center gap-1.5 font-medium">
@@ -556,9 +558,9 @@ export function Dashboard({ lang }: { lang: Language }) {
                 <Line
                   type="monotone"
                   dataKey="expectedTotal"
-                  stroke="#f59e0b"
+                  stroke="#0d9488"
                   strokeWidth={2}
-                  dot={{ r: 3.5, strokeWidth: 1.5, fill: "#f59e0b" }}
+                  dot={{ r: 3.5, strokeWidth: 1.5, fill: "#0d9488" }}
                   activeDot={{ r: 5 }}
                   name="Expected Total"
                 />
@@ -586,136 +588,8 @@ export function Dashboard({ lang }: { lang: Language }) {
         </div>
       </div>
 
-      {/* Main Grid: Chase These Today (Left 2 cols) + Critical Invoices (Right 1 col) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chase List */}
-        <div className="relative lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
-          <GlowingEffect
-            spread={40}
-            glow={true}
-            disabled={false}
-            proximity={64}
-            inactiveZone={0.01}
-          />
-          <div className="relative rounded-xl p-4 md:p-6 bg-white flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span>Chase These Today</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold">
-                    {chaseList.length} Pending
-                  </span>
-                </h2>
-              </div>
-              <Link
-                to="/reminders"
-                className="text-xs font-semibold text-teal-600 hover:underline inline-flex items-center gap-1"
-              >
-                <span>Batch Remind</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-          {chaseList.length === 0 ? (
-            <EmptyState title="No overdue invoices" message="All payments are current or up to date." />
-          ) : (
-            <div className="space-y-3">
-              {chaseList.slice(0, 5).map(({ inv, customer, daysLate: dLate, isChronic }, index) => {
-                const phoneClean = customer?.phone?.replace(/\D/g, "") || "";
-                const invRefText = inv.invoiceNumber ? `for invoice ${inv.invoiceNumber}` : "";
-                const waMessage = `Hello ${customer?.name || "Customer"}, reminder that payment of ${formatInr(inv.outstanding)} ${invRefText} is overdue by ${dLate} days (Due Date: ${formatDate(inv.dueDate)}). Please arrange for clearance. Thanks, ${businessProfile.name || "ApkaInvoice"}.`.replace(/\s+/g, " ");
-                const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(waMessage)}`;
-
-                return (
-                  <div
-                    key={inv.id}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-750 hover:bg-white dark:hover:bg-slate-700 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                        #{index + 1}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Link
-                            to={`/invoices/${inv.id}`}
-                            className="font-bold text-sm text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400"
-                          >
-                            {inv.invoiceNumber ? (
-                              inv.invoiceNumber
-                            ) : (
-                              <span className="text-slate-400 font-normal italic">— (No number)</span>
-                            )}
-                          </Link>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                            {customer?.name || inv.customerName}
-                          </span>
-                          {customer?.grade && (
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                                customer.grade === "A"
-                                  ? "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300"
-                                  : customer.grade === "B"
-                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
-                                  : "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300"
-                              }`}
-                            >
-                              Grade {customer.grade}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
-                          <span className="font-semibold text-rose-600 dark:text-rose-400">
-                            {dLate} days overdue
-                          </span>
-                          {isChronic && (
-                            <span className="text-[10px] font-bold uppercase bg-rose-50 text-rose-700 px-1.5 rounded border border-rose-200">
-                              Chronic Late
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-700">
-                      <div className="text-left sm:text-right">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 block">Balance</span>
-                        <span className="text-base font-bold tabular-nums text-slate-900 dark:text-white">
-                          {formatInr(inv.outstanding)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <HoverBorderGradient
-                          as="a"
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          containerClassName="rounded-lg"
-                          glowColor="#25D366"
-                          className="p-2 rounded-[inherit] bg-[#25D366] text-white hover:opacity-95 flex items-center justify-center tap-target"
-                          title="Quick WhatsApp reminder"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </HoverBorderGradient>
-                        <button
-                          onClick={() => navigate(`/invoices/${inv.id}`)}
-                          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 tap-target"
-                        >
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          </div>
-        </div>
-
-        {/* Critical Invoices Panel (Right Side) */}
-        <div className="relative rounded-2xl border border-rose-200/80 bg-rose-50/20 p-2 md:rounded-3xl md:p-3 shadow-xs flex flex-col justify-between">
+        {/* Critical Invoices Panel (Right 1 col, right of graph) */}
+        <div className="lg:col-span-1 relative rounded-2xl border border-rose-200/80 bg-rose-50/20 p-2 md:rounded-3xl md:p-3 shadow-xs flex flex-col justify-between">
           <GlowingEffect
             spread={40}
             glow={true}
@@ -731,17 +605,19 @@ export function Dashboard({ lang }: { lang: Language }) {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-rose-900">Critical Invoices</h2>
-                  <p className="text-xs text-rose-600">Overdue 30+ days</p>
+                  <p className="text-xs text-rose-600">
+                    {overdueInvoices.length > 0 ? `${overdueInvoices.length} overdue accounts` : "Urgent payment alerts"}
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-3 flex-grow overflow-y-auto mt-4">
+              <div className="space-y-2.5 flex-grow overflow-y-auto mt-4 max-h-[310px]">
                 {redInvoices.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-rose-600">
-                    No critical invoices overdue 30+ days. All payments are healthy.
+                  <div className="text-center py-12 text-xs text-slate-500">
+                    No overdue invoices. All accounts are up to date!
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {redInvoices.map(({ invoice, customer, daysLate: dLate, amount }) => (
                       <div
                         key={invoice.id}
@@ -749,18 +625,18 @@ export function Dashboard({ lang }: { lang: Language }) {
                         className="p-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50/70 transition-all cursor-pointer shadow-2xs"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <h3 className="text-sm font-bold text-rose-900 truncate">
                                 {invoice.invoiceNumber || <span className="font-normal italic text-slate-400">— (No number)</span>}
                               </h3>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 shrink-0">
                                 {dLate}d late
                               </span>
                             </div>
-                            <p className="text-xs text-slate-600">{customer?.name || invoice.customerName}</p>
+                            <p className="text-xs text-slate-600 truncate">{customer?.name || invoice.customerName}</p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <div className="text-sm font-bold text-rose-800">{formatInr(amount)}</div>
                             <div className="text-[10px] text-slate-400">{new Date(invoice.dueDate).toLocaleDateString()}</div>
                           </div>
@@ -773,16 +649,126 @@ export function Dashboard({ lang }: { lang: Language }) {
             </div>
 
             <div className="mt-4 pt-4 border-t border-rose-100 flex items-center justify-between text-xs text-rose-600">
-              <span>Critical overdue ledger</span>
+              <span>High priority alerts</span>
               <Link
                 to="/reminders"
                 className="inline-flex items-center gap-1 font-semibold text-rose-600 hover:underline"
               >
-                <span>View all</span>
+                <span>Open Reminders</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Overdue Invoices Section (Shown directly below the graph) */}
+      <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+        <GlowingEffect
+          spread={40}
+          glow={true}
+          disabled={false}
+          proximity={64}
+          inactiveZone={0.01}
+        />
+        <div className="relative rounded-xl p-4 sm:p-6 bg-white space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">
+                    Overdue Invoices
+                  </h2>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold">
+                    {overdueInvoices.length} Pending
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Customer bills past due date requiring payment collection.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              to="/reminders"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs transition-colors self-start sm:self-auto tap-target"
+            >
+              <Send className="w-3.5 h-3.5 text-teal-200" />
+              <span>Batch Remind</span>
+            </Link>
+          </div>
+
+          {overdueInvoices.length === 0 ? (
+            <EmptyState
+              title="All invoices up to date"
+              message="No customer accounts are currently overdue. All payments are clear or awaiting their due date."
+            />
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold">
+                    <th className="px-4 py-3">Invoice #</th>
+                    <th className="px-4 py-3">Customer / Buyer</th>
+                    <th className="px-4 py-3">Due Date</th>
+                    <th className="px-4 py-3">Overdue By</th>
+                    <th className="px-4 py-3 text-right">Outstanding</th>
+                    <th className="px-4 py-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {overdueInvoices.map((inv) => {
+                    const cust = customers.find((c) => c.id === inv.customerId);
+                    const daysLate = Math.max(0, daysBetween(new Date(inv.dueDate), today));
+                    return (
+                      <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 font-bold text-slate-900">
+                          <Link to={`/invoices/${inv.id}`} className="hover:text-teal-600 hover:underline">
+                            {inv.invoiceNumber || <span className="text-slate-400 italic">— (No Number)</span>}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-semibold text-slate-800">{inv.customerName}</div>
+                          {cust?.phone && <div className="text-[10px] text-slate-400 font-mono">{cust.phone}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {formatDate(inv.dueDate)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                            +{daysLate}d late
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-bold text-rose-600 text-sm">
+                          {formatInr(inv.outstanding)}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="inline-flex items-center gap-1.5">
+                            <Link
+                              to={`/reminders?invoiceId=${inv.id}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 text-white hover:bg-teal-700 text-xs font-semibold shadow-2xs transition-colors"
+                            >
+                              <Send className="w-3 h-3 text-teal-200" />
+                              <span>Remind</span>
+                            </Link>
+                            <Link
+                              to={`/invoices/${inv.id}`}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition-colors"
+                            >
+                              View
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
