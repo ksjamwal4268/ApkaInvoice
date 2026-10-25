@@ -7,9 +7,7 @@ import { Language } from "../data/i18n";
 import {
   ArrowLeft,
   Building2,
-  Mail,
   Phone,
-  MessageSquare,
   ArrowRight,
   Plus,
   Edit,
@@ -22,7 +20,7 @@ import { Customer, getCustomerCategory } from "../data/sampleData";
 export function CustomerPage({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { customers, invoices: allInvoices, businessProfile, saveCustomer, deleteCustomer } = useDataStore();
+  const { customers, invoices: allInvoices, saveCustomer, deleteCustomer } = useDataStore();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -49,12 +47,6 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
   const overdueCount = invoices.filter((inv) => (inv.status ?? "").toLowerCase() === "overdue" && (inv.outstanding || 0) > 0).length;
   const avgDaysLate = customer.isChronicallyLate ? 22 : customer.grade === "B" ? 7 : 1;
 
-  const phoneClean = (customer.phone ?? "").replace(/\D/g, "");
-  const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(
-    `Hello ${customer.name}, greetings from ${businessProfile.name}. Regarding your account balance of ${formatInr(
-      totalOwed
-    )}, please let us know when we can expect settlement.`
-  )}`;
 
   const handleSaveBuyer = (updated: Customer) => {
     saveCustomer(updated);
@@ -149,31 +141,6 @@ export function CustomerPage({ lang: _lang }: { lang: Language }) {
               <Edit className="w-3.5 h-3.5 text-teal-600" />
               <span>Edit Buyer Info</span>
             </button>
-
-            <Link
-              to={`/invoices/create?customer=${customer.id}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-xs tap-target"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Invoice</span>
-            </Link>
-
-            <a
-              href={waUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#25D366] text-white text-xs font-bold hover:opacity-90 shadow-2xs tap-target"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
-            </a>
-
-            <a
-              href={`mailto:${customer.email}`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-650 tap-target"
-            >
-              <Mail className="w-3.5 h-3.5" />
-            </a>
 
             <button
               type="button"
