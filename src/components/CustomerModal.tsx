@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Building2, User, Phone, Mail, MapPin, ShieldAlert, Award, FileText, Check, Trash2 } from "lucide-react";
 import { Customer } from "../data/sampleData";
 import { validateGstin, INDIAN_STATES } from "../utils/gstin";
+import { useAuth } from "../utils/auth";
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -26,8 +27,9 @@ export function CustomerModal({
   suggestedState,
   suggestedCity,
 }: CustomerModalProps): React.JSX.Element | null {
+  const { user, signInWithGoogle } = useAuth();
   const [name, setName] = useState("");
-  const [city, setCity] = useState("Pune");
+  const [city, setCity] = useState("");
   const [state, setState] = useState("Maharashtra");
   const [gstin, setGstin] = useState("");
   const [pan, setPan] = useState("");
@@ -55,7 +57,7 @@ export function CustomerModal({
       setReason(initialCustomer.gradeReasons?.[0] || "");
     } else {
       setName(suggestedName || "");
-      setCity(suggestedCity || "Pune");
+      setCity(suggestedCity || "");
       setState(suggestedState || "Maharashtra");
       const initGstin = suggestedGstin || "";
       setGstin(initGstin);
@@ -95,6 +97,10 @@ export function CustomerModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
     if (!name.trim()) {
       alert("Customer / Buyer name is required.");
       return;
@@ -103,7 +109,7 @@ export function CustomerModal({
     const newCustomer: Customer = {
       id: initialCustomer ? initialCustomer.id : `cust-${Date.now().toString(36)}`,
       name: name.trim(),
-      city: city.trim() || "Pune",
+      city: city.trim(),
       state: state.trim() || "Maharashtra",
       gstin: gstin.trim() ? gstin.toUpperCase().trim() : null,
       pan: pan.trim() ? pan.toUpperCase().trim() : null,

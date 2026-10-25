@@ -20,6 +20,7 @@ import {
 } from "../data/dataStore";
 import { Invoice } from "../data/sampleData";
 import { recognizeInvoiceWithTesseract, parseInvoiceText } from "../utils/ocrParser";
+import { useAuth } from "../utils/auth";
 
 export type TabType = "all" | "photo" | "pdf" | "camera" | "review";
 
@@ -41,6 +42,7 @@ export function InvoiceCameraModal({
   onInvoiceStored,
 }: InvoiceCameraModalProps): React.JSX.Element | null {
   const navigate = useNavigate();
+  const { user, signInWithGoogle } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [cameraActive, setCameraActive] = useState(false);
@@ -136,6 +138,10 @@ export function InvoiceCameraModal({
   };
 
   const handleApplyInvoice = (inv: N8nUploadedInvoice, previewUrl?: string) => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
     setExtractedInvoice(inv);
     setEditInvoiceNumber(((inv.invoice_number ?? "") as string).trim());
     setEditPayerName(((inv.payer_name ?? "") as string).trim());
@@ -161,6 +167,10 @@ export function InvoiceCameraModal({
    * 90s timeout. Max ~10 MB file size.
    */
   const processFile = async (file: File | Blob, isCameraCapture: boolean = false) => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
     // Send exactly one request per upload click (disable button while uploading)
     if (isUploading) return;
 

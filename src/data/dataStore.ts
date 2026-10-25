@@ -161,7 +161,16 @@ export function getStoredInvoices(): Invoice[] {
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(reviveInvoice);
+    // Automatically purge legacy demo/fake invoices
+    const cleanInvoices = parsed.filter(
+      (inv: any) =>
+        !inv?.id?.startsWith("inv-") &&
+        !inv?.invoiceNumber?.startsWith("SP/24-25/")
+    );
+    if (cleanInvoices.length !== parsed.length) {
+      localStorage.setItem(INVOICES_KEY, JSON.stringify(cleanInvoices));
+    }
+    return cleanInvoices.map(reviveInvoice);
   } catch (e) {
     console.error("Failed to parse invoices from storage", e);
     return [];
@@ -216,7 +225,17 @@ export function getStoredCustomers(): Customer[] {
     }
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed;
+    // Automatically purge legacy demo/fake customers
+    const cleanCustomers = parsed.filter(
+      (c: any) =>
+        !c?.id?.startsWith("cust-") &&
+        c?.name !== "Gupta Traders" &&
+        c?.name !== "Shree Ganesh Textiles"
+    );
+    if (cleanCustomers.length !== parsed.length) {
+      localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(cleanCustomers));
+    }
+    return cleanCustomers;
   } catch (e) {
     console.error("Failed to parse customers from storage", e);
     return [];

@@ -32,12 +32,14 @@ import { formatInr } from "../utils/money";
 import { formatDate, daysBetween, toISODateString } from "../utils/date";
 import { StatusBadge } from "../components/StatusBadge";
 import { sendInvoiceReminderEmail, InvoiceReminderEmailPayload } from "../data/dataStore";
+import { useAuth } from "../utils/auth";
 
 type FilterTab = "all" | "overdue" | "due";
 type ChannelTab = "email" | "whatsapp";
 
 export function Reminders({ lang: _appLang }: { lang: Language }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user, signInWithGoogle } = useAuth();
   const { invoices, customers, businessProfile, addInvoiceEvidence, saveInvoice } = useDataStore();
 
   // Search and Filter State
@@ -299,6 +301,10 @@ ${bName}`;
 
   // Dispatch Email Reminder via n8n Webhook
   const handleSendEmailReminder = async () => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
     if (!selectedInvoice) return;
     if (isSending) return;
 
@@ -338,6 +344,10 @@ ${bName}`;
 
   // WhatsApp Send helper
   const handleOpenWhatsApp = () => {
+    if (!user) {
+      signInWithGoogle();
+      return;
+    }
     if (!selectedInvoice) return;
     const phoneClean = (whatsappPhone ?? "").replace(/\D/g, "");
     if (!phoneClean) {

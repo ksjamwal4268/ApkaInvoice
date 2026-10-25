@@ -30,6 +30,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { useDataStore } from "../hooks/useDataStore";
+import { useAuth } from "../utils/auth";
 import { GlowingEffect } from "../components/ui/glowing-effect";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
 import {
@@ -43,6 +44,7 @@ type SortField = "dueDate" | "invoiceNumber" | "total" | "outstanding" | "custom
 
 export function Invoices({ lang: _lang }: { lang: Language }) {
   const navigate = useNavigate();
+  const { user, signInWithGoogle } = useAuth();
   const { invoices, customers, businessProfile, saveInvoice, saveCustomer, deleteInvoice, loadSampleData, refresh } =
     useDataStore();
 
@@ -336,6 +338,10 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
           <button
             type="button"
             onClick={() => {
+              if (!user) {
+                signInWithGoogle();
+                return;
+              }
               setModalInitialFile(null);
               setIsCameraModalOpen(true);
             }}
@@ -520,8 +526,14 @@ export function Invoices({ lang: _lang }: { lang: Language }) {
             <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsCameraModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-xs"
+                onClick={() => {
+                  if (!user) {
+                    signInWithGoogle();
+                    return;
+                  }
+                  setIsCameraModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 transition-colors shadow-xs cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
                 <span>Upload Invoice</span>

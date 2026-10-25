@@ -254,7 +254,13 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
             type="button"
             className="btn"
             style={{ background: "#ffffff26", color: "#fff" }}
-            onClick={() => setIsCameraModalOpen(true)}
+            onClick={() => {
+              if (!user) {
+                signInWithGoogle();
+              } else {
+                setIsCameraModalOpen(true);
+              }
+            }}
           >
             Upload bill (photo or PDF)
           </button>
@@ -279,7 +285,13 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           <CometCard className="h-full">
             <div
               className="g3-card cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setIsCameraModalOpen(true)}
+              onClick={() => {
+                if (!user) {
+                  signInWithGoogle();
+                } else {
+                  setIsCameraModalOpen(true);
+                }
+              }}
             >
               <div className="ic">1</div>
               <h3>Scan or upload bills</h3>
