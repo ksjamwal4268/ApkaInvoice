@@ -910,7 +910,7 @@ export async function sendReminderViaN8n(
     success: true,
     liveSent,
     message: liveSent
-      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient} via cloud automation!`
+      ? `${channel === "email" ? "Email" : "WhatsApp"} reminder dispatched successfully to ${targetRecipient}!`
       : `${channel === "email" ? "Email" : "WhatsApp"} reminder recorded and prepared for ${payload.buyer.name} (${payload.invoiceNumber || "Invoice"}).`,
     channel: channel === "email" ? "Email Workflow" : "WhatsApp Workflow",
     executionId,

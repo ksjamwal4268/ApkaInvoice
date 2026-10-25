@@ -7,13 +7,11 @@ import {
   MessageCircle,
   Users,
   Plus,
-  Zap,
   Menu,
 } from "lucide-react";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
 import { useAuth } from "../utils/auth";
-import { N8nSettingsModal } from "./N8nSettingsModal";
 import { BusinessSettingsModal } from "./BusinessSettingsModal";
 import {
   Sidebar,
@@ -33,7 +31,6 @@ export function Shell({
   children,
 }: ShellProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
-  const [n8nModalOpen, setN8nModalOpen] = useState(false);
   const [businessModalOpen, setBusinessModalOpen] = useState(false);
   const { invoices, customers, businessProfile } = useDataStore();
   const { user } = useAuth();
@@ -79,12 +76,6 @@ export function Shell({
       label: "New Invoice",
       href: "/invoices/create",
       icon: <Plus className="w-5 h-5 shrink-0 text-teal-600" />,
-    },
-    {
-      label: "Cloud Automation",
-      href: "#automation",
-      icon: <Zap className="w-5 h-5 shrink-0 text-amber-500 fill-amber-500" />,
-      onClick: () => setN8nModalOpen(true),
     },
   ];
 
@@ -159,17 +150,6 @@ export function Shell({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setN8nModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-xs font-bold hover:bg-teal-100 transition-colors shadow-2xs"
-              title="Cloud Automation Hub"
-            >
-              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span className="hidden sm:inline">Cloud Automation</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            </button>
-
             <Link
               to="/invoices/create"
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 text-white text-xs font-bold hover:bg-teal-700 shadow-xs transition-colors tap-target"
@@ -187,12 +167,6 @@ export function Shell({
           </div>
         </main>
       </div>
-
-      {/* Cloud Automation Modal */}
-      <N8nSettingsModal
-        isOpen={n8nModalOpen}
-        onClose={() => setN8nModalOpen(false)}
-      />
 
       {/* Business Settings Modal */}
       <BusinessSettingsModal
