@@ -86,6 +86,8 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: "1", description: "", hsn: "", quantity: 1, rate: 0, gstRate: 18 },
   ]);
+  const [fromUpload, setFromUpload] = useState(false);
+  const [uploadAmount, setUploadAmount] = useState<number | null>(null);
   const [billOfSupply, setBillOfSupply] = useState(false);
   const [gstinError, setGstinError] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -254,15 +256,16 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       if (rawAmount !== undefined && rawAmount !== null && rawAmount !== "") {
         const amt = Number(rawAmount) || 0;
         if (amt > 0) {
-          const baseRate = Math.round(amt * 0.82);
+          setFromUpload(true);
+          setUploadAmount(amt);
           setLineItems([
             {
               id: "1",
               description: `Goods / Services from ${(data?.vendor_name ?? "").trim() || "Vendor"}`,
               hsn: "9983",
               quantity: 1,
-              rate: baseRate,
-              gstRate: 18,
+              rate: amt,
+              gstRate: 0,
             },
           ]);
         }
@@ -295,14 +298,22 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     });
   }, [lineItems, billOfSupply]);
 
-  const subtotal = lineTotals.reduce((sum, t) => sum + t.lineAmount, 0);
-  const totalGst = billOfSupply ? 0 : lineTotals.reduce((sum, t) => sum + t.gst, 0);
-  const { cgst, sgst } = splitCgstSgst(totalGst);
-  const igst = isSameState ? 0 : totalGst;
-  const rawTotal = subtotal + (isSameState ? cgst + sgst : igst);
+  const calculatedSubtotal = lineTotals.reduce((sum, t) => sum + t.lineAmount, 0);
+  const calculatedGst = billOfSupply ? 0 : lineTotals.reduce((sum, t) => sum + t.gst, 0);
+  const { cgst, sgst } = splitCgstSgst(calculatedGst);
+  const igst = isSameState ? 0 : calculatedGst;
+  const rawTotal = calculatedSubtotal + (isSameState ? cgst + sgst : igst);
   const roundedTotal = Math.round(rawTotal / 100) * 100;
-  const roundOff = roundedTotal - rawTotal;
-  const grandTotal = roundedTotal;
+
+  // When fromUpload is true, do not recalculate total from line items or add tax on top.
+  // We use uploadAmount directly as total.
+  const subtotal = fromUpload && uploadAmount !== null ? toPaise(uploadAmount) : calculatedSubtotal;
+  const totalGst = fromUpload && uploadAmount !== null ? 0 : calculatedGst;
+  const roundOff = fromUpload && uploadAmount !== null ? 0 : (roundedTotal - rawTotal);
+  const grandTotal = fromUpload && uploadAmount !== null ? toPaise(uploadAmount) : roundedTotal;
+  const cgstVal = fromUpload && uploadAmount !== null ? 0 : (isSameState ? cgst : 0);
+  const sgstVal = fromUpload && uploadAmount !== null ? 0 : (isSameState ? sgst : 0);
+  const igstVal = fromUpload && uploadAmount !== null ? 0 : (!isSameState ? igst : 0);
 
   const handleCustomerChange = useCallback((id: string) => {
     setCustomerId(id);
@@ -434,18 +445,19 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       else setTerms("Net 45");
     }
 
-    if (next.amount) {
+    if (next.amount !== undefined && next.amount !== null && next.amount !== "") {
       const amt = Number(next.amount) || 0;
       if (amt > 0) {
-        const baseRate = Math.round(amt * 0.82);
+        setFromUpload(true);
+        setUploadAmount(amt);
         setLineItems([
           {
             id: "1",
             description: `Goods / Services from ${(next.sellerName ?? "").trim() || "Vendor"}`,
             hsn: "9983",
             quantity: 1,
-            rate: Math.round(baseRate / 100),
-            gstRate: 18,
+            rate: amt,
+            gstRate: 0,
           },
         ]);
       }
@@ -529,9 +541,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
         gstRate: li.gstRate,
       })),
       subtotal,
-      cgst: isSameState ? cgst : 0,
-      sgst: isSameState ? sgst : 0,
-      igst: !isSameState ? igst : 0,
+      cgst: cgstVal,
+      sgst: sgstVal,
+      igst: igstVal,
       roundOff,
       total: grandTotal,
       amountPaid: existingInv ? existingInv.amountPaid : 0,
@@ -1247,37 +1259,39 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
             <div>
               <p className="text-xs font-medium text-slate-500 text-slate-500">Taxable Subtotal</p>
               <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
-                {formatInr(subtotal)}
+                {fromUpload && uploadAmount !== null
+                  ? `₹${Number(uploadAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : formatInr(subtotal)}
               </p>
             </div>
-            {!billOfSupply && isSameState && (
+            {!fromUpload && !billOfSupply && isSameState && (
               <>
                 <div>
                   <p className="text-xs font-medium text-slate-500 text-slate-500">CGST (9%)</p>
                   <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
-                    {formatInr(cgst)}
+                    {formatInr(cgstVal)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-slate-500 text-slate-500">SGST (9%)</p>
                   <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
-                    {formatInr(sgst)}
+                    {formatInr(sgstVal)}
                   </p>
                 </div>
               </>
             )}
-            {!billOfSupply && !isSameState && (
+            {!fromUpload && !billOfSupply && !isSameState && (
               <div>
                 <p className="text-xs font-medium text-slate-500 text-slate-500">IGST (18%)</p>
                 <p className="text-lg font-bold tabular-nums text-slate-900 text-slate-900 mt-0.5">
-                  {formatInr(igst)}
+                  {formatInr(igstVal)}
                 </p>
               </div>
             )}
             <div>
               <p className="text-xs font-medium text-slate-500 text-slate-500">Round Off</p>
               <p className="text-lg font-bold tabular-nums text-slate-500 mt-0.5">
-                {roundOff === 0 ? "₹0.00" : `${roundOff > 0 ? "+" : ""}${formatInr(roundOff)}`}
+                {fromUpload ? "₹0.00" : (roundOff === 0 ? "₹0.00" : `${roundOff > 0 ? "+" : ""}${formatInr(roundOff)}`)}
               </p>
             </div>
           </div>
@@ -1296,7 +1310,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 Grand Total Payable
               </span>
               <p className="text-2xl sm:text-3xl font-extrabold text-teal-600 text-teal-400 tabular-nums">
-                {formatInr(grandTotal)}
+                {fromUpload && uploadAmount !== null
+                  ? `₹${Number(uploadAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : formatInr(grandTotal)}
               </p>
             </div>
           </div>
@@ -1392,7 +1408,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
                 ) : (
                   <p>IGST (18%): {formatInr(igst)}</p>
                 )}
-                <p className="text-base text-teal-600 dark:text-teal-400">Total: {formatInr(grandTotal)}</p>
+                <p className="text-base text-teal-600 dark:text-teal-400">Total: {fromUpload && uploadAmount !== null ? `₹${Number(uploadAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : formatInr(grandTotal)}</p>
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
