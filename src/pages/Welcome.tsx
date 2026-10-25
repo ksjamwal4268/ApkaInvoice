@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FileText,
   Users,
@@ -299,25 +299,11 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
           }}
           className="text-slate-300 text-sm sm:text-base max-w-lg text-center my-6"
         >
-          {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice reads bills from photos or PDFs, maintains your invoices, and automates payment chasing with WhatsApp and email reminders.
+          {displayName ? `Welcome back, ${displayName}. ` : ""}ApkaInvoice maintains your invoices, tracks dues, and automates payment chasing with WhatsApp and email reminders.
         </motion.p>
         <div className="flex items-center justify-center gap-3 flex-wrap relative z-20">
           <button type="button" className="btn w" onClick={handleEnterDashboard}>
             Enter dashboard
-          </button>
-          <button
-            type="button"
-            className="btn"
-            style={{ background: "#ffffff26", color: "#fff" }}
-            onClick={() => {
-              if (!user) {
-                handleGoogleSignIn();
-              } else {
-                setIsCameraModalOpen(true);
-              }
-            }}
-          >
-            Upload bill (photo or PDF)
           </button>
         </div>
       </LampContainer>
@@ -327,8 +313,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <span>100% GST &amp; Tax compliant</span>
         <span>CGST, SGST &amp; IGST to the paisa</span>
         <span>WhatsApp &amp; email reminders</span>
-        <span>UPI payment links</span>
-        <span>Instant bill photo OCR</span>
+        <span>Automatic overdue alerts</span>
         <span>Maintain &amp; manage invoice dues</span>
       </div>
 
@@ -344,13 +329,13 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                 if (!user) {
                   handleGoogleSignIn();
                 } else {
-                  setIsCameraModalOpen(true);
+                  navigate("/invoices");
                 }
               }}
             >
               <div className="ic">1</div>
-              <h3>Scan or upload bills</h3>
-              <p>Snap a photo or upload a PDF. Line items, CGST/SGST and paise math are filled in for you.</p>
+              <h3>Record customer invoices</h3>
+              <p>Add invoices with customer details, line items, CGST/SGST and clear payment due dates.</p>
             </div>
           </CometCard>
           <CometCard className="h-full">
@@ -423,9 +408,9 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               <>
                 <CometCard className="h-full">
                   <div className="st">
-                    <small>Bill extraction</small>
-                    <b>OCR Ready</b>
-                    <i>Scan camera photo or upload PDF</i>
+                    <small>Invoice recording</small>
+                    <b>Instant</b>
+                    <i>Create and track customer dues</i>
                   </div>
                 </CometCard>
                 <CometCard className="h-full">
@@ -446,7 +431,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
                   <div className="st">
                     <small>Direct settlement</small>
                     <b>100% Direct</b>
-                    <i>Buyers pay straight to your UPI &amp; bank</i>
+                    <i>Buyers pay straight to your bank account</i>
                   </div>
                 </CometCard>
               </>
@@ -567,63 +552,50 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
 
       {/* 8. AUTOMATION SETUP SECTION */}
       <section className="wrap my-16 sm:my-24 scroll-mt-28" id="setup">
-        <CometCard className="w-full">
-          <div className="p-7 sm:p-10 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 shadow-xl overflow-hidden relative">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* Left Column: Business Status & Identity */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/80 text-[11px] font-bold">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                  <span>Business Automation Config</span>
-                </div>
-
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
-                  {user && businessProfile.name && businessProfile.name !== "OG Enterprises"
-                    ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
-                    : user
-                    ? `Automation is configured for ${user.name || user.email}.`
-                    : "Your business details will appear here."}
-                </h2>
-
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {user
-                    ? "Reminders and automated chasing messages use your verified identity so your buyers always know who is contacting them."
-                    : "Sign in with Google to configure your business identity, WhatsApp notification number, and billing email once."}
-                </p>
-
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  {user ? (
-                    <>
-                      <button
-                        type="button"
-                        className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
-                        onClick={() => navigate("/profile")}
-                      >
-                        <User className="w-3.5 h-3.5" />
-                        <span>Manage Profile</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 text-xs font-bold transition-all cursor-pointer"
-                        onClick={() => setIsOnboardingOpen(true)}
-                      >
-                        {businessProfile.phone ? "Edit Setup Details" : "Complete Setup"}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
-                        onClick={handleGoogleSignIn}
-                      >
-                        <span>Sign up to use</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                </div>
+        <div className="p-7 sm:p-10 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 shadow-xl overflow-hidden relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column: Business Status & Identity */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/80 text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Business Automation Config</span>
               </div>
+
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                {user && businessProfile.name && businessProfile.name !== "OG Enterprises"
+                  ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
+                  : user
+                  ? `Automation is configured for ${user.name || user.email}.`
+                  : "Your business details will appear here."}
+              </h2>
+
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                {user
+                  ? "Reminders and automated chasing messages use your verified identity so your buyers always know who is contacting them."
+                  : "Sign in with Google to configure your business identity, WhatsApp notification number, and billing email once."}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {user ? (
+                  <Link
+                    to="/profile"
+                    className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-xs font-bold shadow-sm transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Manage Profile</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                    onClick={handleGoogleSignIn}
+                  >
+                    <span>Sign up to use</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
 
               {/* Right Column: Modern Live Status Cards */}
               <div className="lg:col-span-7 space-y-3">
@@ -711,46 +683,32 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
               </div>
             </div>
           </div>
-        </CometCard>
       </section>
 
       {/* 9. BOTTOM CTA */}
       <section className="wrap my-16 sm:my-24">
-        <CometCard className="w-full">
-          <div className="cta relative z-30" style={{ margin: 0, position: "relative", zIndex: 30 }}>
-            <h2 className="d">Stop chasing<br />payments.</h2>
-            <p>Upload one bill and maintain your invoices in about a minute.</p>
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-4" style={{ position: "relative", zIndex: 40 }}>
-              {user ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn cursor-pointer"
-                    onClick={() => setIsCameraModalOpen(true)}
-                  >
-                    Upload bill (photo or PDF)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn o cursor-pointer"
-                    onClick={handleEnterDashboard}
-                  >
-                    Open Dashboard
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="btn cursor-pointer"
-                  style={{ position: "relative", zIndex: 50 }}
-                  onClick={handleGoogleSignIn}
-                >
-                  Sign up to use
-                </button>
-              )}
-            </div>
+        <div className="cta" style={{ margin: 0 }}>
+          <h2 className="d">Stop chasing<br />payments.</h2>
+          <p>Maintain your invoices and automate collections in about a minute.</p>
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="btn cursor-pointer"
+              >
+                Open Dashboard
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="btn cursor-pointer"
+                onClick={handleGoogleSignIn}
+              >
+                Sign up to use
+              </button>
+            )}
           </div>
-        </CometCard>
+        </div>
       </section>
 
       {/* 10. FOOTER */}
