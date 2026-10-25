@@ -5,7 +5,7 @@ import { EmptyState } from "../components/EmptyState";
 import { GlowingEffect } from "../components/ui/glowing-effect";
 import { HoverBorderGradient } from "../components/ui/hover-border-gradient";
 import { formatInr, add } from "../utils/money";
-import { daysBetween, formatHindiDate } from "../utils/date";
+import { daysBetween, formatHindiDate, formatDate } from "../utils/date";
 import { Language } from "../data/i18n";
 import { useDataStore } from "../hooks/useDataStore";
 import { InvoiceCameraModal } from "../components/InvoiceCameraModal";
@@ -623,7 +623,7 @@ export function Dashboard({ lang }: { lang: Language }) {
               {chaseList.slice(0, 5).map(({ inv, customer, daysLate: dLate, isChronic }, index) => {
                 const phoneClean = customer?.phone?.replace(/\D/g, "") || "";
                 const invRefText = inv.invoiceNumber ? `for invoice ${inv.invoiceNumber}` : "";
-                const waMessage = `Hello ${customer?.name || "Customer"}, gentle reminder that payment of ${formatInr(inv.outstanding)} ${invRefText} is overdue by ${dLate} days. Please clear today. - ${businessProfile.name}`.replace(/\s+/g, " ");
+                const waMessage = `Hello ${customer?.name || "Customer"}, reminder that payment of ${formatInr(inv.outstanding)} ${invRefText} is overdue by ${dLate} days (Due Date: ${formatDate(inv.dueDate)}). Please arrange for clearance. Thanks, ${businessProfile.name || "ApkaInvoice"}.`.replace(/\s+/g, " ");
                 const waUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(waMessage)}`;
 
                 return (

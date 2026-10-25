@@ -130,20 +130,20 @@ export function Reminders({ lang: _appLang }: { lang: Language }) {
       setWhatsappPhone(custPhone);
       setEmailSubject(`Payment reminder: invoice ${invNum || "(No Number)"}`);
 
+      const dueDateFormatted = formatDate(selectedInvoice.dueDate);
+
       const defaultMsg = `Dear ${custName || "Customer"},
 
-This is a gentle payment reminder that ${formattedAmt} for invoice ${invNum || "(No Number)"} is ${
-        isOverdue ? `overdue by ${overdueDays} days` : `due on ${formatDate(selectedInvoice.dueDate)}`
+This is a payment reminder that payment of ${formattedAmt} for invoice ${invNum || "(No Number)"} is ${
+        isOverdue ? `overdue by ${overdueDays} days` : "pending"
       }.
 
 Invoice Details:
 - Invoice #: ${invNum || "—"}
 - Outstanding Due: ${formattedAmt}
-- Due Date: ${formatDate(selectedInvoice.dueDate)}
+- Due Date: ${dueDateFormatted}
 
-Please remit payment at your earliest convenience. Direct phone payment / UPI: ${bUpi || bPhone || "Provided on invoice"}.
-
-If you have already processed this payment, kindly disregard this notice.
+Please arrange to clear this pending amount at your earliest convenience. If you have already processed this payment, kindly disregard this notice.
 
 Thank you,
 ${bName}`;
@@ -152,7 +152,7 @@ ${bName}`;
 
       const defaultWaMsg = `Hello ${custName || "Customer"}, gentle reminder that payment of ${formattedAmt} for invoice ${invNum || "(No Number)"} is ${
         isOverdue ? "overdue" : "pending"
-      }. Please remit directly to ${bPhone || "our phone"} or UPI: ${bUpi}. Thanks, ${bName}.`;
+      } (Due Date: ${dueDateFormatted}). Please arrange for clearance at your earliest convenience. Thanks, ${bName}.`;
 
       setWhatsappMessage(defaultWaMsg);
       setDispatchNotice(null);
