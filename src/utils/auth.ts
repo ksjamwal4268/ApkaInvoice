@@ -116,14 +116,6 @@ export const useAuth = () => {
         window.dispatchEvent(new Event("cc-auth-updated"));
         window.dispatchEvent(new Event("cc-store-updated"));
 
-        // Pull user's synced data from Firestore so profile and invoices are hydrated immediately
-        try {
-          await syncUserDataFromCloud(firebaseUser.uid);
-          window.dispatchEvent(new Event("cc-store-updated"));
-        } catch (err) {
-          console.warn("Cloud sync notice (offline fallback):", err);
-        }
-
         // Initialize default profile fields for this user if missing, preserving phone and email for returning users
         try {
           const currentProf = getStoredBusinessProfile();
@@ -151,13 +143,25 @@ export const useAuth = () => {
         } catch (err) {
           console.warn("Auto-sync profile on login notice:", err);
         }
+
+        // Render page IMMEDIATELY from local cache (0ms delay)
+        setLoading(false);
+
+        // Pull user's synced data from Firestore in the background asynchronously
+        syncUserDataFromCloud(firebaseUser.uid)
+          .then(() => {
+            window.dispatchEvent(new Event("cc-store-updated"));
+          })
+          .catch((err) => {
+            console.warn("Cloud sync notice (offline fallback):", err);
+          });
       } else {
         localStorage.removeItem("cc-google-user");
         setUser(null);
         window.dispatchEvent(new Event("cc-auth-updated"));
         window.dispatchEvent(new Event("cc-store-updated"));
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

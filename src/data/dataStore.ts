@@ -195,7 +195,7 @@ function reviveInvoice(raw: any): Invoice {
   };
 }
 
-function withTimeout<T>(p: Promise<T>, ms = 8000): Promise<T> {
+function withTimeout<T>(p: Promise<T>, ms = 1500): Promise<T> {
   return Promise.race([
     p,
     new Promise<T>((_, reject) =>
@@ -213,14 +213,26 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
   if (!uid || uid === "guest") return;
 
   try {
-    // 1. Sync Business Profile (ensuring phone and email are preserved for returning users)
     const profileRef = doc(db, "users", uid, "profile", "business");
-    const pSnap = await withTimeout(getDoc(profileRef), 8000).catch(() => null);
-    const cloudProfile = pSnap && pSnap.exists() ? (pSnap.data() as BusinessProfile) : null;
-
-    // Check root user document for saved phone/email/businessName
     const userRef = doc(db, "users", uid);
-    const uSnap = await withTimeout(getDoc(userRef), 8000).catch(() => null);
+    const invRef = doc(db, "users", uid, "data", "invoices");
+    const custRef = doc(db, "users", uid, "data", "customers");
+
+    // Fetch all records concurrently with ultra-fast timeout (1500ms max)
+    const [pRes, uRes, invRes, custRes] = await Promise.allSettled([
+      withTimeout(getDoc(profileRef), 1500),
+      withTimeout(getDoc(userRef), 1500),
+      withTimeout(getDoc(invRef), 1500),
+      withTimeout(getDoc(custRef), 1500),
+    ]);
+
+    const pSnap = pRes.status === "fulfilled" ? pRes.value : null;
+    const uSnap = uRes.status === "fulfilled" ? uRes.value : null;
+    const invSnap = invRes.status === "fulfilled" ? invRes.value : null;
+    const custSnap = custRes.status === "fulfilled" ? custRes.value : null;
+
+    // 1. Sync Business Profile
+    const cloudProfile = pSnap && pSnap.exists() ? (pSnap.data() as BusinessProfile) : null;
     const uData = uSnap && uSnap.exists() ? uSnap.data() : null;
 
     const localProf = getStoredBusinessProfile();
@@ -250,8 +262,8 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
     localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(mergedProfile));
 
     if (effectivePhone || effectiveEmail || effectiveName) {
-      await setDoc(profileRef, cleanForFirestore(mergedProfile), { merge: true }).catch(() => {});
-      await setDoc(
+      setDoc(profileRef, cleanForFirestore(mergedProfile), { merge: true }).catch(() => {});
+      setDoc(
         userRef,
         {
           phone: effectivePhone,
@@ -263,36 +275,13 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
       ).catch(() => {});
     }
 
-    // 2. Sync Invoices from Cloud (merge cloudList and localInvs so data from all devices is preserved)
-    const invRef = doc(db, "users", uid, "data", "invoices");
-    const invSnap = await withTimeout(getDoc(invRef), 8000).catch(() => null);
+    // 2. Sync Invoices from Cloud
     let cloudList: Invoice[] = [];
     if (invSnap && invSnap.exists()) {
       const invData = invSnap.data();
       if (Array.isArray(invData?.items)) {
         cloudList = invData.items.map(reviveInvoice);
       }
-    }
-
-    try {
-      const colRef = collection(db, "users", uid, "invoices");
-      const colSnap = await withTimeout(getDocs(colRef), 6000);
-      if (!colSnap.empty) {
-        colSnap.forEach((d) => {
-          const item = d.data() as any;
-          if (item) {
-            const docId = item.id || d.id;
-            const exists = cloudList.some(
-              (ci) => ci.id === docId || (item.invoiceNumber && ci.invoiceNumber === item.invoiceNumber)
-            );
-            if (!exists) {
-              cloudList.unshift(reviveInvoice({ id: docId, ...item }));
-            }
-          }
-        });
-      }
-    } catch (e) {
-      // ignore
     }
 
     const localInvs = getStoredInvoices();
@@ -308,41 +297,16 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
 
     if (mergedInvs.length > 0) {
       localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(mergedInvs));
-      await setDoc(invRef, cleanForFirestore({ items: mergedInvs }), { merge: true }).catch(() => {});
+      setDoc(invRef, cleanForFirestore({ items: mergedInvs }), { merge: true }).catch(() => {});
     }
 
     // 3. Sync Customers
-    const custRef = doc(db, "users", uid, "data", "customers");
-    const custSnap = await withTimeout(getDoc(custRef), 8000).catch(() => null);
     let custCloudList: Customer[] = [];
     if (custSnap && custSnap.exists()) {
       const custData = custSnap.data();
       if (Array.isArray(custData?.items)) {
         custCloudList = custData.items;
       }
-    }
-
-    try {
-      const custColRef = collection(db, "users", uid, "customers");
-      const custColSnap = await withTimeout(getDocs(custColRef), 6000);
-      if (!custColSnap.empty) {
-        custColSnap.forEach((d) => {
-          const item = d.data() as any;
-          if (item) {
-            const docId = item.id || d.id;
-            const exists = custCloudList.some(
-              (c) =>
-                c.id === docId ||
-                (item.name && (c.name ?? "").toLowerCase() === (item.name ?? "").toLowerCase())
-            );
-            if (!exists) {
-              custCloudList.unshift({ id: docId, ...item });
-            }
-          }
-        });
-      }
-    } catch (e) {
-      // ignore
     }
 
     const localCusts = getStoredCustomers();
@@ -360,7 +324,7 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
 
     if (mergedCusts.length > 0) {
       localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(mergedCusts));
-      await setDoc(custRef, cleanForFirestore({ items: mergedCusts }), { merge: true }).catch(() => {});
+      setDoc(custRef, cleanForFirestore({ items: mergedCusts }), { merge: true }).catch(() => {});
     }
 
     dispatchStoreChange();
