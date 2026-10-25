@@ -53,7 +53,7 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
   const { id: routeInvoiceId } = useParams<{ id?: string }>();
   const isEditing = Boolean(propEditMode || routeInvoiceId);
 
-  const { invoices, customers, businessProfile, saveInvoice, saveCustomer } = useDataStore();
+  const { invoices, customers, businessProfile, saveInvoice, saveCustomer, saveBusinessProfile } = useDataStore();
   const { user, signInWithGoogle, loading: authLoading } = useAuth();
 
   // User / Sender Profile details (auto-filled from Profile)
@@ -62,7 +62,9 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     return { ...stored, ...(businessProfile || {}) };
   }, [businessProfile]);
 
-  const [senderBusinessName, setSenderBusinessName] = useState(currentProfile.name || "");
+  const [senderBusinessName, setSenderBusinessName] = useState(
+    currentProfile.name || businessProfile?.name || user?.name || ""
+  );
   const [senderPhone, setSenderPhone] = useState(currentProfile.phone || "");
   const [senderEmail, setSenderEmail] = useState(currentProfile.email || "");
   const [senderGstin, setSenderGstin] = useState(currentProfile.gstin || "");
@@ -494,6 +496,8 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
 
     const existingInv = isEditing && routeInvoiceId ? invoices.find((i) => i.id === routeInvoiceId) : null;
 
+    const finalSellerName = senderBusinessName.trim() || businessProfile.name || user?.name || "My Business";
+
     const newInvoice = {
       id: invId,
       invoiceNumber: finalNumber,
@@ -503,6 +507,13 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
       customerState: selectedCust?.state || "",
       customerGstin: cleanGstin || selectedCust?.gstin || "",
       placeOfSupply,
+      sellerName: finalSellerName,
+      sellerGstin: senderGstin.trim() || businessProfile.gstin || "",
+      sellerPhone: senderPhone.trim() || businessProfile.phone || "",
+      sellerEmail: senderEmail.trim() || businessProfile.email || "",
+      sellerAddress: senderAddress.trim() || businessProfile.address || "",
+      sellerCity: senderCity.trim() || businessProfile.city || "",
+      sellerState: senderState.trim() || businessProfile.state || "",
       payerName: selectedCust?.name || "Customer",
       payerEmail: cleanEmail || selectedCust?.email || "",
       payerPhone: cleanPhone || selectedCust?.phone || "",
@@ -557,6 +568,21 @@ export function CreateInvoice({ lang: _lang, isEditMode: propEditMode }: CreateI
     };
 
     saveInvoice(newInvoice);
+
+    // Sync business name and sender profile so it stays permanently synced
+    if (finalSellerName && finalSellerName !== businessProfile.name) {
+      saveBusinessProfile({
+        ...businessProfile,
+        name: finalSellerName,
+        phone: senderPhone.trim() || businessProfile.phone || "",
+        email: senderEmail.trim() || businessProfile.email || "",
+        gstin: senderGstin.trim() || businessProfile.gstin || "",
+        address: senderAddress.trim() || businessProfile.address || "",
+        city: senderCity.trim() || businessProfile.city || "",
+        state: senderState.trim() || businessProfile.state || "",
+      });
+    }
+
     setSaveSuccess(finalNumber);
 
     setTimeout(() => {

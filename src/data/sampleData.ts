@@ -92,6 +92,13 @@ export interface Invoice {
   payerEmail?: string;
   payerPhone?: string;
   rawExtraction?: any;
+  sellerName?: string;
+  sellerGstin?: string;
+  sellerPhone?: string;
+  sellerEmail?: string;
+  sellerAddress?: string;
+  sellerCity?: string;
+  sellerState?: string;
 }
 
 export interface EvidenceEntry {

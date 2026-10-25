@@ -625,6 +625,7 @@ export function getStoredBusinessProfile(): BusinessProfile {
 export function saveBusinessProfile(profile: BusinessProfile): void {
   const key = getBusinessKey();
   localStorage.setItem(key, JSON.stringify(profile));
+  localStorage.setItem("cc_business_profile_v2", JSON.stringify(profile));
   dispatchStoreChange();
 
   const uid = getActiveUserId();

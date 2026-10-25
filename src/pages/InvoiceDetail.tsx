@@ -22,7 +22,7 @@ import { GlowingEffect } from "../components/ui/glowing-effect";
 export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { invoices, customers, saveInvoice } = useDataStore();
+  const { invoices, customers, businessProfile, saveInvoice } = useDataStore();
 
   const [toastNotice, setToastNotice] = useState<string | null>(null);
 
@@ -197,6 +197,71 @@ export function InvoiceDetail({ lang: _lang }: { lang: Language }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Seller & Buyer Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Seller / Issued By (Your Business) */}
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+          <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} />
+          <div className="relative rounded-xl p-4 sm:p-5 bg-white space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                Seller / Issued By
+              </span>
+              <Link to="/profile" className="text-xs text-teal-600 hover:underline font-semibold">
+                Edit Profile
+              </Link>
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900">
+              {invoice.sellerName || businessProfile.name || "Your Business Name"}
+            </h3>
+            <div className="text-xs text-slate-600 space-y-0.5 font-medium">
+              {(invoice.sellerCity || businessProfile.city || invoice.sellerState || businessProfile.state) && (
+                <p>{invoice.sellerCity || businessProfile.city}{invoice.sellerCity && invoice.sellerState ? ', ' : ''}{invoice.sellerState || businessProfile.state}</p>
+              )}
+              {(invoice.sellerGstin || businessProfile.gstin) && (
+                <p>GSTIN: <span className="font-mono font-semibold">{invoice.sellerGstin || businessProfile.gstin}</span></p>
+              )}
+              {(invoice.sellerPhone || businessProfile.phone) && (
+                <p>Phone: {invoice.sellerPhone || businessProfile.phone}</p>
+              )}
+              {(invoice.sellerEmail || businessProfile.email) && (
+                <p>Email: {invoice.sellerEmail || businessProfile.email}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Buyer / Billed To */}
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-2 md:rounded-3xl md:p-3 shadow-xs">
+          <GlowingEffect spread={40} glow={true} disabled={false} proximity={64} inactiveZone={0.01} />
+          <div className="relative rounded-xl p-4 sm:p-5 bg-white space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                Billed To (Buyer)
+              </span>
+              <Link to={`/customers/${invoice.customerId}`} className="text-xs text-teal-600 hover:underline font-semibold">
+                Customer View
+              </Link>
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900">
+              {invoice.customerName}
+            </h3>
+            <div className="text-xs text-slate-600 space-y-0.5 font-medium">
+              <p>{invoice.customerCity}, {invoice.customerState}</p>
+              {invoice.customerGstin && (
+                <p>GSTIN: <span className="font-mono font-semibold">{invoice.customerGstin}</span></p>
+              )}
+              {(invoice.payerPhone || customer?.phone) && (
+                <p>Phone: {invoice.payerPhone || customer?.phone}</p>
+              )}
+              {(invoice.payerEmail || customer?.email) && (
+                <p>Email: {invoice.payerEmail || customer?.email}</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Financials & GST Breakdown */}

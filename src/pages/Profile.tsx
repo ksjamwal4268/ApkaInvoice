@@ -51,18 +51,19 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Load from stored business profile and current user on mount or change
+  // Load from stored business profile and current user on initial mount
   useEffect(() => {
-    if (businessProfile) {
+    if (businessProfile && !hasInitialized) {
       setContactPerson(businessProfile.contactPerson || user?.name || "");
       setEmail(businessProfile.email || user?.email || "");
       setPhone(businessProfile.phone || "");
-      setBusinessName(
-        businessProfile.name && businessProfile.name !== "OG Enterprises"
-          ? businessProfile.name
-          : user?.name || ""
-      );
+      if (businessProfile.name && businessProfile.name !== "OG Enterprises") {
+        setBusinessName(businessProfile.name);
+      } else {
+        setBusinessName(user?.name || "");
+      }
 
       // Location
       setAddress(businessProfile.address || "");
@@ -74,8 +75,9 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
 
       // Direct Phone payment / UPI
       setUpi(businessProfile.upi || (businessProfile.phone ? `${businessProfile.phone.replace(/\D/g, "")}@upi` : ""));
+      setHasInitialized(true);
     }
-  }, [businessProfile, user]);
+  }, [businessProfile, user, hasInitialized]);
 
   const handleStateChange = (selectedState: string) => {
     setState(selectedState);
@@ -112,13 +114,12 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
     const fallbackUpi = upi.trim() || (cleanPhone ? `${cleanPhone.replace(/\D/g, "")}@upi` : "");
     const cleanGstin = gstin.trim().toUpperCase();
     const cleanPan = cleanGstin.length >= 12 ? cleanGstin.substring(2, 12) : (businessProfile.pan || "");
+    const finalBusinessName = businessName.trim() || contactPerson.trim() || user?.name || "My Business";
 
     const updatedProfile: BusinessProfile = {
       ...businessProfile,
-      name: (businessName.trim() && businessName.trim() !== "OG Enterprises")
-        ? businessName.trim()
-        : (contactPerson.trim() || user?.name || ""),
-      contactPerson: contactPerson.trim(),
+      name: finalBusinessName,
+      contactPerson: contactPerson.trim() || finalBusinessName,
       email: email.trim(),
       phone: cleanPhone,
       // Location details
@@ -455,11 +456,10 @@ export function Profile({ lang: _lang }: ProfileProps): React.JSX.Element {
               {/* City */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  City <span className="text-rose-500">*</span>
+                  City (Optional)
                 </label>
                 <input
                   type="text"
-                  required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="e.g. City name"
