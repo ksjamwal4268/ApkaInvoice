@@ -103,8 +103,6 @@ export function Dashboard({ lang }: { lang: Language }) {
     outstanding: number;
   }
 
-  const [graphTimeframe, setGraphTimeframe] = useState<"weekly" | "monthly">("weekly");
-
   const anchorDate = useMemo(() => {
     if (!invoices || invoices.length === 0) return today;
     const validTimes = invoices
@@ -123,82 +121,42 @@ export function Dashboard({ lang }: { lang: Language }) {
     const result: KpiPoint[] = [];
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    if (graphTimeframe === "monthly") {
-      for (let i = 5; i >= 0; i--) {
-        const mStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1, 0, 0, 0, 0);
-        const mEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
+    // Monthly timeframe: last 6 months ending at anchorDate
+    for (let i = 5; i >= 0; i--) {
+      const mStart = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i, 1, 0, 0, 0, 0);
+      const mEnd = new Date(anchorDate.getFullYear(), anchorDate.getMonth() - i + 1, 0, 23, 59, 59, 999);
 
-        const mInvoices = invoices.filter((inv) => {
-          const invDate = new Date(inv.invoiceDate || inv.dueDate);
-          return invDate >= mStart && invDate <= mEnd;
-        });
+      const mInvoices = invoices.filter((inv) => {
+        const invDate = new Date(inv.invoiceDate || inv.dueDate);
+        return invDate >= mStart && invDate <= mEnd;
+      });
 
-        const invoiceCount = mInvoices.length;
-        const paymentReceivedPaise = mInvoices
-          .filter((inv) => (inv.status ?? "").toLowerCase() === "paid")
-          .reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
+      const invoiceCount = mInvoices.length;
+      const paymentReceivedPaise = mInvoices
+        .filter((inv) => (inv.status ?? "").toLowerCase() === "paid")
+        .reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
 
-        const expectedTotalPaise = mInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const expectedTotalPaise = mInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
 
-        const outstandingPaise = mInvoices
-          .filter((inv) => (inv.status ?? "").toLowerCase() !== "paid" && !inv.isDisputed)
-          .reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
+      const outstandingPaise = mInvoices
+        .filter((inv) => (inv.status ?? "").toLowerCase() !== "paid" && !inv.isDisputed)
+        .reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
 
-        const label = `${monthNames[mStart.getMonth()]} '${String(mStart.getFullYear()).slice(-2)}`;
-        const dateRange = `${monthNames[mStart.getMonth()]} ${mStart.getFullYear()}`;
+      const label = `${monthNames[mStart.getMonth()]} '${String(mStart.getFullYear()).slice(-2)}`;
+      const dateRange = `${monthNames[mStart.getMonth()]} ${mStart.getFullYear()}`;
 
-        result.push({
-          label,
-          dateRange,
-          invoiceCount,
-          paymentReceived: Math.round(paymentReceivedPaise / 100),
-          expectedTotal: Math.round(expectedTotalPaise / 100),
-          outstanding: Math.round(outstandingPaise / 100),
-        });
-      }
-    } else {
-      // Weekly timeframe: 6 chronological weeks ending at anchorDate
-      for (let i = 5; i >= 0; i--) {
-        const weekStart = new Date(anchorDate);
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (i * 7));
-        weekStart.setHours(0, 0, 0, 0);
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        weekEnd.setHours(23, 59, 59, 999);
-
-        const weekInvoices = invoices.filter((inv) => {
-          const invDate = new Date(inv.invoiceDate || inv.dueDate);
-          return invDate >= weekStart && invDate <= weekEnd;
-        });
-
-        const invoiceCount = weekInvoices.length;
-        const paymentReceivedPaise = weekInvoices
-          .filter((inv) => (inv.status ?? "").toLowerCase() === "paid")
-          .reduce((sum, inv) => sum + (inv.amountPaid || 0), 0);
-
-        const expectedTotalPaise = weekInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
-
-        const outstandingPaise = weekInvoices
-          .filter((inv) => (inv.status ?? "").toLowerCase() !== "paid" && !inv.isDisputed)
-          .reduce((sum, inv) => sum + (inv.outstanding || 0), 0);
-
-        const label = `${String(weekStart.getDate()).padStart(2, "0")} ${monthNames[weekStart.getMonth()]}`;
-        const dateRange = `${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} – ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`;
-
-        result.push({
-          label,
-          dateRange,
-          invoiceCount,
-          paymentReceived: Math.round(paymentReceivedPaise / 100),
-          expectedTotal: Math.round(expectedTotalPaise / 100),
-          outstanding: Math.round(outstandingPaise / 100),
-        });
-      }
+      result.push({
+        label,
+        dateRange,
+        invoiceCount,
+        paymentReceived: Math.round(paymentReceivedPaise / 100),
+        expectedTotal: Math.round(expectedTotalPaise / 100),
+        outstanding: Math.round(outstandingPaise / 100),
+      });
     }
 
     return result;
-  }, [invoices, anchorDate, graphTimeframe]);
+  }, [invoices, anchorDate]);
 
   const graphSummary = useMemo(() => {
     const totalBilled = kpiData.reduce((acc, p) => acc + p.expectedTotal, 0);
@@ -402,40 +360,15 @@ export function Dashboard({ lang }: { lang: Language }) {
                   Billing & Collections Activity
                 </h2>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
-                  {graphTimeframe === "weekly" ? "Weekly Trend" : "Monthly Trend"}
+                  Monthly Trend
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Tracks actual invoices billed, payments received, and pending dues ({graphTimeframe === "weekly" ? "last 6 active weeks" : "last 6 months"}).
+                Tracks actual invoices billed, payments received, and pending dues (last 6 months).
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* Timeframe Switcher */}
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-0.5 rounded-xl text-xs">
-                <button
-                  type="button"
-                  onClick={() => setGraphTimeframe("weekly")}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    graphTimeframe === "weekly"
-                      ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  Weekly (6 Wks)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGraphTimeframe("monthly")}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    graphTimeframe === "monthly"
-                      ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-2xs font-bold"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                  }`}
-                >
-                  Monthly (6 Mos)
-                </button>
-              </div>
 
               {/* Legend */}
               <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
