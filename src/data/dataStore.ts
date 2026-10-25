@@ -1,6 +1,6 @@
 import { Customer, Invoice, INVOICES, CUSTOMERS, EvidenceEntry, CustomerId, InvoiceId } from "./sampleData";
 import { Paise } from "../utils/money";
-import { db } from "../firebaseApp";
+import { db, isCloudAvailable, markCloudBlocked } from "../firebaseApp";
 import { doc, getDoc, setDoc, collection, addDoc, getDocs } from "firebase/firestore";
 import { uploadInvoice, sendEmailReminder, sendWhatsAppReminder } from "../api/n8n.js";
 
@@ -210,7 +210,7 @@ function withTimeout<T>(p: Promise<T>, ms = 1500): Promise<T> {
  * and different accounts see their own data without hanging if offline or blocked.
  */
 export async function syncUserDataFromCloud(uid: string): Promise<void> {
-  if (!uid || uid === "guest") return;
+  if (!uid || uid === "guest" || !isCloudAvailable()) return;
 
   try {
     const profileRef = doc(db, "users", uid, "profile", "business");
@@ -392,23 +392,19 @@ export function saveInvoice(invoice: Invoice): void {
   dispatchStoreChange();
 
   const uid = getActiveUserId();
-  if (uid && uid !== "guest") {
+  if (uid && uid !== "guest" && isCloudAvailable()) {
     try {
-      // Rule: Use addDoc to save invoice into your own database. Replace undefined with "" before saving.
       const cleaned = cleanForFirestore(invoice);
       const invoicesCol = collection(db, "users", uid, "invoices");
-      addDoc(invoicesCol, cleaned).catch((err) =>
-        console.warn("Cloud invoices addDoc notice:", err)
-      );
+      addDoc(invoicesCol, cleaned).catch(() => markCloudBlocked());
 
-      // Keep aggregate array updated so multi-device sync hydrates instantly
       setDoc(
         doc(db, "users", uid, "data", "invoices"),
         cleanForFirestore({ items: invs }),
         { merge: true }
-      ).catch((err) => console.warn("Cloud invoices sync warning:", err));
+      ).catch(() => markCloudBlocked());
     } catch (e) {
-      console.warn("Cloud invoices sync warning:", e);
+      markCloudBlocked();
     }
   }
 }
@@ -421,13 +417,11 @@ export function deleteInvoice(id: InvoiceId): void {
   dispatchStoreChange();
 
   const uid = getActiveUserId();
-  if (uid && uid !== "guest") {
+  if (uid && uid !== "guest" && isCloudAvailable()) {
     try {
-      setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: filtered }), { merge: true }).catch((err) =>
-        console.warn("Cloud invoices sync warning:", err)
-      );
+      setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: filtered }), { merge: true }).catch(() => markCloudBlocked());
     } catch (e) {
-      console.warn("Cloud invoices sync warning:", e);
+      markCloudBlocked();
     }
   }
 }
@@ -443,9 +437,9 @@ export function addInvoiceEvidence(invoiceId: InvoiceId, entry: EvidenceEntry): 
     dispatchStoreChange();
 
     const uid = getActiveUserId();
-    if (uid && uid !== "guest") {
+    if (uid && uid !== "guest" && isCloudAvailable()) {
       try {
-        setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch(() => {});
+        setDoc(doc(db, "users", uid, "data", "invoices"), cleanForFirestore({ items: invs }), { merge: true }).catch(() => markCloudBlocked());
       } catch {}
     }
   }
@@ -509,16 +503,14 @@ export function saveCustomer(customer: Customer): void {
   dispatchStoreChange();
 
   const uid = getActiveUserId();
-  if (uid && uid !== "guest") {
+  if (uid && uid !== "guest" && isCloudAvailable()) {
     try {
       const cleaned = cleanForFirestore(customer);
       const custCol = collection(db, "users", uid, "customers");
-      addDoc(custCol, cleaned).catch(() => {});
-      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: custs }), { merge: true }).catch((err) =>
-        console.warn("Cloud customers sync warning:", err)
-      );
+      addDoc(custCol, cleaned).catch(() => markCloudBlocked());
+      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: custs }), { merge: true }).catch(() => markCloudBlocked());
     } catch (e) {
-      console.warn("Cloud customers sync warning:", e);
+      markCloudBlocked();
     }
   }
 }
@@ -531,13 +523,11 @@ export function deleteCustomer(id: CustomerId): void {
   dispatchStoreChange();
 
   const uid = getActiveUserId();
-  if (uid && uid !== "guest") {
+  if (uid && uid !== "guest" && isCloudAvailable()) {
     try {
-      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: filtered }), { merge: true }).catch((err) =>
-        console.warn("Cloud customers sync warning:", err)
-      );
+      setDoc(doc(db, "users", uid, "data", "customers"), cleanForFirestore({ items: filtered }), { merge: true }).catch(() => markCloudBlocked());
     } catch (e) {
-      console.warn("Cloud customers sync warning:", e);
+      markCloudBlocked();
     }
   }
 }
@@ -593,13 +583,10 @@ export function saveBusinessProfile(profile: BusinessProfile): void {
   dispatchStoreChange();
 
   const uid = getActiveUserId();
-  if (uid && uid !== "guest") {
+  if (uid && uid !== "guest" && isCloudAvailable()) {
     try {
       const cleaned = cleanForFirestore(profile);
-      setDoc(doc(db, "users", uid, "profile", "business"), cleaned, { merge: true }).catch((err) =>
-        console.warn("Cloud profile sync warning:", err)
-      );
-      // Also persist at user root level so email and phone are permanently attached to this Google UID
+      setDoc(doc(db, "users", uid, "profile", "business"), cleaned, { merge: true }).catch(() => markCloudBlocked());
       setDoc(doc(db, "users", uid), {
         email: profile.email || "",
         phone: profile.phone || "",
@@ -607,9 +594,9 @@ export function saveBusinessProfile(profile: BusinessProfile): void {
         contactPerson: profile.contactPerson || "",
         isOnboarded: Boolean(profile.phone && profile.email),
         updatedAt: new Date().toISOString(),
-      }, { merge: true }).catch(() => {});
+      }, { merge: true }).catch(() => markCloudBlocked());
     } catch (e) {
-      console.warn("Cloud profile sync warning:", e);
+      markCloudBlocked();
     }
   }
 }

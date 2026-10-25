@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
-import { app, auth, db, googleProvider } from "../firebaseApp";
+import { app, auth, db, googleProvider, isCloudAvailable, markCloudBlocked } from "../firebaseApp";
 import { getStoredBusinessProfile, saveBusinessProfile, syncUserDataFromCloud } from "../data/dataStore";
 
 export { app, auth, db };
@@ -147,14 +147,16 @@ export const useAuth = () => {
         // Render page IMMEDIATELY from local cache (0ms delay)
         setLoading(false);
 
-        // Pull user's synced data from Firestore in the background asynchronously
-        syncUserDataFromCloud(firebaseUser.uid)
-          .then(() => {
-            window.dispatchEvent(new Event("cc-store-updated"));
-          })
-          .catch((err) => {
-            console.warn("Cloud sync notice (offline fallback):", err);
-          });
+        // Pull user's synced data from Firestore in the background asynchronously only if cloud is not blocked
+        if (isCloudAvailable()) {
+          syncUserDataFromCloud(firebaseUser.uid)
+            .then(() => {
+              window.dispatchEvent(new Event("cc-store-updated"));
+            })
+            .catch(() => {
+              markCloudBlocked();
+            });
+        }
       } else {
         localStorage.removeItem("cc-google-user");
         setUser(null);
