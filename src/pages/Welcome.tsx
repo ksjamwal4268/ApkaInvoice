@@ -577,28 +577,34 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         <CometCard className="w-full">
           <div className="cta" style={{ margin: 0 }}>
             <h2 className="d">Stop chasing<br />payments.</h2>
-            <p>Upload one bill or see your live cash flow forecast in about a minute.</p>
+            <p>Upload one bill and see your cash forecast in about a minute.</p>
             <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  if (!user) {
-                    signInWithGoogle();
-                  } else {
-                    setIsCameraModalOpen(true);
-                  }
-                }}
-              >
-                Upload bill (photo or PDF)
-              </button>
-              <button
-                type="button"
-                className="btn o"
-                onClick={handleEnterDashboard}
-              >
-                Open Dashboard
-              </button>
+              {user ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setIsCameraModalOpen(true)}
+                  >
+                    Upload bill (photo or PDF)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn o"
+                    onClick={handleEnterDashboard}
+                  >
+                    Open Dashboard
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={signInWithGoogle}
+                >
+                  Log in to use
+                </button>
+              )}
             </div>
           </div>
         </CometCard>
