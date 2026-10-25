@@ -75,10 +75,10 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       await signInWithGoogle();
       setTimeout(() => {
         const prof = getStoredBusinessProfile();
-        if (prof.email && prof.phone) {
+        if ((prof.email && prof.phone) || prof.isOnboarded) {
           navigate("/dashboard");
         }
-      }, 400);
+      }, 500);
     } catch (err: any) {
       console.warn("Google sign in notice:", err);
       if (err?.code !== "auth/popup-closed-by-user") {
@@ -88,8 +88,12 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
   };
 
   const handleEnterDashboard = () => {
-    const hasSavedDetails = Boolean(businessProfile.email && businessProfile.phone);
-    if (user && !businessProfile.isOnboarded && !hasSavedDetails) {
+    const prof = getStoredBusinessProfile();
+    const hasSavedDetails = Boolean(
+      (prof.email || businessProfile.email) && (prof.phone || businessProfile.phone)
+    );
+    const isOnboarded = Boolean(prof.isOnboarded || businessProfile.isOnboarded);
+    if (user && !isOnboarded && !hasSavedDetails) {
       setIsOnboardingOpen(true);
     } else {
       navigate("/dashboard");
@@ -762,7 +766,7 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         currentUser={user}
-        existingProfile={businessProfile}
+        existingProfile={{ ...getStoredBusinessProfile(), ...businessProfile }}
         onComplete={() => {
           setIsOnboardingOpen(false);
           navigate("/dashboard");

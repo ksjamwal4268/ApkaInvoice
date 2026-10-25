@@ -195,7 +195,7 @@ function reviveInvoice(raw: any): Invoice {
   };
 }
 
-function withTimeout<T>(p: Promise<T>, ms = 2500): Promise<T> {
+function withTimeout<T>(p: Promise<T>, ms = 8000): Promise<T> {
   return Promise.race([
     p,
     new Promise<T>((_, reject) =>
@@ -215,57 +215,68 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
   try {
     // 1. Sync Business Profile (ensuring phone and email are preserved for returning users)
     const profileRef = doc(db, "users", uid, "profile", "business");
-    const pSnap = await withTimeout(getDoc(profileRef));
-    if (pSnap.exists()) {
-      const cloudProfile = pSnap.data() as BusinessProfile;
-      if (cloudProfile) {
-        if (cloudProfile.name === "OG Enterprises") {
-          cloudProfile.name = "";
-        }
-        if (cloudProfile.phone && cloudProfile.email) {
-          cloudProfile.isOnboarded = true;
-        }
-        localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(cloudProfile));
-      }
-    } else {
-      // Check root user document for saved phone/email
-      const userRef = doc(db, "users", uid);
-      const uSnap = await withTimeout(getDoc(userRef)).catch(() => null);
-      if (uSnap && uSnap.exists()) {
-        const uData = uSnap.data();
-        const current = getStoredBusinessProfile();
-        const merged: BusinessProfile = {
-          ...current,
-          phone: uData.phone || current.phone,
-          email: uData.email || current.email,
-          name: uData.businessName || current.name,
-          contactPerson: uData.name || current.contactPerson,
-          isOnboarded: Boolean((uData.phone || current.phone) && (uData.email || current.email)),
-        };
-        localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(merged));
-        await setDoc(profileRef, cleanForFirestore(merged), { merge: true }).catch(() => {});
-      } else {
-        const current = getStoredBusinessProfile();
-        if (current && ((current.name ?? "") || (current.contactPerson ?? "") || (current.email ?? "") || (current.phone ?? ""))) {
-          await setDoc(profileRef, cleanForFirestore(current), { merge: true }).catch(() => {});
-        }
-      }
+    const pSnap = await withTimeout(getDoc(profileRef), 8000).catch(() => null);
+    const cloudProfile = pSnap && pSnap.exists() ? (pSnap.data() as BusinessProfile) : null;
+
+    // Check root user document for saved phone/email/businessName
+    const userRef = doc(db, "users", uid);
+    const uSnap = await withTimeout(getDoc(userRef), 8000).catch(() => null);
+    const uData = uSnap && uSnap.exists() ? uSnap.data() : null;
+
+    const localProf = getStoredBusinessProfile();
+    const effectivePhone = cloudProfile?.phone || uData?.phone || localProf.phone || "";
+    const effectiveEmail = cloudProfile?.email || uData?.email || localProf.email || "";
+    const effectiveName =
+      (cloudProfile?.name && cloudProfile.name !== "OG Enterprises" ? cloudProfile.name : "") ||
+      uData?.businessName ||
+      localProf.name ||
+      "";
+    const effectiveContact =
+      cloudProfile?.contactPerson || uData?.name || localProf.contactPerson || "";
+
+    const mergedProfile: BusinessProfile = {
+      ...localProf,
+      ...(cloudProfile || {}),
+      phone: effectivePhone,
+      email: effectiveEmail,
+      name: effectiveName,
+      contactPerson: effectiveContact,
+      isOnboarded: Boolean(
+        cloudProfile?.isOnboarded ||
+        (effectivePhone && effectiveEmail)
+      ),
+    };
+
+    localStorage.setItem(`cc_business_profile_${uid}`, JSON.stringify(mergedProfile));
+
+    if (effectivePhone || effectiveEmail || effectiveName) {
+      await setDoc(profileRef, cleanForFirestore(mergedProfile), { merge: true }).catch(() => {});
+      await setDoc(
+        userRef,
+        {
+          phone: effectivePhone,
+          email: effectiveEmail,
+          businessName: effectiveName,
+          name: effectiveContact,
+        },
+        { merge: true }
+      ).catch(() => {});
     }
 
-    // 2. Sync Invoices from Cloud (never overwrite or clear; merge collection & doc)
+    // 2. Sync Invoices from Cloud (merge cloudList and localInvs so data from all devices is preserved)
     const invRef = doc(db, "users", uid, "data", "invoices");
-    const invSnap = await withTimeout(getDoc(invRef)).catch(() => null);
+    const invSnap = await withTimeout(getDoc(invRef), 8000).catch(() => null);
     let cloudList: Invoice[] = [];
     if (invSnap && invSnap.exists()) {
       const invData = invSnap.data();
       if (Array.isArray(invData?.items)) {
-        cloudList = invData.items;
+        cloudList = invData.items.map(reviveInvoice);
       }
     }
 
     try {
       const colRef = collection(db, "users", uid, "invoices");
-      const colSnap = await withTimeout(getDocs(colRef), 2000);
+      const colSnap = await withTimeout(getDocs(colRef), 6000);
       if (!colSnap.empty) {
         colSnap.forEach((d) => {
           const item = d.data() as any;
@@ -275,7 +286,7 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
               (ci) => ci.id === docId || (item.invoiceNumber && ci.invoiceNumber === item.invoiceNumber)
             );
             if (!exists) {
-              cloudList.unshift({ id: docId, ...item });
+              cloudList.unshift(reviveInvoice({ id: docId, ...item }));
             }
           }
         });
@@ -284,18 +295,25 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
       // ignore
     }
 
-    if (cloudList.length > 0) {
-      localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(cloudList));
-    } else {
-      const localInvs = getStoredInvoices();
-      if (localInvs && localInvs.length > 0) {
-        await setDoc(invRef, cleanForFirestore({ items: localInvs }), { merge: true }).catch(() => {});
+    const localInvs = getStoredInvoices();
+    const mergedInvs = [...cloudList];
+    localInvs.forEach((li) => {
+      const exists = mergedInvs.some(
+        (ci) => ci.id === li.id || (li.invoiceNumber && ci.invoiceNumber === li.invoiceNumber)
+      );
+      if (!exists) {
+        mergedInvs.push(li);
       }
+    });
+
+    if (mergedInvs.length > 0) {
+      localStorage.setItem(`cc_invoices_${uid}`, JSON.stringify(mergedInvs));
+      await setDoc(invRef, cleanForFirestore({ items: mergedInvs }), { merge: true }).catch(() => {});
     }
 
     // 3. Sync Customers
     const custRef = doc(db, "users", uid, "data", "customers");
-    const custSnap = await withTimeout(getDoc(custRef)).catch(() => null);
+    const custSnap = await withTimeout(getDoc(custRef), 8000).catch(() => null);
     let custCloudList: Customer[] = [];
     if (custSnap && custSnap.exists()) {
       const custData = custSnap.data();
@@ -306,16 +324,19 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
 
     try {
       const custColRef = collection(db, "users", uid, "customers");
-      const custColSnap = await withTimeout(getDocs(custColRef), 2000);
+      const custColSnap = await withTimeout(getDocs(custColRef), 6000);
       if (!custColSnap.empty) {
         custColSnap.forEach((d) => {
           const item = d.data() as any;
           if (item) {
+            const docId = item.id || d.id;
             const exists = custCloudList.some(
-              (c) => c.id === (item.id || d.id) || (item.name && (c.name ?? "").toLowerCase() === (item.name ?? "").toLowerCase())
+              (c) =>
+                c.id === docId ||
+                (item.name && (c.name ?? "").toLowerCase() === (item.name ?? "").toLowerCase())
             );
             if (!exists) {
-              custCloudList.unshift({ id: item.id || d.id, ...item });
+              custCloudList.unshift({ id: docId, ...item });
             }
           }
         });
@@ -324,13 +345,22 @@ export async function syncUserDataFromCloud(uid: string): Promise<void> {
       // ignore
     }
 
-    if (custCloudList.length > 0) {
-      localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(custCloudList));
-    } else {
-      const localCusts = getStoredCustomers();
-      if (localCusts && localCusts.length > 0) {
-        await setDoc(custRef, cleanForFirestore({ items: localCusts }), { merge: true }).catch(() => {});
+    const localCusts = getStoredCustomers();
+    const mergedCusts = [...custCloudList];
+    localCusts.forEach((lc) => {
+      const exists = mergedCusts.some(
+        (cc) =>
+          cc.id === lc.id ||
+          (lc.name && (cc.name ?? "").toLowerCase() === (lc.name ?? "").toLowerCase())
+      );
+      if (!exists) {
+        mergedCusts.push(lc);
       }
+    });
+
+    if (mergedCusts.length > 0) {
+      localStorage.setItem(`cc_customers_${uid}`, JSON.stringify(mergedCusts));
+      await setDoc(custRef, cleanForFirestore({ items: mergedCusts }), { merge: true }).catch(() => {});
     }
 
     dispatchStoreChange();

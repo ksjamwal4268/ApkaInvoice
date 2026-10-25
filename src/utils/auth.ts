@@ -116,14 +116,13 @@ export const useAuth = () => {
         window.dispatchEvent(new Event("cc-auth-updated"));
         window.dispatchEvent(new Event("cc-store-updated"));
 
-        // Pull user's synced data from Firestore in the background (non-blocking for fast startup)
-        syncUserDataFromCloud(firebaseUser.uid)
-          .then(() => {
-            window.dispatchEvent(new Event("cc-store-updated"));
-          })
-          .catch((err) => {
-            console.warn("Cloud sync notice (offline fallback):", err);
-          });
+        // Pull user's synced data from Firestore so profile and invoices are hydrated immediately
+        try {
+          await syncUserDataFromCloud(firebaseUser.uid);
+          window.dispatchEvent(new Event("cc-store-updated"));
+        } catch (err) {
+          console.warn("Cloud sync notice (offline fallback):", err);
+        }
 
         // Initialize default profile fields for this user if missing, preserving phone and email for returning users
         try {
