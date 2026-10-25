@@ -96,3 +96,4 @@ export async function sendWhatsAppReminder({ invoiceNumber, phone, buyerName, am
   if (r.ok && r.data.status === "reminder_sent") return { ok: true, message: "WhatsApp reminder sent" };
   return { ok: false, fallbackLink: waLink, error: "Couldn't send automatically. Tap 'Open WhatsApp' to send it yourself." };
 }
+

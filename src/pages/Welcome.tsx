@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Users, LayoutDashboard } from "lucide-react";
+import {
+  FileText,
+  Users,
+  LayoutDashboard,
+  User,
+  Phone,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
 import { Language } from "../data/i18n";
 import { useAuth } from "../utils/auth";
 import { useDataStore } from "../hooks/useDataStore";
@@ -37,12 +47,6 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Automatically trigger onboarding wizard if user logs in and profile is not yet completed
-  useEffect(() => {
-    if (user && !businessProfile.isOnboarded) {
-      setIsOnboardingOpen(true);
-    }
-  }, [user, businessProfile.isOnboarded]);
 
   // Calculate live financial KPIs from the data store
   const moneyOwed = invoices
@@ -519,60 +523,147 @@ export function Welcome({ lang: _lang }: WelcomeProps) {
       {/* 8. AUTOMATION SETUP SECTION */}
       <section className="wrap my-16 sm:my-24 scroll-mt-28" id="setup">
         <CometCard className="w-full">
-          <div className="cfg">
-            <h2 className="d">
-              {user && businessProfile.name && businessProfile.name !== "OG Enterprises"
-                ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
-                : user
-                ? `Automation is configured for ${user.name || user.email}.`
-                : "Your business details will appear here."}
-            </h2>
-            <div>
-              <ul>
-                <li>
-                  <b>WhatsApp &amp; reminders</b>
-                  <span>
-                    {user && businessProfile.phone
-                      ? businessProfile.phone
-                      : user
-                      ? "Pending setup — add your WhatsApp number"
-                      : "Your verified sender number will appear here"}
-                  </span>
-                </li>
-                <li>
-                  <b>Billing email</b>
-                  <span>
-                    {businessProfile.email || user?.email || "Your billing email will appear here"}
-                  </span>
-                </li>
-                <li>
-                  <b>Signed in as</b>
-                  <span>
-                    {user?.email || "Not signed in"}
-                  </span>
-                </li>
-              </ul>
-              <p style={{ marginTop: "18px", display: "flex", gap: "8px" }}>
-                {user ? (
-                  <>
-                    <button type="button" className="btn" onClick={() => navigate("/profile")}>
-                      Profile
-                    </button>
-                    <button type="button" className="btn o" onClick={() => setIsOnboardingOpen(true)}>
-                      {businessProfile.name ? "Update Setup" : "Setup Now"}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className="btn cursor-pointer" onClick={handleGoogleSignIn}>
-                      Sign in with Google
-                    </button>
-                    <button type="button" className="btn o cursor-pointer" onClick={handleGoogleSignIn}>
-                      Set Up Profile
-                    </button>
-                  </>
-                )}
-              </p>
+          <div className="p-7 sm:p-10 rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 shadow-xl overflow-hidden relative">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              {/* Left Column: Business Status & Identity */}
+              <div className="lg:col-span-5 space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/80 text-[11px] font-bold">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Business Automation Config</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight">
+                  {user && businessProfile.name && businessProfile.name !== "OG Enterprises"
+                    ? `Automation is configured for ${businessProfile.name}${businessProfile.city ? `, ${businessProfile.city}` : ""}.`
+                    : user
+                    ? `Automation is configured for ${user.name || user.email}.`
+                    : "Your business details will appear here."}
+                </h2>
+
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {user
+                    ? "Reminders and automated chasing messages use your verified identity so your buyers always know who is contacting them."
+                    : "Sign in with Google to configure your business identity, WhatsApp notification number, and billing email once."}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  {user ? (
+                    <>
+                      <button
+                        type="button"
+                        className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                        onClick={() => navigate("/profile")}
+                      >
+                        <User className="w-3.5 h-3.5" />
+                        <span>Manage Profile</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 text-xs font-bold transition-all cursor-pointer"
+                        onClick={() => setIsOnboardingOpen(true)}
+                      >
+                        {businessProfile.phone ? "Edit Setup Details" : "Complete Setup"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                        onClick={handleGoogleSignIn}
+                      >
+                        <span>Sign up to use</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Modern Live Status Cards */}
+              <div className="lg:col-span-7 space-y-3">
+                {/* 1. WhatsApp & Mobile Card */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-4 transition-all hover:border-teal-500/40">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                      <Phone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          WhatsApp &amp; Reminders
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          user && businessProfile.phone
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
+                        }`}>
+                          {user && businessProfile.phone ? "Verified Active" : "Setup needed"}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-slate-600 dark:text-slate-300 mt-0.5">
+                        {user && businessProfile.phone
+                          ? businessProfile.phone
+                          : user
+                          ? "Pending — tap Edit Setup to add your mobile"
+                          : "Your verified sender number will appear here"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Billing & Sender Email Card */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-4 transition-all hover:border-teal-500/40">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/20">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Billing &amp; Sender Email
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          businessProfile.email || user?.email
+                            ? "bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                        }`}>
+                          {businessProfile.email || user?.email ? "Ready" : "Pending"}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-slate-600 dark:text-slate-300 mt-0.5">
+                        {businessProfile.email || user?.email || "Your billing email will appear here"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Authentication & Cloud Sync Card */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-4 transition-all hover:border-teal-500/40">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Cloud Multi-Device Sync
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          user
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                        }`}>
+                          {user ? "Cloud Synced" : "Guest Mode"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 truncate max-w-xs sm:max-w-md">
+                        {user?.email ? `Signed in as ${user.email}` : "Sign in to securely access your data from any device"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </CometCard>
